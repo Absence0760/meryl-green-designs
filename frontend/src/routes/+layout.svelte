@@ -1,6 +1,6 @@
 <script lang="ts">
 	import '../app.css';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 
 	const nav = [
 		{ href: '/', label: 'Home' },
@@ -25,8 +25,8 @@
 					<li>
 						<a
 							href={item.href}
-							class:active={$page.url.pathname === item.href ||
-								(item.href !== '/' && $page.url.pathname.startsWith(item.href))}
+							class:active={page.url.pathname === item.href ||
+								(item.href !== '/' && page.url.pathname.startsWith(item.href))}
 						>
 							{item.label}
 						</a>

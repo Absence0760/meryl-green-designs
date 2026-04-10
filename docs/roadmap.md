@@ -24,12 +24,15 @@ These must be done before the site can go live.
 - [ ] Register a Resend account and verify the sending domain
 - [ ] Create a Sanity project at https://www.sanity.io/manage and note the project
       ID
-- [ ] **⚠️ Fix PII on public dataset** — orders contain customer PII which
-      must not live on a publicly-readable Sanity dataset. Pick option A
-      (make dataset private + move product reads through backend) or option B
-      (separate private `orders` dataset). See
-      [`orders-and-tracking.md`](./orders-and-tracking.md) "PII on a public
-      dataset" for details. **Do not launch without this.**
+- [ ] In the Sanity dashboard, set the `production` dataset visibility to
+      **Private** (Project → API → Datasets → `production` → Edit). Once
+      this is done, anonymous GROQ queries against the dataset will be
+      rejected — all reads go through the backend's authenticated client.
+- [x] ~~PII on public dataset~~ — fixed in code by routing product reads
+      through the backend. See "Private dataset + backend-mediated reads"
+      in [`orders-and-tracking.md`](./orders-and-tracking.md). All that
+      remains is flipping the dataset's visibility switch in the Sanity
+      dashboard, which is the item above.
 - [ ] Create a Sanity API token (Editor role, or custom role scoped to
       `order`) and set `SANITY_API_TOKEN` on the backend
 - [ ] Generate a webhook secret (`openssl rand -hex 32`) and set

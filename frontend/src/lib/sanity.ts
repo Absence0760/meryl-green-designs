@@ -1,6 +1,4 @@
-import { createClient, type SanityClient } from '@sanity/client';
-import imageUrlBuilder from '@sanity/image-url';
-import type { SanityImageSource } from '@sanity/image-url/lib/types/types';
+import { createImageUrlBuilder, type SanityImageSource } from '@sanity/image-url';
 import { PUBLIC_SANITY_PROJECT_ID, PUBLIC_SANITY_DATASET } from '$env/static/public';
 
 export type Product = {
@@ -19,26 +17,18 @@ export type Product = {
 	}>;
 };
 
-let cachedClient: SanityClient | null = null;
-
-export function sanityClient(): SanityClient | null {
-	if (!PUBLIC_SANITY_PROJECT_ID) return null;
-	if (cachedClient) return cachedClient;
-
-	cachedClient = createClient({
-		projectId: PUBLIC_SANITY_PROJECT_ID,
-		dataset: PUBLIC_SANITY_DATASET || 'production',
-		apiVersion: '2024-10-01',
-		useCdn: true,
-		perspective: 'published'
-	});
-	return cachedClient;
-}
+// @sanity/image-url only needs projectId + dataset to build URLs. It doesn't
+// need auth or network access — the URL it produces points at Sanity's public
+// CDN for assets, which stays publicly readable even when the document
+// dataset itself is private.
+const builder = createImageUrlBuilder({
+	projectId: PUBLIC_SANITY_PROJECT_ID,
+	dataset: PUBLIC_SANITY_DATASET || 'production'
+});
 
 export function imageUrl(source: SanityImageSource): string | null {
-	const client = sanityClient();
-	if (!client) return null;
-	return imageUrlBuilder(client).image(source).auto('format').fit('max').url();
+	if (!PUBLIC_SANITY_PROJECT_ID) return null;
+	return builder.image(source).auto('format').fit('max').url();
 }
 
 export function formatPrice(priceZar: number | null): string {

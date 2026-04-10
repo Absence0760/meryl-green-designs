@@ -11,15 +11,16 @@
 		"start": "node dist/server.js"
 	},
 	"dependencies": {
-		"@sanity/client": "^6.22.5",
-		"hono": "4.6.14"
+		"@sanity/client": "^7.20.0",
+		"dotenv": "^17.4.1",
+		"hono": "4.12.12"
 	},
 	"devDependencies": {
-		"@hono/node-server": "1.13.7",
-		"@types/aws-lambda": "8.10.145",
-		"@types/node": "22.10.2",
-		"esbuild": "0.24.0",
-		"tsx": "4.19.2",
-		"typescript": "5.5.4"
+		"@hono/node-server": "1.19.13",
+		"@types/aws-lambda": "8.10.161",
+		"@types/node": "25.6.0",
+		"esbuild": "0.28.0",
+		"tsx": "4.21.0",
+		"typescript": "6.0.2"
 	}
 }

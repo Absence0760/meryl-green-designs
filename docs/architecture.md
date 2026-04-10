@@ -42,8 +42,7 @@ meryl-green-designs/
 │       ├── app.css           Base styles + theme tokens
 │       ├── app.html
 │       ├── lib/
-│       │   ├── sanity.ts            Sanity client factory + Product type + helpers
-│       │   └── queries.ts           GROQ queries (loadProducts etc.)
+│       │   └── sanity.ts            Product type, image URL builder, price formatter
 │       └── routes/
 │           ├── +layout.svelte       Header, nav, under-construction banner, footer
 │           ├── +layout.ts           export const prerender = true
@@ -66,8 +65,9 @@ meryl-green-designs/
 │       ├── lambda.ts         AWS Lambda entry (wraps app with hono/aws-lambda)
 │       ├── email.ts          Resend API wrapper + HTML escaping
 │       ├── email-templates.ts Status-keyed customer email templates
-│       ├── sanity.ts         @sanity/client wrapper: createOrder, getOrderByRef
+│       ├── sanity.ts         @sanity/client wrapper: createOrder, getOrderByRef, getProducts
 │       └── routes/
+│           ├── products.ts         GET /products — list available products from Sanity
 │           ├── orders.ts           POST /orders — validate + create Sanity doc + send emails
 │           ├── order-lookup.ts     GET /orders/:ref?email= — track page lookup
 │           └── sanity-webhook.ts   POST /webhooks/sanity-order — verify sig + dispatch email
@@ -119,15 +119,23 @@ backend via `fetch`. The backend URL is baked into the bundle at build time from
 `PUBLIC_API_URL` via `$env/static/public`. There is no runtime environment resolution
 on the frontend — rebuilding is required to change the backend URL.
 
-Product data is loaded from Sanity at build time by `frontend/src/routes/shop/+page.ts`.
-The loader runs during prerendering, the query result is baked into `shop.html`, and
-the shop renders a static list of products. When Meryl edits a product in the Studio,
-the site must be rebuilt to reflect the change — a Sanity webhook triggering a CI
-redeploy is the intended production setup.
+Product data is loaded at build time by
+`frontend/src/routes/shop/+page.server.ts`, which fetches
+`${PUBLIC_API_URL}/products` from the backend (not Sanity directly). The
+backend reads from Sanity using its API token, so the Sanity dataset can
+stay private even though the shop is publicly visible. The result is baked
+into `shop.html` and `shop/__data.json` at build time.
 
-If `PUBLIC_SANITY_PROJECT_ID` is empty (e.g. before a Sanity project has been created),
-the loader returns an empty list and the shop page shows a friendly empty state. The
-build still succeeds.
+When Meryl edits a product in the Studio, the site must be rebuilt to
+reflect the change — a Sanity webhook triggers a CI redeploy (see
+[`deployment.md`](./deployment.md) section 9).
+
+If the backend is unreachable at build time (or returns an error), the
+loader logs a warning and returns an empty product list so the build still
+succeeds. The shop page shows a friendly empty state in that case. This is
+forgiving for local dev without the backend running; in CI a broken backend
+would still produce a deployable (if empty) site, and the failure would show
+up in the Lambda logs.
 
 ## Backend
 
@@ -146,6 +154,10 @@ difference is how requests reach the app.
 ### Routes
 
 - `GET /health` — liveness check, returns `{ ok: true }`
+- `GET /products` — returns the list of published + available products from
+  Sanity. Called by the frontend's shop loader at build time. This endpoint
+  exists so the Sanity dataset can stay private while the product catalogue
+  is still visible on the public site.
 - `POST /orders` — accepts an order JSON body, validates it, generates a reference
   `MG-YYMMDD-XXXX`, **creates a Sanity `order` document via an authenticated
   client**, sends two emails via Resend (owner + customer confirmation with a
@@ -187,10 +199,12 @@ time.
 
 ### Sanity client
 
-`src/sanity.ts` wraps `@sanity/client` and exposes `createOrder()` and
-`getOrderByRef()`. Uses `SANITY_API_TOKEN` for authentication (writes and
-reads both require the token — the dataset is expected to be private before
-launch; see the security note in `orders-and-tracking.md`).
+`src/sanity.ts` wraps `@sanity/client` and exposes `createOrder()`,
+`getOrderByRef()`, and `getProducts()`. Uses `SANITY_API_TOKEN` for
+authentication — writes and reads both require the token, because the
+dataset is configured as private in the Sanity dashboard. The frontend
+never talks to Sanity's query API directly; it only builds image URLs
+from the public asset CDN using the project ID baked into its bundle.
 
 ## Studio
 

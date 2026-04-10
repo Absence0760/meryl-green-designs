@@ -35,6 +35,38 @@ export type NewOrderInput = {
 	customerNotes: string;
 };
 
+export type SanityProduct = {
+	_id: string;
+	name: string;
+	slug: string;
+	blurb: string | null;
+	description: string | null;
+	priceZar: number | null;
+	available: boolean;
+	order: number;
+	photos: Array<{
+		_key: string;
+		alt: string | null;
+		asset: { _ref: string };
+	}>;
+};
+
+const PRODUCTS_QUERY = `*[_type == "product" && available == true] | order(order asc, name asc) {
+	_id,
+	name,
+	"slug": slug.current,
+	blurb,
+	description,
+	priceZar,
+	available,
+	order,
+	photos[] {
+		_key,
+		alt,
+		asset
+	}
+}`;
+
 let cachedClient: SanityClient | null = null;
 
 function getClient(): SanityClient {
@@ -83,4 +115,9 @@ export async function getOrderByRef(orderRef: string): Promise<SanityOrder | nul
 	const query = `*[_type == "order" && orderRef == $ref][0]`;
 	const result = await client.fetch<SanityOrder | null>(query, { ref: orderRef });
 	return result ?? null;
+}
+
+export async function getProducts(): Promise<SanityProduct[]> {
+	const client = getClient();
+	return client.fetch<SanityProduct[]>(PRODUCTS_QUERY);
 }

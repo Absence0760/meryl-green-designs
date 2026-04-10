@@ -29,7 +29,10 @@ the resources, the workflows update them.
 - A **Route 53 hosted zone** for that domain. If the domain is currently with
   a different DNS provider, create the hosted zone in Route 53 first and
   update the domain's nameservers to point at it.
-- A **Sanity account + project** — create one at https://www.sanity.io/manage
+- A **Sanity account + project** — create one at https://www.sanity.io/manage.
+  Once created, go to **Project → API → Datasets** and set the `production`
+  dataset to **Private**. The backend uses an API token for all Sanity
+  access; anonymous queries are not required.
 - A **Resend account** with a verified sending domain — sign up at
   https://resend.com
 - Terraform `>= 1.6.0` and AWS CLI v2 installed locally

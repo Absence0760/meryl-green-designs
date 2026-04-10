@@ -2,12 +2,9 @@
 
 **Status: implemented.** Orders are stored in Sanity, customers can track
 their order at `/track`, and status updates in the Studio trigger automatic
-emails via a webhook.
-
-> ⚠️ **Before launching to real customers, read the "Security considerations"
-> section below.** The default setup stores customer PII in a public Sanity
-> dataset, which is not appropriate for production. See "PII on a public
-> dataset" and the two remediation paths.
+emails via a webhook. Product reads go through the backend, and the Sanity
+dataset is configured as private, so customer PII on order documents stays
+inaccessible to anonymous clients.
 
 ## Problem
 
@@ -425,32 +422,26 @@ Status → template map lives in `sanity-webhook.ts`.
 
 ## Security considerations
 
-### ⚠️ 1. PII on a public dataset (MUST FIX BEFORE LAUNCH)
+### 1. Private dataset + backend-mediated reads
 
-The Sanity `production` dataset is anonymously readable by default. Products
-being public is fine; order documents are **not**. Order documents contain
-customer name, email, phone, shipping address, and order items — real PII.
+The Sanity `production` dataset is configured as **private**. Anonymous
+clients cannot query it — all reads (both products and orders) require an
+authenticated client with a valid API token.
 
-In the current setup, anyone who knows the Sanity project ID (which is public
-by design, baked into the frontend bundle) can issue
-`*[_type == "order"]` against the Sanity CDN and retrieve every order with
-full PII. This is a GDPR / POPIA problem and must be fixed before real
-customer orders go through the system.
+- The **backend** has `SANITY_API_TOKEN` and makes all Sanity API calls on
+  behalf of the frontend.
+- The **frontend** never talks to Sanity's query API directly. At build
+  time, its shop loader fetches `${PUBLIC_API_URL}/products` from the
+  backend, which in turn reads from Sanity.
+- The **frontend still builds Sanity image URLs** via `@sanity/image-url`
+  using just the project ID and dataset name. This is fine because Sanity's
+  asset CDN (`cdn.sanity.io`) serves image files publicly regardless of
+  dataset visibility — only document queries are gated.
 
-**Two remediation paths:**
-
-- **(A) Make the dataset private** — simpler on the Sanity side, but the
-  frontend's anonymous product fetch stops working. Product reads would need
-  to move through the backend too (a new `GET /products` endpoint, frontend
-  loader calls the backend instead of Sanity directly). Cleanest long-term
-  design.
-- **(B) Use a separate private dataset for orders** — keep `production`
-  public for products, create a new `orders` dataset set to private, give the
-  backend a token scoped to that dataset. Two datasets to manage but minimal
-  changes to the frontend. Quickest fix.
-
-Both fixes are on the pre-launch checklist in
-[`roadmap.md`](./roadmap.md). Do not launch without doing one of them.
+This means an attacker who inspects the frontend JS bundle and finds
+`PUBLIC_SANITY_PROJECT_ID` still cannot query documents. They can only
+construct image URLs for assets they already know about (via the asset
+`_ref` which they'd also have to discover).
 
 ### 2. Order enumeration
 
