@@ -30,7 +30,7 @@
 		"mdsvex": "^0.12.7",
 		"normalize.css": "8.0.1",
 		"storybook": "8.2.9",
-		"svelte": "5.0.0-next.218",
+		"svelte": "5.55.3",
 		"svelte-check": "3.8.5",
 		"typescript": "5.5.4",
 		"unplugin-icons": "0.19.2",
