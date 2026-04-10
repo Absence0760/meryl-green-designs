@@ -17,6 +17,17 @@ export type Product = {
 	}>;
 };
 
+export type GalleryPhoto = {
+	_id: string;
+	image: {
+		alt: string | null;
+		asset: { _ref: string };
+	};
+	caption: string | null;
+	visible: boolean;
+	order: number;
+};
+
 // @sanity/image-url only needs projectId + dataset to build URLs. It doesn't
 // need auth or network access — the URL it produces points at Sanity's public
 // CDN for assets, which stays publicly readable even when the document
@@ -26,9 +37,11 @@ const builder = createImageUrlBuilder({
 	dataset: PUBLIC_SANITY_DATASET || 'production'
 });
 
-export function imageUrl(source: SanityImageSource): string | null {
+export function imageUrl(source: SanityImageSource, width?: number): string | null {
 	if (!PUBLIC_SANITY_PROJECT_ID) return null;
-	return builder.image(source).auto('format').fit('max').url();
+	let img = builder.image(source).auto('format').fit('max');
+	if (width) img = img.width(width);
+	return img.url();
 }
 
 export function formatPrice(priceZar: number | null): string {

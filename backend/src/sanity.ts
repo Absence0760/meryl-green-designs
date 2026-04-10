@@ -51,6 +51,17 @@ export type SanityProduct = {
 	}>;
 };
 
+export type SanityGalleryPhoto = {
+	_id: string;
+	image: {
+		alt: string | null;
+		asset: { _ref: string };
+	};
+	caption: string | null;
+	visible: boolean;
+	order: number;
+};
+
 const PRODUCTS_QUERY = `*[_type == "product" && available == true] | order(order asc, name asc) {
 	_id,
 	name,
@@ -65,6 +76,14 @@ const PRODUCTS_QUERY = `*[_type == "product" && available == true] | order(order
 		alt,
 		asset
 	}
+}`;
+
+const GALLERY_QUERY = `*[_type == "galleryPhoto" && visible == true] | order(order asc, _createdAt desc) {
+	_id,
+	image { alt, asset },
+	caption,
+	visible,
+	order
 }`;
 
 let cachedClient: SanityClient | null = null;
@@ -120,4 +139,9 @@ export async function getOrderByRef(orderRef: string): Promise<SanityOrder | nul
 export async function getProducts(): Promise<SanityProduct[]> {
 	const client = getClient();
 	return client.fetch<SanityProduct[]>(PRODUCTS_QUERY);
+}
+
+export async function getGalleryPhotos(): Promise<SanityGalleryPhoto[]> {
+	const client = getClient();
+	return client.fetch<SanityGalleryPhoto[]>(GALLERY_QUERY);
 }

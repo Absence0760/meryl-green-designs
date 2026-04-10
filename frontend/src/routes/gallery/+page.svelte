@@ -1,6 +1,10 @@
 <script lang="ts">
-	// TODO: replace with real gallery photographs.
-	const placeholders = Array.from({ length: 8 }, (_, i) => i + 1);
+	import { imageUrl } from '$lib/sanity';
+	import type { PageData } from './$types';
+
+	export let data: PageData;
+
+	$: photos = data.photos;
 </script>
 
 <section class="section">
@@ -12,14 +16,34 @@
 			options available. More images are being added — please check back soon.
 		</p>
 
-		<div class="gallery-grid">
-			{#each placeholders as n}
-				<figure class="tile">
-					<div class="tile-image">Photo {n}</div>
-					<figcaption>Placeholder caption</figcaption>
-				</figure>
-			{/each}
-		</div>
+		{#if photos.length === 0}
+			<div class="empty">
+				<p>
+					No photographs yet.
+				</p>
+			</div>
+		{:else}
+			<div class="gallery-grid">
+				{#each photos as photo (photo._id)}
+					{@const src = imageUrl(photo.image, 800)}
+					<figure class="tile">
+						{#if src}
+							<img
+								class="tile-image tile-image--photo"
+								{src}
+								alt={photo.image.alt ?? photo.caption ?? 'Gallery photograph'}
+								loading="lazy"
+							/>
+						{:else}
+							<div class="tile-image">Photo</div>
+						{/if}
+						{#if photo.caption}
+							<figcaption>{photo.caption}</figcaption>
+						{/if}
+					</figure>
+				{/each}
+			</div>
+		{/if}
 	</div>
 </section>
 
@@ -42,6 +66,8 @@
 		border: 1px solid var(--color-rule);
 		border-radius: 4px;
 		overflow: hidden;
+		display: flex;
+		flex-direction: column;
 	}
 
 	.tile-image {
@@ -59,10 +85,28 @@
 		font-style: italic;
 	}
 
+	.tile-image--photo {
+		/* Real photos: fill the tile area, crop to keep the aspect-ratio
+		   consistent across tiles regardless of the source image's shape. */
+		object-fit: cover;
+		width: 100%;
+		height: 100%;
+		background: none;
+	}
+
 	.tile figcaption {
 		padding: 0.75rem var(--space-2);
 		font-size: 0.85rem;
 		color: var(--color-ink-soft);
 		border-top: 1px solid var(--color-rule);
+	}
+
+	.empty {
+		padding: var(--space-4);
+		background: var(--color-surface);
+		border: 1px dashed var(--color-rule);
+		text-align: center;
+		color: var(--color-ink-soft);
+		font-style: italic;
 	}
 </style>

@@ -77,7 +77,9 @@ Nice-to-haves that can wait until the site is live and Meryl has feedback.
       and the remaining one-time setup steps.
 - [ ] Extend the CMS to cover home page story, poem, and hero photo so Meryl
       can edit these herself
-- [ ] Extend the CMS to cover the gallery so Meryl can upload photos directly
+- [x] ~~Extend the CMS to cover the gallery so Meryl can upload photos
+      directly~~ — done. `galleryPhoto` schema in the studio, `GET /gallery`
+      route on the backend, gallery page renders from the loader.
 - [ ] Replace the free-form "items" textarea with a structured product picker
       (checkboxes + quantity per product) once there are enough products for
       this to be worth the extra UX

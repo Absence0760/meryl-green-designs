@@ -27,9 +27,21 @@ filled in before launch.
 
 ## Gallery (`/gallery`)
 
-- Responsive tile grid (minimum 240px per tile) with 8 placeholder tiles.
-- Each tile has an image area and caption ready for real content. Tiles are
-  designed to degrade gracefully if fewer photos are supplied.
+- **Photos managed in Sanity Studio.** Meryl uploads photos, writes captions,
+  sets display order, and toggles visibility from the same studio she uses
+  for products and orders. No dev involvement needed to add or remove gallery
+  photos.
+- **Responsive tile grid** (minimum 240px per tile). Each tile shows a photo
+  cropped to a consistent 4:3 aspect ratio via `object-fit: cover`, with an
+  optional caption below.
+- **Images served by Sanity's CDN** with auto-format conversion and resized
+  to 800px width at request time. No manual optimisation — Meryl can upload
+  any size straight from her camera.
+- **Empty state** shown when no photos have been added yet, so the page still
+  looks intentional before Meryl populates it.
+- **Build-time fetch** through the backend's `GET /gallery` endpoint, same
+  pattern as the shop. The Sanity dataset stays private; the frontend never
+  calls Sanity's query API directly.
 
 ## Shop (`/shop`)
 
@@ -90,6 +102,9 @@ filled in before launch.
   customer details, shipping address, items, tracking info, and private
   internal notes. Meryl edits these; the backend creates them on order
   submission.
+- **Gallery photo schema** with fields: image (with alt text and hotspot
+  cropping), caption, visible toggle, and display order. Meryl uploads
+  photos here to populate the `/gallery` page.
 - **Availability toggle** lets the owner hide a product from the site without
   deleting it — useful for sold-out items they may restock.
 - **Display order** controls the order products appear in the grid. Using 0,

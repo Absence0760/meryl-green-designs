@@ -47,7 +47,9 @@ meryl-green-designs/
 │           ├── +layout.svelte       Header, nav, under-construction banner, footer
 │           ├── +layout.ts           export const prerender = true
 │           ├── +page.svelte         Home: hero / story / poem
-│           ├── gallery/+page.svelte
+│           ├── gallery/
+│           │   ├── +page.server.ts  Loader — fetches gallery photos from backend at build time
+│           │   └── +page.svelte     Photo grid + empty state
 │           ├── shop/
 │           │   ├── +page.server.ts  Loader — fetches products from Sanity at build time
 │           │   └── +page.svelte     Product grid + order form + EFT details
@@ -65,9 +67,10 @@ meryl-green-designs/
 │       ├── lambda.ts         AWS Lambda entry (wraps app with hono/aws-lambda)
 │       ├── email.ts          Resend API wrapper + HTML escaping
 │       ├── email-templates.ts Status-keyed customer email templates
-│       ├── sanity.ts         @sanity/client wrapper: createOrder, getOrderByRef, getProducts
+│       ├── sanity.ts         @sanity/client wrapper: createOrder, getOrderByRef, getProducts, getGalleryPhotos
 │       └── routes/
 │           ├── products.ts         GET /products — list available products from Sanity
+│           ├── gallery.ts          GET /gallery — list visible gallery photos from Sanity
 │           ├── orders.ts           POST /orders — validate + create Sanity doc + send emails
 │           ├── order-lookup.ts     GET /orders/:ref?email= — track page lookup
 │           └── sanity-webhook.ts   POST /webhooks/sanity-order — verify sig + dispatch email
@@ -79,6 +82,7 @@ meryl-green-designs/
 │   └── schemas/
 │       ├── index.ts          Schema registry
 │       ├── product.ts        Product schema (name, price, photos, availability, order)
+│       ├── galleryPhoto.ts   Gallery photo schema (image, caption, visible, order)
 │       └── order.ts          Order schema (ref, status, customer, shipping, internal notes)
 ├── infra/
 │   ├── README.md             Bootstrap + apply walkthrough
@@ -158,6 +162,9 @@ difference is how requests reach the app.
   Sanity. Called by the frontend's shop loader at build time. This endpoint
   exists so the Sanity dataset can stay private while the product catalogue
   is still visible on the public site.
+- `GET /gallery` — returns the list of visible gallery photos from Sanity,
+  ordered by the `order` field. Called by the frontend's gallery loader at
+  build time. Same private-dataset rationale as `/products`.
 - `POST /orders` — accepts an order JSON body, validates it, generates a reference
   `MG-YYMMDD-XXXX`, **creates a Sanity `order` document via an authenticated
   client**, sends two emails via Resend (owner + customer confirmation with a
@@ -200,11 +207,12 @@ time.
 ### Sanity client
 
 `src/sanity.ts` wraps `@sanity/client` and exposes `createOrder()`,
-`getOrderByRef()`, and `getProducts()`. Uses `SANITY_API_TOKEN` for
-authentication — writes and reads both require the token, because the
-dataset is configured as private in the Sanity dashboard. The frontend
-never talks to Sanity's query API directly; it only builds image URLs
-from the public asset CDN using the project ID baked into its bundle.
+`getOrderByRef()`, `getProducts()`, and `getGalleryPhotos()`. Uses
+`SANITY_API_TOKEN` for authentication — writes and reads both require the
+token, because the dataset is configured as private in the Sanity dashboard.
+The frontend never talks to Sanity's query API directly; it only builds
+image URLs from the public asset CDN using the project ID baked into its
+bundle.
 
 ## Studio
 
@@ -220,9 +228,9 @@ application, not part of the SvelteKit app. It runs in one of three places:
   is free and requires no ops.
 
 Schemas are defined in `studio/schemas/`. Adding a new schema means creating a
-file, registering it in `schemas/index.ts`, and updating the frontend queries in
-`frontend/src/lib/queries.ts` to fetch it. There is currently one schema:
-`product`.
+file, registering it in `schemas/index.ts`, and (usually) adding a backend
+route that fetches it via the authenticated Sanity client. Three schemas
+currently exist: `product`, `galleryPhoto`, and `order`.
 
 The studio reads `SANITY_STUDIO_PROJECT_ID` and `SANITY_STUDIO_DATASET` from its
 own `.env`. The frontend reads the *same* project via `PUBLIC_SANITY_PROJECT_ID`
