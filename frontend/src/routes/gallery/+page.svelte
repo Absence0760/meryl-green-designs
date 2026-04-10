@@ -1,10 +1,31 @@
 <script lang="ts">
-	import { imageUrl } from '$lib/sanity';
-	import type { PageData } from './$types';
+	import { onMount } from 'svelte';
+	import { PUBLIC_API_URL } from '$env/static/public';
+	import { imageUrl, type GalleryPhoto } from '$lib/sanity';
 
-	export let data: PageData;
+	const apiUrl = PUBLIC_API_URL;
 
-	$: photos = data.photos;
+	let photos: GalleryPhoto[] = [];
+	let photosLoading = true;
+	let photosError: string | null = null;
+	const skeletonCount = 8;
+
+	onMount(async () => {
+		try {
+			const res = await fetch(`${apiUrl}/gallery`);
+			if (!res.ok) {
+				photosError = 'Could not load photographs right now. Please refresh to try again.';
+				return;
+			}
+			const body = (await res.json()) as { photos?: GalleryPhoto[] };
+			photos = body.photos ?? [];
+		} catch (e) {
+			console.error('Failed to fetch gallery photos', e);
+			photosError = 'Could not load photographs right now. Please refresh to try again.';
+		} finally {
+			photosLoading = false;
+		}
+	});
 </script>
 
 <section class="section">
@@ -16,7 +37,17 @@
 			options available. More images are being added — please check back soon.
 		</p>
 
-		{#if photos.length === 0}
+		{#if photosLoading}
+			<div class="gallery-grid" aria-busy="true" aria-label="Loading photographs">
+				{#each Array(skeletonCount) as _, i (i)}
+					<figure class="tile tile--skeleton" aria-hidden="true">
+						<div class="tile-image skeleton-shimmer"></div>
+					</figure>
+				{/each}
+			</div>
+		{:else if photosError}
+			<div class="alert alert--error">{photosError}</div>
+		{:else if photos.length === 0}
 			<div class="empty">
 				<p>
 					No photographs yet.
@@ -25,7 +56,7 @@
 		{:else}
 			<div class="gallery-grid">
 				{#each photos as photo (photo._id)}
-					{@const src = imageUrl(photo.image, 800)}
+					{@const src = imageUrl(photo.image, 640)}
 					<figure class="tile">
 						{#if src}
 							<img
@@ -86,8 +117,6 @@
 	}
 
 	.tile-image--photo {
-		/* Real photos: fill the tile area, crop to keep the aspect-ratio
-		   consistent across tiles regardless of the source image's shape. */
 		object-fit: cover;
 		width: 100%;
 		height: 100%;
@@ -108,5 +137,48 @@
 		text-align: center;
 		color: var(--color-ink-soft);
 		font-style: italic;
+	}
+
+	.alert {
+		padding: var(--space-2) var(--space-3);
+		border-radius: 2px;
+		margin-bottom: var(--space-3);
+	}
+
+	.alert--error {
+		background: #f5e3e0;
+		border-left: 4px solid #a2432f;
+		color: #6b2a1b;
+	}
+
+	/* ----- skeleton loading state ----- */
+	.tile--skeleton {
+		pointer-events: none;
+	}
+
+	.skeleton-shimmer {
+		background: linear-gradient(
+			90deg,
+			#e3e6da 0%,
+			#f2f4ea 50%,
+			#e3e6da 100%
+		);
+		background-size: 200% 100%;
+		animation: skeleton-shimmer 1.4s infinite linear;
+	}
+
+	@keyframes skeleton-shimmer {
+		0% {
+			background-position: 200% 0;
+		}
+		100% {
+			background-position: -200% 0;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.skeleton-shimmer {
+			animation: none;
+		}
 	}
 </style>

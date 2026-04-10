@@ -1,13 +1,17 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { PUBLIC_API_URL } from '$env/static/public';
 	import { formatPrice, imageUrl, type Product } from '$lib/sanity';
-	import type { PageData } from './$types';
-
-	export let data: PageData;
-
-	$: products = data.products;
 
 	const apiUrl = PUBLIC_API_URL;
+
+	// Products are fetched client-side after mount so the page shell can
+	// render instantly. skeletonCount sets how many placeholder cards to
+	// show while the real data is loading.
+	let products: Product[] = [];
+	let productsLoading = true;
+	let productsError: string | null = null;
+	const skeletonCount = 6;
 
 	let submitting = false;
 	let error: string | null = null;
@@ -24,7 +28,10 @@
 
 	function productMainImage(product: Product): string | null {
 		const first = product.photos?.[0];
-		return first ? imageUrl(first) : null;
+		// 640px is enough for a ~320px card on a 2x retina display.
+		// Without this, Sanity serves the original upload resolution — which
+		// for photos straight from a camera can be multiple megabytes each.
+		return first ? imageUrl(first, 640) : null;
 	}
 
 	function orderProduct(event: MouseEvent, product: Product) {
@@ -63,6 +70,23 @@
 			submitting = false;
 		}
 	}
+
+	onMount(async () => {
+		try {
+			const res = await fetch(`${apiUrl}/products`);
+			if (!res.ok) {
+				productsError = 'Could not load products right now. Please refresh to try again.';
+				return;
+			}
+			const body = (await res.json()) as { products?: Product[] };
+			products = body.products ?? [];
+		} catch (e) {
+			console.error('Failed to fetch products', e);
+			productsError = 'Could not load products right now. Please refresh to try again.';
+		} finally {
+			productsLoading = false;
+		}
+	});
 </script>
 
 <section class="section">
@@ -74,7 +98,22 @@
 			currently under construction — product details and imagery will be added shortly.
 		</p>
 
-		{#if products.length === 0}
+		{#if productsLoading}
+			<div class="product-grid" aria-busy="true" aria-label="Loading products">
+				{#each Array(skeletonCount) as _, i (i)}
+					<article class="product product--skeleton" aria-hidden="true">
+						<div class="product-image skeleton-shimmer"></div>
+						<div class="product-body">
+							<div class="skeleton-line skeleton-line--title"></div>
+							<div class="skeleton-line skeleton-line--sm"></div>
+							<div class="skeleton-line skeleton-line--price"></div>
+						</div>
+					</article>
+				{/each}
+			</div>
+		{:else if productsError}
+			<div class="alert alert--error">{productsError}</div>
+		{:else if products.length === 0}
 			<div class="empty">
 				<p>
 					No products are listed yet. Once Meryl adds them in the content studio, they'll
@@ -277,6 +316,61 @@
 		text-align: center;
 		color: var(--color-ink-soft);
 		font-style: italic;
+	}
+
+	/* ----- skeleton loading state ----- */
+	.product--skeleton {
+		pointer-events: none;
+	}
+
+	.skeleton-shimmer,
+	.skeleton-line {
+		background: linear-gradient(
+			90deg,
+			#e3e6da 0%,
+			#f2f4ea 50%,
+			#e3e6da 100%
+		);
+		background-size: 200% 100%;
+		animation: skeleton-shimmer 1.4s infinite linear;
+	}
+
+	.skeleton-line {
+		height: 0.9rem;
+		border-radius: 2px;
+		margin-bottom: 0.4rem;
+	}
+
+	.skeleton-line--title {
+		height: 1.1rem;
+		width: 70%;
+	}
+
+	.skeleton-line--sm {
+		height: 0.75rem;
+		width: 90%;
+	}
+
+	.skeleton-line--price {
+		height: 0.9rem;
+		width: 35%;
+		margin-top: auto;
+	}
+
+	@keyframes skeleton-shimmer {
+		0% {
+			background-position: 200% 0;
+		}
+		100% {
+			background-position: -200% 0;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.skeleton-shimmer,
+		.skeleton-line {
+			animation: none;
+		}
 	}
 
 	.product-body {
