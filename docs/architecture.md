@@ -50,20 +50,27 @@ meryl-green-designs/
 │           ├── +page.svelte         Home: hero / story / poem
 │           ├── gallery/+page.svelte
 │           ├── shop/
-│           │   ├── +page.ts         Loader — fetches products from Sanity
+│           │   ├── +page.server.ts  Loader — fetches products from Sanity at build time
 │           │   └── +page.svelte     Product grid + order form + EFT details
+│           ├── track/
+│           │   ├── +page.ts         prerender=true, ssr=false (client-only)
+│           │   └── +page.svelte     Order lookup form + status card
 │           └── contact/+page.svelte
 ├── backend/
 │   ├── package.json          Build script runs esbuild → dist/lambda.mjs
 │   ├── tsconfig.json
-│   ├── .env.example          RESEND_API_KEY, FROM_EMAIL, OWNER_EMAIL, ALLOWED_ORIGINS
+│   ├── .env.example          Resend + Sanity + webhook secret env vars
 │   └── src/
 │       ├── app.ts            Hono app factory + CORS + route mounting
 │       ├── server.ts         Local dev entry (runs on :3001)
 │       ├── lambda.ts         AWS Lambda entry (wraps app with hono/aws-lambda)
 │       ├── email.ts          Resend API wrapper + HTML escaping
+│       ├── email-templates.ts Status-keyed customer email templates
+│       ├── sanity.ts         @sanity/client wrapper: createOrder, getOrderByRef
 │       └── routes/
-│           └── orders.ts     POST /orders — validate + send emails
+│           ├── orders.ts           POST /orders — validate + create Sanity doc + send emails
+│           ├── order-lookup.ts     GET /orders/:ref?email= — track page lookup
+│           └── sanity-webhook.ts   POST /webhooks/sanity-order — verify sig + dispatch email
 ├── studio/
 │   ├── package.json
 │   ├── sanity.config.ts      Studio configuration (project, plugins, schema)
@@ -71,7 +78,8 @@ meryl-green-designs/
 │   ├── .env.example          SANITY_STUDIO_PROJECT_ID, SANITY_STUDIO_DATASET
 │   └── schemas/
 │       ├── index.ts          Schema registry
-│       └── product.ts        Product schema (name, price, photos, availability, order)
+│       ├── product.ts        Product schema (name, price, photos, availability, order)
+│       └── order.ts          Order schema (ref, status, customer, shipping, internal notes)
 ├── infra/
 │   ├── README.md             Bootstrap + apply walkthrough
 │   ├── main.tf               Providers (af-south-1 + us-east-1 alias), state backend
@@ -139,8 +147,19 @@ difference is how requests reach the app.
 
 - `GET /health` — liveness check, returns `{ ok: true }`
 - `POST /orders` — accepts an order JSON body, validates it, generates a reference
-  `MG-YYMMDD-XXXX`, sends two emails via Resend (owner + customer), returns
-  `{ success: true, ref }` or `{ error }` with an appropriate status code
+  `MG-YYMMDD-XXXX`, **creates a Sanity `order` document via an authenticated
+  client**, sends two emails via Resend (owner + customer confirmation with a
+  tracking link), returns `{ success: true, ref }` or `{ error }`
+- `GET /orders/:ref?email=…` — customer-facing order lookup. Queries Sanity
+  by `orderRef`, verifies the provided email matches the stored email, and
+  returns a sanitised subset (no internal notes, no phone, no shipping
+  address). 404 on both missing ref and email mismatch to prevent
+  enumeration.
+- `POST /webhooks/sanity-order` — receives webhook POSTs from Sanity when an
+  order's `status` field changes. Verifies the HMAC-SHA256 signature on the
+  **raw** request body (before JSON parsing) against
+  `SANITY_WEBHOOK_SECRET`, then dispatches the appropriate status-change
+  email to the customer via Resend.
 
 ### CORS
 
@@ -151,10 +170,27 @@ CloudFront domain.
 
 ### Email
 
-Resend is called directly via `fetch` — no SDK dependency. The wrapper lives in
-`src/email.ts`. Two templates are defined inline in `routes/orders.ts`: one for
-the shop owner (order details) and one for the customer (EFT banking details and
-reference number).
+Resend is called directly via `fetch` — no SDK dependency. The wrapper lives
+in `src/email.ts`. Templates are extracted into `src/email-templates.ts`,
+keyed by order status:
+
+- `ownerNotification()` — sent to Meryl on every new order
+- `pending_payment` — customer confirmation with EFT banking details
+- `payment_received` — "we got your payment, shipping soon"
+- `shipped` — "on the way", including tracking info if present
+- `delivered` — optional "hope you love it"
+- `cancelled` — "your order was cancelled"
+
+Each customer email includes a tracking link deep-linked with the customer's
+ref and email (`/track?ref=…&email=…`) so they can bookmark or revisit at any
+time.
+
+### Sanity client
+
+`src/sanity.ts` wraps `@sanity/client` and exposes `createOrder()` and
+`getOrderByRef()`. Uses `SANITY_API_TOKEN` for authentication (writes and
+reads both require the token — the dataset is expected to be private before
+launch; see the security note in `orders-and-tracking.md`).
 
 ## Studio
 
@@ -208,7 +244,7 @@ configure a Sanity webhook that POSTs to the GitHub Actions dispatch endpoint
 with `event_type: sanity-publish`. Step-by-step instructions are in
 [`deployment.md`](./deployment.md) section 9.
 
-## Order flow
+## Order creation flow
 
 ```
 Browser (shop.html + JS)
@@ -217,16 +253,57 @@ Browser (shop.html + JS)
     ▼
 Backend Hono app
     │
-    │ validate → generate ref → send emails
+    │ validate → generate ref
+    ▼
+Sanity (create order document, status: pending_payment)
+    │
     ▼
 Resend API
     │
     ├──▶ owner@example.com    (new order notification)
-    └──▶ customer              (confirmation + banking details + reference)
+    └──▶ customer              (confirmation + banking + tracking link)
 ```
 
-The backend holds no database. Orders exist only as emails and whatever inbox the
-owner reads them in. Payment is out-of-band via EFT; reconciliation is manual.
+## Order status-update flow
+
+```
+Meryl in Sanity Studio
+    │ changes status field, clicks Publish
+    ▼
+Sanity (filter: _type == "order" && delta::changedAny(status))
+    │ fires webhook → POST /webhooks/sanity-order
+    ▼
+Backend Hono app
+    │ verify HMAC-SHA256 over raw body
+    │ look up email template for new status
+    ▼
+Resend API
+    │
+    └──▶ customer              (payment received / shipped / delivered / cancelled)
+```
+
+## Order tracking flow
+
+```
+Customer clicks tracking link in email (or visits /track directly)
+    │
+    ▼
+/track page hydrates (prerendered shell + client-only component)
+    │ GET /orders/:ref?email=…
+    ▼
+Backend
+    │ query Sanity by orderRef, verify email matches, sanitise fields
+    ▼
+Customer sees status, progress indicator, tracking info (if shipped)
+```
+
+Orders live as structured documents in Sanity. Meryl manages their lifecycle
+in Studio; the backend creates documents, reads documents for lookups, and
+receives status-change webhooks. Customer PII is stored on the order
+document and must not live on a public Sanity dataset in production — see
+`orders-and-tracking.md` for the fix before launch. Payment is still
+out-of-band via EFT; reconciliation (matching bank deposits to orders) is
+still manual on Meryl's side.
 
 ## Deployment targets
 

@@ -1,5 +1,7 @@
 import { Hono } from 'hono';
-import { sendEmail, escapeHtml } from '../email.js';
+import { sendEmail } from '../email.js';
+import { customerEmailForStatus, ownerNotification } from '../email-templates.js';
+import { createOrder } from '../sanity.js';
 
 type OrderFields = {
 	name: string;
@@ -41,41 +43,6 @@ function validate(data: OrderFields): string | null {
 	return null;
 }
 
-function ownerEmailHtml(ref: string, data: OrderFields): string {
-	return `
-		<h2>New order — ${escapeHtml(ref)}</h2>
-		<p><strong>Name:</strong> ${escapeHtml(data.name)}</p>
-		<p><strong>Email:</strong> ${escapeHtml(data.email)}</p>
-		<p><strong>Phone:</strong> ${escapeHtml(data.phone) || '(not provided)'}</p>
-		<p><strong>Shipping address:</strong><br>${escapeHtml(data.address).replace(/\n/g, '<br>')}</p>
-		<h3>Items</h3>
-		<pre style="font-family: inherit; white-space: pre-wrap;">${escapeHtml(data.items)}</pre>
-		${data.notes ? `<h3>Notes</h3><p>${escapeHtml(data.notes).replace(/\n/g, '<br>')}</p>` : ''}
-	`;
-}
-
-function customerEmailHtml(ref: string, data: OrderFields): string {
-	return `
-		<h2>Thank you for your order</h2>
-		<p>Hi ${escapeHtml(data.name)},</p>
-		<p>We've received your order request. Your reference number is:</p>
-		<p style="font-size: 1.25rem;"><strong>${escapeHtml(ref)}</strong></p>
-		<p>Please make payment by Electronic Funds Transfer using the banking details below, and
-		use <strong>${escapeHtml(ref)}</strong> as your payment reference.</p>
-		<h3>Banking details</h3>
-		<p>
-			Account name: [ To be provided ]<br>
-			Bank: [ To be provided ]<br>
-			Account number: [ To be provided ]<br>
-			Branch code: [ To be provided ]<br>
-			Reference: ${escapeHtml(ref)}
-		</p>
-		<p>Your order will be shipped once payment reflects in the account. We'll be in touch shortly
-		to confirm.</p>
-		<p>— Meryl Green Designs</p>
-	`;
-}
-
 export const orders = new Hono();
 
 orders.post('/', async (c) => {
@@ -112,24 +79,60 @@ orders.post('/', async (c) => {
 
 	const ref = generateOrderRef();
 
+	let sanityOrder;
 	try {
+		sanityOrder = await createOrder({
+			orderRef: ref,
+			customerName: data.name,
+			customerEmail: data.email,
+			customerPhone: data.phone,
+			shippingAddress: data.address,
+			items: data.items,
+			customerNotes: data.notes
+		});
+	} catch (err) {
+		console.error('Failed to create Sanity order document', err);
+		return c.json(
+			{ error: 'Sorry, something went wrong saving your order. Please try again.' },
+			500
+		);
+	}
+
+	try {
+		const ownerMail = ownerNotification({
+			orderRef: ref,
+			name: data.name,
+			email: data.email,
+			phone: data.phone,
+			address: data.address,
+			items: data.items,
+			notes: data.notes
+		});
 		await sendEmail({
 			to: ownerEmail,
-			subject: `New order ${ref} — ${data.name}`,
-			html: ownerEmailHtml(ref, data),
+			subject: ownerMail.subject,
+			html: ownerMail.html,
 			replyTo: data.email
 		});
 
-		await sendEmail({
-			to: data.email,
-			subject: `Order confirmation ${ref} — Meryl Green Designs`,
-			html: customerEmailHtml(ref, data)
-		});
+		const customerMail = customerEmailForStatus(sanityOrder);
+		if (customerMail) {
+			await sendEmail({
+				to: data.email,
+				subject: customerMail.subject,
+				html: customerMail.html
+			});
+		}
 	} catch (err) {
 		console.error('Order email failed', err);
 		return c.json(
-			{ error: 'Sorry, something went wrong sending your order. Please try again.' },
-			500
+			{
+				success: true,
+				ref,
+				warning:
+					"Your order was saved, but we couldn't send the confirmation email. We'll contact you shortly."
+			},
+			200
 		);
 	}
 

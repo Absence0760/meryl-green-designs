@@ -20,6 +20,21 @@ resend_api_key = "re_xxxxxxxxxxxxxxxxxxxx"
 from_email     = "Meryl Green Designs <orders@merylgreendesigns.co.za>"
 owner_email    = "meryl@example.com"
 
-# Sanity project — the value baked into the frontend build at CI time.
+# Sanity project — the value baked into the frontend build at CI time and
+# also passed to the backend for reading/writing order documents.
 sanity_project_id = ""
 sanity_dataset    = "production"
+
+# Sanity API token with write access to the `order` document type. Create at
+# https://www.sanity.io/manage → project → API → Tokens (Editor role, or a
+# custom role scoped to the `order` type).
+sanity_api_token = ""
+
+# Shared secret for verifying Sanity webhook signatures. Generate with:
+#   openssl rand -hex 32
+# Use the same value in the Sanity webhook configuration.
+sanity_webhook_secret = ""
+
+# Optional: override the base URL used in tracking links embedded in order
+# emails. Defaults to https://<domain_name> when empty.
+site_url = ""

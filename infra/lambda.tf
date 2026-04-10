@@ -68,10 +68,15 @@ resource "aws_lambda_function" "backend" {
 
   environment {
     variables = {
-      RESEND_API_KEY  = var.resend_api_key
-      FROM_EMAIL      = var.from_email
-      OWNER_EMAIL     = var.owner_email
-      ALLOWED_ORIGINS = "https://${var.domain_name},https://www.${var.domain_name}"
+      RESEND_API_KEY        = var.resend_api_key
+      FROM_EMAIL            = var.from_email
+      OWNER_EMAIL           = var.owner_email
+      ALLOWED_ORIGINS       = "https://${var.domain_name},https://www.${var.domain_name}"
+      SITE_URL              = var.site_url != "" ? var.site_url : "https://${var.domain_name}"
+      SANITY_PROJECT_ID     = var.sanity_project_id
+      SANITY_DATASET        = var.sanity_dataset
+      SANITY_API_TOKEN      = var.sanity_api_token
+      SANITY_WEBHOOK_SECRET = var.sanity_webhook_secret
     }
   }
 

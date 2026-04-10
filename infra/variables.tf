@@ -40,7 +40,7 @@ variable "owner_email" {
 }
 
 variable "sanity_project_id" {
-  description = "Sanity project ID — used at frontend build time via PUBLIC_SANITY_PROJECT_ID."
+  description = "Sanity project ID — used at frontend build time via PUBLIC_SANITY_PROJECT_ID, and by the backend to read/write order documents."
   type        = string
 }
 
@@ -48,4 +48,22 @@ variable "sanity_dataset" {
   description = "Sanity dataset name."
   type        = string
   default     = "production"
+}
+
+variable "sanity_api_token" {
+  description = "Sanity API token with write access to the `order` document type. Used by the backend to create order documents when customers submit the form."
+  type        = string
+  sensitive   = true
+}
+
+variable "sanity_webhook_secret" {
+  description = "Shared secret used to verify Sanity webhook signatures when Sanity calls /webhooks/sanity-order. Generate with `openssl rand -hex 32` and paste the same value into the Sanity webhook configuration."
+  type        = string
+  sensitive   = true
+}
+
+variable "site_url" {
+  description = "Public URL of the site. Baked into confirmation emails as the base for tracking links. Defaults to https://<domain_name>."
+  type        = string
+  default     = ""
 }

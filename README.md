@@ -50,6 +50,7 @@ See [`docs/run-locally.md`](./docs/run-locally.md) for the full setup walkthroug
 - [`docs/run-locally.md`](./docs/run-locally.md) — getting it running on your machine
 - [`docs/deployment.md`](./docs/deployment.md) — first-time AWS deploy walkthrough
 - [`docs/roadmap.md`](./docs/roadmap.md) — what's planned, what's not
+- [`docs/orders-and-tracking.md`](./docs/orders-and-tracking.md) — design sketch for orders as Sanity docs + public track page (planned, not yet built)
 - [`infra/README.md`](./infra/README.md) — Terraform module specifics
 
 ## Commands

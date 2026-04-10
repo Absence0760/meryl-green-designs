@@ -89,6 +89,10 @@ Fill in:
 - `from_email` — a verified sender in Resend
 - `owner_email` — where order notifications go
 - `sanity_project_id` — from https://www.sanity.io/manage
+- `sanity_api_token` — Sanity dashboard → API → Tokens → Add API token,
+  Editor role (or custom role scoped to `order`)
+- `sanity_webhook_secret` — generate with `openssl rand -hex 32`. Keep a
+  copy, you'll paste the same value into the Sanity webhook in step 9
 
 ### 4. Apply the infrastructure
 
@@ -184,10 +188,20 @@ her to from https://www.sanity.io/manage.
 After the first interactive deploy, the **Deploy studio** workflow handles
 subsequent deploys automatically on pushes to `studio/`.
 
-### 9. Wire the Sanity webhook
+### 9. Wire the Sanity webhooks
 
-This is the piece that lets Meryl's content edits rebuild the site
-automatically. One-time setup, done in the Sanity dashboard.
+There are **two** Sanity webhooks to configure, both done once in the Sanity
+dashboard. They serve different purposes:
+
+- **Webhook A — Rebuild frontend on product publish.** Fires when Meryl
+  publishes a product edit, triggers a GitHub Actions workflow that rebuilds
+  and redeploys the frontend with the latest content baked in.
+- **Webhook B — Send customer email on order status change.** Fires when
+  Meryl changes an order's `status` field, triggers the backend's
+  `/webhooks/sanity-order` endpoint, which sends the appropriate customer
+  email (payment received / shipped / etc.).
+
+#### Webhook A: Rebuild frontend on product publish
 
 1. Create a **fine-grained GitHub PAT** at
    https://github.com/settings/tokens?type=beta:
@@ -219,8 +233,64 @@ automatically. One-time setup, done in the Sanity dashboard.
    Publish — a **Deploy frontend** workflow run should start in GitHub within
    a few seconds.
 
-Total time from Meryl clicking Publish to the change being live on the site:
-~60 seconds.
+Total time from Meryl clicking Publish on a product to the change being live
+on the site: ~60 seconds.
+
+#### Webhook B: Send customer email on order status change
+
+1. Generate a webhook secret locally:
+   ```bash
+   openssl rand -hex 32
+   ```
+   Copy the output. You'll use it in two places: Sanity's webhook config
+   below, and the `sanity_webhook_secret` variable in `infra/terraform.tfvars`
+   (then re-apply Terraform to push it to the Lambda's env vars).
+
+2. Go to https://www.sanity.io/manage → your project → **API → Webhooks →
+   Create webhook**:
+   - **Name**: `Order status email`
+   - **Description**: Sends the customer the right email when an order's
+     status changes
+   - **URL**: `<lambda_function_url>/webhooks/sanity-order`
+     (take `lambda_function_url` from your Terraform outputs — it looks like
+     `https://xxxxx.lambda-url.af-south-1.on.aws/`; append
+     `/webhooks/sanity-order` on the end)
+   - **Dataset**: `production` (or the orders dataset, if you've done the
+     PII fix from `orders-and-tracking.md`)
+   - **Trigger on**: **Update** (do NOT also tick Create — order creation
+     emails are sent by the backend directly, not via webhook)
+   - **Filter** (GROQ): `_type == "order" && delta::changedAny(status)`
+     — this is critical so non-status edits (e.g. Meryl fixing a typo in
+     internal notes) don't spam the customer
+   - **Projection**: leave empty (Sanity sends the whole document)
+   - **HTTP method**: `POST`
+   - **API version**: `v2024-10-01` (or whatever matches the backend)
+   - **HTTP headers**: none — Sanity adds the `sanity-webhook-signature`
+     header automatically
+   - **HTTP body**: leave empty (Sanity sends the document)
+   - **Secret**: paste the random value from step 1
+   - **Enabled**: yes
+
+3. Save the webhook. Test it by creating an order through the site,
+   opening the resulting document in Studio, changing its status from
+   "Pending payment" to "Payment received", and clicking Publish. The
+   customer should receive a "Payment received" email within ~10 seconds.
+
+**Troubleshooting:**
+
+- **Webhook never fires** — check the filter is exactly
+  `_type == "order" && delta::changedAny(status)`. The filter expression
+  runs against the changed document; a typo makes it never match.
+- **Webhook fires but returns 401** — signature mismatch. Usually means the
+  secret in Sanity doesn't match `SANITY_WEBHOOK_SECRET` on the Lambda.
+  Re-run `terraform apply` after updating `terraform.tfvars`.
+- **Webhook fires, returns 200, but customer doesn't receive email** — check
+  CloudWatch Logs for the Lambda. Usual causes: Resend API key invalid,
+  `FROM_EMAIL` not verified in Resend, or the customer's email address is
+  malformed.
+
+Total time from Meryl changing order status to the customer's inbox:
+~5-10 seconds.
 
 ## Ongoing deployments
 

@@ -24,18 +24,37 @@ These must be done before the site can go live.
 - [ ] Register a Resend account and verify the sending domain
 - [ ] Create a Sanity project at https://www.sanity.io/manage and note the project
       ID
+- [ ] **⚠️ Fix PII on public dataset** — orders contain customer PII which
+      must not live on a publicly-readable Sanity dataset. Pick option A
+      (make dataset private + move product reads through backend) or option B
+      (separate private `orders` dataset). See
+      [`orders-and-tracking.md`](./orders-and-tracking.md) "PII on a public
+      dataset" for details. **Do not launch without this.**
+- [ ] Create a Sanity API token (Editor role, or custom role scoped to
+      `order`) and set `SANITY_API_TOKEN` on the backend
+- [ ] Generate a webhook secret (`openssl rand -hex 32`) and set
+      `SANITY_WEBHOOK_SECRET` on the backend + in Sanity's webhook config
+- [ ] Create the Sanity webhook for order status emails (URL:
+      `${lambda_function_url}/webhooks/sanity-order`, filter:
+      `_type == "order" && delta::changedAny(status)`, trigger: Update) —
+      see `orders-and-tracking.md` "What still needs to happen"
 - [ ] Enable the `af-south-1` region in your AWS account
 - [ ] Bootstrap the Terraform state backend (one-time manual step — see
       `infra/README.md`)
-- [ ] Fill in `infra/terraform.tfvars` and run `terraform apply`
+- [ ] Fill in `infra/terraform.tfvars` (including the new Sanity token and
+      webhook secret) and run `terraform apply`
 - [ ] Create the `production` GitHub environment and populate the variables
       listed in `docs/deployment.md` step 5
 - [ ] Run the `Deploy frontend` workflow manually for the first deploy
 - [ ] Run the `Deploy backend` workflow manually for the first deploy
 - [ ] Run `pnpm studio deploy` locally for the first studio publish, then let
       the workflow handle subsequent deploys
-- [ ] Wire the Sanity webhook to `repository_dispatch` on the frontend
-      workflow (see `docs/deployment.md` step 9)
+- [ ] Wire the Sanity content-rebuild webhook to `repository_dispatch` on
+      the frontend workflow (separate from the order-status webhook — see
+      `docs/deployment.md` step 9)
+- [x] ~~Orders as Sanity documents + track page + webhook-driven status
+      emails~~ — built, see
+      [`orders-and-tracking.md`](./orders-and-tracking.md)
 - [x] ~~Write a CDK stack~~ — done with Terraform instead, see `infra/`
 - [x] ~~Set up a deploy pipeline~~ — done, see `.github/workflows/`
 
@@ -49,6 +68,10 @@ These must be done before the site can go live.
 
 Nice-to-haves that can wait until the site is live and Meryl has feedback.
 
+- [x] ~~Orders as Sanity documents + public track page + webhook-driven status
+      emails~~ — **built**. See
+      [`orders-and-tracking.md`](./orders-and-tracking.md) for the full flow
+      and the remaining one-time setup steps.
 - [ ] Extend the CMS to cover home page story, poem, and hero photo so Meryl
       can edit these herself
 - [ ] Extend the CMS to cover the gallery so Meryl can upload photos directly
@@ -71,9 +94,9 @@ Only build these if there's a real reason to.
       reconcile payment state, and PCI scope — large step up in complexity.
 - [ ] Inventory tracking with real stock counts. Requires a database. The
       current "available" toggle is binary — no count of units remaining.
-- [ ] Order admin dashboard for Meryl to mark orders as paid/shipped instead of
-      reading her email. Could also live inside Sanity Studio as a custom
-      document type, which would avoid standing up a whole separate admin.
+- [x] ~~Order admin dashboard for Meryl to mark orders as paid/shipped~~ —
+      promoted to a near-term item with a concrete plan in
+      [`orders-and-tracking.md`](./orders-and-tracking.md).
 - [ ] Multi-language (English + Afrikaans, maybe)
 - [ ] Integration with a shipping provider for live tracking
 

@@ -55,14 +55,41 @@ filled in before launch.
 - Minimal stub with an email link. A real contact form can be added later or the
   shop order form can be repurposed for general enquiries.
 
+## Track order (`/track`)
+
+- **Customer-facing order status page.** The customer enters their order
+  reference + email and sees the current status, a progress indicator
+  (Pending payment → Payment received → Shipped → Delivered), and the
+  tracking number / carrier / tracking URL once the order has shipped.
+- **Deep-linked from the confirmation email** — each order confirmation
+  includes a URL like `/track?ref=MG-XXX&email=…` that pre-fills and
+  auto-submits the lookup form on load, so the customer clicks once and
+  lands on their order.
+- **Client-rendered shell + backend lookup** — the page is a prerendered
+  empty shell that hydrates in the browser and calls `GET /orders/:ref` on
+  the backend. The backend verifies the email matches and returns a
+  sanitised subset of the order (no internal notes, no phone, no shipping
+  address).
+- **Email-verified lookup** — a wrong email returns the same 404 as a wrong
+  reference, so an attacker can't enumerate valid references even if they
+  guess the format.
+- **Not listed in the main nav** — customers arrive from the email link or
+  a direct bookmark, not via site discovery.
+
 ## Content management (Sanity Studio)
 
 - **Studio package** (`studio/`) — a standalone Sanity Studio v3 app that the
-  shop owner logs into to manage products. Runs locally during development and
-  is deployed to a free `*.sanity.studio` URL for production use.
+  shop owner logs into to manage products and orders. Runs locally during
+  development and is deployed to a free `*.sanity.studio` URL for production
+  use.
 - **Product schema** with fields: name, slug (auto-generated), blurb,
   description, price (ZAR), photos (with alt text and hotspot cropping),
   availability toggle, and display order.
+- **Order schema** with fields: order reference (read-only), status (radio:
+  pending payment → payment received → shipped → delivered → cancelled),
+  customer details, shipping address, items, tracking info, and private
+  internal notes. Meryl edits these; the backend creates them on order
+  submission.
 - **Availability toggle** lets the owner hide a product from the site without
   deleting it — useful for sold-out items they may restock.
 - **Display order** controls the order products appear in the grid. Using 0,
@@ -76,34 +103,55 @@ filled in before launch.
   (`.github/workflows/deploy-frontend.yml` accepts `repository_dispatch`
   events); a Sanity webhook wires publish events to it — see
   [`deployment.md`](./deployment.md) for the wiring step.
+- **Automated status emails**: when Meryl changes an order's `status` field
+  in the studio and publishes, a separate Sanity webhook calls the backend's
+  `/webhooks/sanity-order` endpoint, which verifies the signature and sends
+  the appropriate customer email (payment received / shipped / delivered /
+  cancelled). See [`orders-and-tracking.md`](./orders-and-tracking.md) for
+  the full flow.
 
 ## Backend behaviour
 
+- **Routes**:
+  - `GET /health` — uptime check, returns `{ ok: true }`
+  - `POST /orders` — create a new order (validates, creates Sanity doc,
+    sends owner notification + customer confirmation)
+  - `GET /orders/:ref?email=…` — email-verified order lookup for the
+    customer-facing `/track` page
+  - `POST /webhooks/sanity-order` — receives Sanity webhook on order update,
+    verifies HMAC-SHA256 signature, sends the matching status email
 - **Validation**: required fields (name, email, address, items) must be present;
   email must look like an email; fields have maximum lengths.
 - **Order reference**: generated server-side as `MG-{YY}{MM}{DD}-{4 random
-  alphanumerics}`.
-- **Emails**: two are sent per order — one to the owner with the order details,
-  one to the customer with their reference and the banking details. Templates
-  live inline in `backend/src/routes/orders.ts`.
-- **Reply-to**: the owner email has the customer address as reply-to, so hitting
-  reply goes straight to the customer.
+  alphanumerics}`. Stored on the Sanity order document as `orderRef`.
+- **Sanity-backed order storage**: every submitted order becomes a Sanity
+  document, visible in Studio. Meryl manages the order lifecycle by editing
+  the `status` field in Studio.
+- **Status-keyed email templates**: all customer emails live in
+  `backend/src/email-templates.ts`, keyed by order status. Adding a new status
+  or changing wording happens in one file.
+- **Owner notification**: sent immediately on order creation. Reply-to is set
+  to the customer's email, so hitting reply goes straight to the customer.
+- **Webhook signature verification**: `/webhooks/sanity-order` verifies
+  HMAC-SHA256 over the raw request body against `SANITY_WEBHOOK_SECRET` using
+  `crypto.timingSafeEqual` before taking any action.
 - **CORS**: only origins in `ALLOWED_ORIGINS` can call the API from a browser.
-- **Health check**: `GET /health` returns `{ ok: true }` for uptime monitoring.
 
 ## What is intentionally not included
 
 See [roadmap.md](./roadmap.md) for the full list. Notable absences:
 
-- No database — orders exist only as emails.
 - No card payments — EFT only.
 - No stock tracking or inventory counts. Availability is a simple on/off toggle.
-- No CMS for home page text, poem, or gallery photos — only products are
-  currently managed in Sanity. (Easy to extend; see the roadmap.)
-- No customer accounts or login.
+- No CMS for home page text, poem, or gallery photos — only products and
+  orders are currently managed in Sanity. (Easy to extend; see the roadmap.)
+- No customer accounts or login. Order tracking is key-based (order ref +
+  email), not session-based.
 - No search.
 - No progressive enhancement on the order form: JavaScript is required to submit
   it, because the backend is a different origin.
 - No structured order line items — the order form still uses a free-form items
   textarea, pre-filled from product clicks. Meryl manually reads what was
-  ordered from the email.
+  ordered from the Studio / order email.
+- No refund handling in the data model — the `cancelled` status doesn't
+  distinguish between "never paid" and "refunded".
