@@ -5,6 +5,9 @@ node_modules/
 .svelte-kit/
 build/
 dist/
+frontend/build/
+frontend/.svelte-kit/
+backend/dist/
 
 # environment
 .env
