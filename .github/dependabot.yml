@@ -1,0 +1,123 @@
+# Dependabot configuration
+# https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+#
+# Strategy:
+# - One update schedule per workspace package (frontend/backend/studio) + one
+#   for GitHub Actions workflows.
+# - Weekly, on Monday morning South Africa time — low noise, predictable.
+# - Related packages are grouped so they move together (e.g. svelte ecosystem,
+#   sanity ecosystem, react + types). Everything else is bundled into a single
+#   "minor-and-patch" group per package so you get ~1-2 PRs per package per
+#   week instead of dozens.
+# - Major version bumps for ungrouped packages open as individual PRs and
+#   require review — see pnpm-outdated-safe-bumps discussion in docs/roadmap.md.
+
+version: 2
+updates:
+  # ---------------------------------------------------------------------------
+  # Frontend (SvelteKit)
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Africa/Johannesburg"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(frontend)"
+      include: "scope"
+    groups:
+      svelte-ecosystem:
+        patterns:
+          - "svelte"
+          - "svelte-*"
+          - "@sveltejs/*"
+      sanity:
+        patterns:
+          - "@sanity/*"
+          - "sanity"
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
+  # ---------------------------------------------------------------------------
+  # Backend (Hono + Lambda)
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: "npm"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Africa/Johannesburg"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(backend)"
+      include: "scope"
+    groups:
+      hono:
+        patterns:
+          - "hono"
+          - "@hono/*"
+      sanity:
+        patterns:
+          - "@sanity/*"
+      types:
+        patterns:
+          - "@types/*"
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
+  # ---------------------------------------------------------------------------
+  # Studio (Sanity Studio)
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: "npm"
+    directory: "/studio"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Africa/Johannesburg"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(studio)"
+      include: "scope"
+    groups:
+      sanity:
+        patterns:
+          - "@sanity/*"
+          - "sanity"
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
+  # ---------------------------------------------------------------------------
+  # GitHub Actions workflows
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Africa/Johannesburg"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(ci)"
+      include: "scope"
+    groups:
+      all-actions:
+        patterns:
+          - "*"
