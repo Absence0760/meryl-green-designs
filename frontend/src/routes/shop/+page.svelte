@@ -181,47 +181,86 @@
 				<div class="alert alert--error">{error}</div>
 			{/if}
 
-			<form class="order-form" on:submit={handleSubmit}>
+			<form class="order-form" on:submit={handleSubmit} novalidate>
 				<input
 					type="text"
 					name="website"
 					tabindex="-1"
 					autocomplete="off"
 					class="hp"
+					aria-hidden="true"
 					bind:value={values.website}
 				/>
 
-				<label>
-					<span>Name</span>
-					<input type="text" required bind:value={values.name} />
+				<p class="required-hint"><span aria-hidden="true">*</span> Required fields</p>
+
+				<label for="order-name">
+					<span>Name <span class="req" aria-hidden="true">*</span></span>
+					<input
+						id="order-name"
+						name="name"
+						type="text"
+						autocomplete="name"
+						required
+						bind:value={values.name}
+					/>
 				</label>
-				<label>
-					<span>Email</span>
-					<input type="email" required bind:value={values.email} />
+				<label for="order-email">
+					<span>Email <span class="req" aria-hidden="true">*</span></span>
+					<input
+						id="order-email"
+						name="email"
+						type="email"
+						autocomplete="email"
+						inputmode="email"
+						required
+						bind:value={values.email}
+					/>
 				</label>
-				<label>
-					<span>Phone (optional)</span>
-					<input type="tel" bind:value={values.phone} />
+				<label for="order-phone">
+					<span>Phone <small>(optional)</small></span>
+					<input
+						id="order-phone"
+						name="phone"
+						type="tel"
+						autocomplete="tel"
+						inputmode="tel"
+						bind:value={values.phone}
+					/>
 				</label>
-				<label>
-					<span>Shipping address</span>
-					<textarea rows="3" required bind:value={values.address}></textarea>
-				</label>
-				<label>
-					<span>Items</span>
+				<label for="order-address">
+					<span>Shipping address <span class="req" aria-hidden="true">*</span></span>
 					<textarea
+						id="order-address"
+						name="address"
+						rows="3"
+						autocomplete="street-address"
+						required
+						bind:value={values.address}
+					></textarea>
+				</label>
+				<label for="order-items">
+					<span>Items <span class="req" aria-hidden="true">*</span></span>
+					<textarea
+						id="order-items"
+						name="items"
 						rows="4"
 						placeholder="List the items you would like to order"
 						required
 						bind:value={values.items}
 					></textarea>
 				</label>
-				<label>
-					<span>Notes (optional)</span>
-					<textarea rows="2" bind:value={values.notes}></textarea>
+				<label for="order-notes">
+					<span>Notes <small>(optional)</small></span>
+					<textarea
+						id="order-notes"
+						name="notes"
+						rows="2"
+						bind:value={values.notes}
+					></textarea>
 				</label>
 
-				<button type="submit" disabled={submitting}>
+				<button type="submit" class="submit-order" disabled={submitting}>
 					{submitting ? 'Sending…' : 'Submit order'}
 				</button>
 			</form>
@@ -457,27 +496,57 @@
 		margin-top: var(--space-3);
 	}
 
+	.required-hint {
+		margin: 0;
+		font-size: 0.8rem;
+		color: var(--color-ink-soft);
+	}
+
+	.required-hint span {
+		color: #a2432f;
+		font-weight: 700;
+	}
+
 	.order-form label {
 		display: grid;
 		gap: 0.25rem;
 	}
 
-	.order-form label span {
+	.order-form label > span {
 		font-size: 0.8rem;
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
 		color: var(--color-ink-soft);
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
+	}
+
+	.order-form label small {
+		font-size: 0.75rem;
+		font-weight: 400;
+		text-transform: none;
+		letter-spacing: 0;
+		color: var(--color-ink-soft);
+		font-style: italic;
+	}
+
+	.req {
+		color: #a2432f;
+		font-weight: 700;
 	}
 
 	.order-form input,
 	.order-form textarea {
 		font: inherit;
-		padding: 0.55rem 0.65rem;
+		padding: 0.6rem 0.7rem;
 		border: 1px solid var(--color-rule);
 		background: var(--color-surface);
 		color: var(--color-ink);
 		border-radius: 2px;
+		width: 100%;
+		box-sizing: border-box;
 	}
 
 	.order-form input:focus,
@@ -486,9 +555,26 @@
 		outline-offset: 1px;
 	}
 
+	.order-form input:invalid:not(:placeholder-shown),
+	.order-form textarea:invalid:not(:placeholder-shown) {
+		border-color: #a2432f;
+	}
+
 	.order-form textarea {
 		resize: vertical;
 		font-family: inherit;
+		min-height: 2.5rem;
+	}
+
+	/* The submit button inside the form overrides the shared button/.btn
+	   styles: no stacked margin (the grid gap already spaces it from the
+	   field above), full width of the form, and a bit more vertical weight
+	   so it reads as the form's primary action. */
+	.submit-order {
+		margin-top: var(--space-1);
+		width: 100%;
+		padding: 0.9rem var(--space-2);
+		font-size: 0.9rem;
 	}
 
 	.hp {
