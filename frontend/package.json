@@ -37,6 +37,8 @@
 	},
 	"type": "module",
 	"dependencies": {
+		"@sanity/client": "^6.22.5",
+		"@sanity/image-url": "^1.0.2",
 		"isomorphic-dompurify": "^2.35.0"
 	}
 }

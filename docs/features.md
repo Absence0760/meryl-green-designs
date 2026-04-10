@@ -33,9 +33,13 @@ filled in before launch.
 
 ## Shop (`/shop`)
 
-- **Product grid** with 4 placeholder cards. Each card has an image slot,
-  product name, blurb, price, and an "Enquire / Order" button that jumps to the
-  order form.
+- **Product grid** rendered from the Sanity CMS. Each product card shows the
+  main photo, name, blurb, and price (formatted as ZAR). When there are no
+  products yet, a friendly empty state is shown instead.
+- **"Enquire / Order" button** on each card pre-fills the order form's items
+  field with `1 x {product name} — R{price}` and smooth-scrolls to the form.
+  Clicking multiple products appends each one as a new line, so customers can
+  order several items from a single product browse.
 - **Order form** with fields for name, email, phone (optional), shipping address,
   items, and notes. Validation is client-side and server-side. A hidden honeypot
   field deters simple bots.
@@ -50,6 +54,26 @@ filled in before launch.
 
 - Minimal stub with an email link. A real contact form can be added later or the
   shop order form can be repurposed for general enquiries.
+
+## Content management (Sanity Studio)
+
+- **Studio package** (`studio/`) — a standalone Sanity Studio v3 app that the
+  shop owner logs into to manage products. Runs locally during development and
+  is deployed to a free `*.sanity.studio` URL for production use.
+- **Product schema** with fields: name, slug (auto-generated), blurb,
+  description, price (ZAR), photos (with alt text and hotspot cropping),
+  availability toggle, and display order.
+- **Availability toggle** lets the owner hide a product from the site without
+  deleting it — useful for sold-out items they may restock.
+- **Display order** controls the order products appear in the grid. Using 0,
+  10, 20 leaves gaps for inserting new products without renumbering everything.
+- **Image handling** is provided by Sanity's CDN — automatic format
+  conversion, resizing, and hotspot-aware cropping. No manual image
+  optimisation needed.
+- **Build-time content fetch**: the frontend pulls products at build time via
+  a GROQ query. After an edit in the studio, the site must be rebuilt to
+  reflect the change. A Sanity webhook → CI rebuild is the intended production
+  setup (see the roadmap).
 
 ## Backend behaviour
 
@@ -71,9 +95,13 @@ See [roadmap.md](./roadmap.md) for the full list. Notable absences:
 
 - No database — orders exist only as emails.
 - No card payments — EFT only.
-- No stock tracking or inventory.
-- No CMS — content is edited in the source files.
+- No stock tracking or inventory counts. Availability is a simple on/off toggle.
+- No CMS for home page text, poem, or gallery photos — only products are
+  currently managed in Sanity. (Easy to extend; see the roadmap.)
 - No customer accounts or login.
 - No search.
 - No progressive enhancement on the order form: JavaScript is required to submit
   it, because the backend is a different origin.
+- No structured order line items — the order form still uses a free-form items
+  textarea, pre-filled from product clicks. Meryl manually reads what was
+  ordered from the email.

@@ -1,0 +1,23 @@
+{
+	"$schema": "https://json.schemastore.org/package.json",
+	"name": "@meryl-green-designs/studio",
+	"version": "0.0.1",
+	"private": true,
+	"scripts": {
+		"dev": "sanity dev",
+		"build": "sanity build",
+		"check": "tsc --noEmit",
+		"deploy": "sanity deploy"
+	},
+	"dependencies": {
+		"@sanity/vision": "^3.64.0",
+		"react": "^18.3.1",
+		"react-dom": "^18.3.1",
+		"sanity": "^3.64.0",
+		"styled-components": "^6.1.13"
+	},
+	"devDependencies": {
+		"@types/react": "^18.3.12",
+		"typescript": "^5.5.4"
+	}
+}

@@ -5,11 +5,13 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"dev": "pnpm -r --parallel run dev",
+		"dev": "pnpm --filter @meryl-green-designs/frontend --filter @meryl-green-designs/backend --parallel run dev",
+		"dev:all": "pnpm -r --parallel run dev",
 		"build": "pnpm -r run build",
 		"check": "pnpm -r run check",
 		"frontend": "pnpm --filter @meryl-green-designs/frontend",
-		"backend": "pnpm --filter @meryl-green-designs/backend"
+		"backend": "pnpm --filter @meryl-green-designs/backend",
+		"studio": "pnpm --filter @meryl-green-designs/studio"
 	},
 	"engines": {
 		"node": ">=20"

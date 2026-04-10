@@ -11,6 +11,9 @@ machine for development.
 - A **Resend API key** — free at [resend.com](https://resend.com). Not strictly
   required to run the servers, but the order form will fail to send emails
   without one.
+- A **Sanity project** — free at [sanity.io](https://www.sanity.io/manage).
+  Optional for running the site locally (the shop will show an empty state
+  without it), but required for managing products.
 
 ## One-time setup
 
@@ -28,6 +31,7 @@ Copy the example env files and fill them in:
 ```bash
 cp frontend/.env.example frontend/.env
 cp backend/.env.example backend/.env
+cp studio/.env.example studio/.env
 ```
 
 Edit `backend/.env` and set at minimum:
@@ -37,10 +41,27 @@ Edit `backend/.env` and set at minimum:
   sandbox address, or `orders@yourdomain.com` once the domain is verified)
 - `OWNER_EMAIL` — where order notifications go (your inbox while developing)
 
-`frontend/.env` should already contain `PUBLIC_API_URL=http://localhost:3001` —
-no changes needed for local dev.
+`frontend/.env` contains `PUBLIC_API_URL=http://localhost:3001` (leave as-is
+for local dev) and `PUBLIC_SANITY_PROJECT_ID` / `PUBLIC_SANITY_DATASET`. The
+Sanity values can stay empty for initial setup — the shop page will render
+with an empty product list.
 
-## Running both servers
+### Setting up Sanity (optional, but required for managing products)
+
+1. Log in at https://www.sanity.io/manage and click **Create new project**.
+2. Give it a name (e.g. "Meryl Green Designs") and choose the default dataset
+   `production`.
+3. Copy the **Project ID** shown on the project dashboard.
+4. Paste the project ID into **both**:
+   - `studio/.env` → `SANITY_STUDIO_PROJECT_ID=...`
+   - `frontend/.env` → `PUBLIC_SANITY_PROJECT_ID=...`
+5. Start the studio with `pnpm studio dev` (see below).
+6. Log into the studio in your browser, create some products, and click
+   **Publish**.
+7. Rebuild the frontend (`pnpm frontend build` or restart `pnpm dev`) and the
+   products will appear on the shop page.
+
+## Running the site
 
 From the repository root:
 
@@ -48,7 +69,7 @@ From the repository root:
 pnpm dev
 ```
 
-This runs `pnpm -r --parallel run dev`, which starts both packages concurrently:
+This starts the frontend and backend in parallel:
 
 - **Frontend** — [http://localhost:7777](http://localhost:7777) (Vite dev server
   with HMR)
@@ -57,16 +78,46 @@ This runs `pnpm -r --parallel run dev`, which starts both packages concurrently:
 
 Press `Ctrl+C` once to stop both.
 
-## Running them individually
+The studio is deliberately excluded from `pnpm dev` because it's heavy and
+isn't needed for most site development. Run it separately when you need it.
 
-Useful when you only want one side running.
+## Running the studio
+
+```bash
+pnpm studio dev
+```
+
+This starts Sanity Studio on [http://localhost:3333](http://localhost:3333).
+Sign in with the Sanity account that owns the project. Any products you
+create/edit and publish become visible to the frontend on the next build.
+
+To publish the studio so Meryl can use it from anywhere:
+
+```bash
+pnpm studio deploy
+```
+
+Sanity will prompt for a subdomain (e.g. `merylgreendesigns`) and deploy to
+`https://merylgreendesigns.sanity.studio`. Free, no AWS involved.
+
+## Running all three at once
+
+Only needed if you're actively developing the studio schema at the same time
+as the site.
+
+```bash
+pnpm dev:all
+```
+
+## Running packages individually
 
 ```bash
 pnpm frontend dev         # frontend only
 pnpm backend dev          # backend only
+pnpm studio dev           # studio only
 ```
 
-These are shortcuts for `pnpm --filter @meryl-green-designs/{frontend,backend}`.
+These are shortcuts for `pnpm --filter @meryl-green-designs/{frontend,backend,studio}`.
 
 ## Smoke test
 
@@ -133,3 +184,14 @@ pnpm backend build        # emits backend/dist/ (compiled JS for Lambda)
 : Open the browser devtools Network tab. The request to `/orders` will show the
   actual error from the backend. Common cause: missing `OWNER_EMAIL` in
   `backend/.env`.
+
+**Shop page shows "No products are listed yet" even after adding products**
+: Three common causes: (1) `PUBLIC_SANITY_PROJECT_ID` is empty or wrong in
+  `frontend/.env`; (2) the products were saved as drafts in the studio but
+  not published — click the **Publish** button in the studio; (3) the frontend
+  hasn't been rebuilt since the content was published — restart `pnpm dev` or
+  run `pnpm frontend build`.
+
+**Studio fails to start with "SANITY_STUDIO_PROJECT_ID is not set"**
+: You haven't created `studio/.env` or you left `SANITY_STUDIO_PROJECT_ID`
+  empty. Follow the Sanity setup steps above.

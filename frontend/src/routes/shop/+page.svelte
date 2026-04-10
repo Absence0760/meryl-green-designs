@@ -1,13 +1,11 @@
 <script lang="ts">
 	import { PUBLIC_API_URL } from '$env/static/public';
+	import { formatPrice, imageUrl, type Product } from '$lib/sanity';
+	import type { PageData } from './$types';
 
-	// TODO: replace with real products once finalised.
-	const products = [
-		{ id: 1, name: 'Product name', price: 'R —', blurb: 'Short product description.' },
-		{ id: 2, name: 'Product name', price: 'R —', blurb: 'Short product description.' },
-		{ id: 3, name: 'Product name', price: 'R —', blurb: 'Short product description.' },
-		{ id: 4, name: 'Product name', price: 'R —', blurb: 'Short product description.' }
-	];
+	export let data: PageData;
+
+	$: products = data.products;
 
 	const apiUrl = PUBLIC_API_URL;
 
@@ -23,6 +21,20 @@
 		notes: '',
 		website: ''
 	};
+
+	function productMainImage(product: Product): string | null {
+		const first = product.photos?.[0];
+		return first ? imageUrl(first) : null;
+	}
+
+	function orderProduct(event: MouseEvent, product: Product) {
+		event.preventDefault();
+		const line = product.priceZar != null
+			? `1 x ${product.name} — ${formatPrice(product.priceZar)}`
+			: `1 x ${product.name}`;
+		values.items = values.items ? `${values.items}\n${line}` : line;
+		document.getElementById('order')?.scrollIntoView({ behavior: 'smooth' });
+	}
 
 	async function handleSubmit(event: SubmitEvent) {
 		event.preventDefault();
@@ -62,19 +74,46 @@
 			currently under construction — product details and imagery will be added shortly.
 		</p>
 
-		<div class="product-grid">
-			{#each products as product (product.id)}
-				<article class="product">
-					<div class="product-image">Product photo</div>
-					<div class="product-body">
-						<h3>{product.name}</h3>
-						<p class="blurb">{product.blurb}</p>
-						<p class="price">{product.price}</p>
-						<a class="btn" href="#order">Enquire / Order</a>
-					</div>
-				</article>
-			{/each}
-		</div>
+		{#if products.length === 0}
+			<div class="empty">
+				<p>
+					No products are listed yet. Once Meryl adds them in the content studio, they'll
+					appear here automatically.
+				</p>
+			</div>
+		{:else}
+			<div class="product-grid">
+				{#each products as product (product._id)}
+					{@const photo = productMainImage(product)}
+					<article class="product">
+						{#if photo}
+							<img
+								class="product-image product-image--photo"
+								src={photo}
+								alt={product.photos?.[0]?.alt ?? product.name}
+								loading="lazy"
+							/>
+						{:else}
+							<div class="product-image">Product photo</div>
+						{/if}
+						<div class="product-body">
+							<h3>{product.name}</h3>
+							{#if product.blurb}
+								<p class="blurb">{product.blurb}</p>
+							{/if}
+							<p class="price">{formatPrice(product.priceZar)}</p>
+							<a
+								class="btn"
+								href="#order"
+								on:click={(e) => orderProduct(e, product)}
+							>
+								Enquire / Order
+							</a>
+						</div>
+					</article>
+				{/each}
+			</div>
+		{/if}
 	</div>
 </section>
 
@@ -218,6 +257,22 @@
 		);
 		color: var(--color-ink-soft);
 		font-family: var(--font-display);
+		font-style: italic;
+	}
+
+	.product-image--photo {
+		object-fit: cover;
+		width: 100%;
+		height: auto;
+		background: none;
+	}
+
+	.empty {
+		padding: var(--space-4);
+		background: var(--color-surface);
+		border: 1px dashed var(--color-rule);
+		text-align: center;
+		color: var(--color-ink-soft);
 		font-style: italic;
 	}
 

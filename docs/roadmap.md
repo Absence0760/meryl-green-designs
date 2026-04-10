@@ -13,6 +13,8 @@ These must be done before the site can go live.
 - [ ] Real poem text (home page)
 - [ ] Gallery photographs with captions
 - [ ] Product photographs, names, prices, descriptions for the shop
+      *(managed in Sanity Studio — Meryl can enter these herself once the
+      project is set up)*
 - [ ] Real banking details: account name, bank, account number, branch code
 - [ ] Contact email address (currently `hello@merylgreendesigns.co.za`
       placeholder)
@@ -20,17 +22,24 @@ These must be done before the site can go live.
 
 ### Infrastructure
 - [ ] Register a Resend account and verify the sending domain
+- [ ] Create a Sanity project at https://www.sanity.io/manage, note the project
+      ID, and populate `studio/.env` and `frontend/.env` with it
+- [ ] Run `pnpm studio deploy` to publish the studio to a free
+      `*.sanity.studio` URL and share it with Meryl
 - [ ] Set up an AWS account if one does not exist
 - [ ] Provision S3 bucket + CloudFront distribution for the frontend
 - [ ] Provision Lambda Function URL for the backend
 - [ ] Configure the custom domain (ACM cert, Route 53, CloudFront alias)
-- [ ] Set `PUBLIC_API_URL` to the production Lambda URL at build time
+- [ ] Set `PUBLIC_API_URL` and `PUBLIC_SANITY_PROJECT_ID` at build time in the
+      deploy pipeline
 - [ ] Set backend env vars in Lambda (`RESEND_API_KEY`, `FROM_EMAIL`,
       `OWNER_EMAIL`, `ALLOWED_ORIGINS`)
 - [ ] Write a CDK stack (or SAM template) so the infrastructure is reproducible
 - [ ] Set up a deploy pipeline (GitHub Actions) that builds the frontend with the
       right env vars, uploads to S3, invalidates CloudFront, and deploys the
       Lambda
+- [ ] Configure a Sanity webhook to trigger the deploy pipeline whenever Meryl
+      publishes content changes in the studio
 
 ### Quality / polish
 - [ ] End-to-end test the order flow against the real Resend account
@@ -42,9 +51,12 @@ These must be done before the site can go live.
 
 Nice-to-haves that can wait until the site is live and Meryl has feedback.
 
-- [ ] Replace the single textarea "items" field with structured product IDs and
-      quantities once real products exist
-- [ ] Per-product "Order this" buttons that pre-fill the order form
+- [ ] Extend the CMS to cover home page story, poem, and hero photo so Meryl
+      can edit these herself
+- [ ] Extend the CMS to cover the gallery so Meryl can upload photos directly
+- [ ] Replace the free-form "items" textarea with a structured product picker
+      (checkboxes + quantity per product) once there are enough products for
+      this to be worth the extra UX
 - [ ] Image optimisation and lazy-loading on the gallery
 - [ ] Rate limiting on the `/orders` endpoint (to deter spam past what the
       honeypot catches)
@@ -59,12 +71,11 @@ Only build these if there's a real reason to.
 
 - [ ] Card payments (Stripe, Yoco, or PayFast). Adds webhooks, a database to
       reconcile payment state, and PCI scope — large step up in complexity.
-- [ ] Inventory tracking with real stock counts. Requires a database.
-- [ ] A simple CMS so Meryl can edit story/poem/gallery/products without a dev
-      touching the repo. Candidates: Sanity, TinaCMS, Decap. Adds a build-time
-      content fetch.
+- [ ] Inventory tracking with real stock counts. Requires a database. The
+      current "available" toggle is binary — no count of units remaining.
 - [ ] Order admin dashboard for Meryl to mark orders as paid/shipped instead of
-      reading her email
+      reading her email. Could also live inside Sanity Studio as a custom
+      document type, which would avoid standing up a whole separate admin.
 - [ ] Multi-language (English + Afrikaans, maybe)
 - [ ] Integration with a shipping provider for live tracking
 
