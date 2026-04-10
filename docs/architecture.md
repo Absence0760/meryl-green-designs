@@ -4,28 +4,35 @@
 
 Meryl Green Designs is a static brochure site with a small serverless backend for
 handling order submissions and a headless CMS for managing shop content. It is a
-pnpm workspace with three packages:
+pnpm workspace with three packages, plus a Terraform module for infrastructure
+and GitHub Actions workflows for CI/CD:
 
 - `frontend/` — SvelteKit (Svelte 5), built with `@sveltejs/adapter-static`. Ships as
   pre-rendered HTML + assets. Fetches product data from Sanity at build time.
 - `backend/` — Hono app, written once and deployed two ways: as a local Node HTTP
-  server for development and as an AWS Lambda handler for production.
+  server for development and as an AWS Lambda handler for production. Bundled
+  with esbuild.
 - `studio/` — Sanity Studio v3, a dashboard where the shop owner manages products
   (name, price, photos, availability). Runs locally or as a free hosted app at
   `*.sanity.studio`.
+- `infra/` — Terraform module that provisions all AWS resources (S3, CloudFront,
+  Lambda, IAM, Route 53, ACM, GitHub OIDC). Not a workspace package.
+- `.github/workflows/` — three deploy workflows (frontend, backend, studio) that
+  authenticate to AWS via OIDC and deploy on push to `main`.
 
-The three are decoupled. The frontend knows the backend only by its URL
-(`PUBLIC_API_URL`), and knows Sanity only by a project ID (`PUBLIC_SANITY_PROJECT_ID`).
-The backend has no knowledge of Sanity or the frontend — it just receives order
-submissions and sends emails.
+The three app packages are decoupled. The frontend knows the backend only by its
+URL (`PUBLIC_API_URL`), and knows Sanity only by a project ID
+(`PUBLIC_SANITY_PROJECT_ID`). The backend has no knowledge of Sanity or the
+frontend — it just receives order submissions and sends emails.
 
 ## Repo layout
 
 ```
 meryl-green-designs/
+├── README.md                 Project overview + quick start
 ├── package.json              Workspace root scripts (dev/build/check)
 ├── pnpm-workspace.yaml       Lists frontend, backend, studio as packages
-├── docs/                     This documentation
+├── docs/                     Architecture, features, roadmap, run-locally, deployment
 ├── frontend/
 │   ├── package.json
 │   ├── svelte.config.js
@@ -47,7 +54,7 @@ meryl-green-designs/
 │           │   └── +page.svelte     Product grid + order form + EFT details
 │           └── contact/+page.svelte
 ├── backend/
-│   ├── package.json
+│   ├── package.json          Build script runs esbuild → dist/lambda.mjs
 │   ├── tsconfig.json
 │   ├── .env.example          RESEND_API_KEY, FROM_EMAIL, OWNER_EMAIL, ALLOWED_ORIGINS
 │   └── src/
@@ -57,14 +64,29 @@ meryl-green-designs/
 │       ├── email.ts          Resend API wrapper + HTML escaping
 │       └── routes/
 │           └── orders.ts     POST /orders — validate + send emails
-└── studio/
-    ├── package.json
-    ├── sanity.config.ts      Studio configuration (project, plugins, schema)
-    ├── sanity.cli.ts         CLI configuration (used by `sanity deploy`, etc.)
-    ├── .env.example          SANITY_STUDIO_PROJECT_ID, SANITY_STUDIO_DATASET
-    └── schemas/
-        ├── index.ts          Schema registry
-        └── product.ts        Product schema (name, price, photos, availability, order)
+├── studio/
+│   ├── package.json
+│   ├── sanity.config.ts      Studio configuration (project, plugins, schema)
+│   ├── sanity.cli.ts         CLI configuration (used by `sanity deploy`, etc.)
+│   ├── .env.example          SANITY_STUDIO_PROJECT_ID, SANITY_STUDIO_DATASET
+│   └── schemas/
+│       ├── index.ts          Schema registry
+│       └── product.ts        Product schema (name, price, photos, availability, order)
+├── infra/
+│   ├── README.md             Bootstrap + apply walkthrough
+│   ├── main.tf               Providers (af-south-1 + us-east-1 alias), state backend
+│   ├── variables.tf
+│   ├── outputs.tf            Values CI reads (bucket, distribution id, role ARN, etc.)
+│   ├── s3_cloudfront.tf      Bucket + OAC + cert + CloudFront + Route 53 records
+│   ├── lambda.tf             Function + exec role + log group + Function URL
+│   ├── github_oidc.tf        GitHub OIDC provider + CI role + scoped policy
+│   └── terraform.tfvars.example
+└── .github/
+    └── workflows/
+        ├── deploy-frontend.yml   Build + sync to S3 + CloudFront invalidation
+        ├── deploy-backend.yml    esbuild bundle + zip + update Lambda
+        ├── deploy-studio.yml     `sanity deploy` with auth token
+        └── claude.yml            (Claude Code issue/PR automation)
 ```
 
 ## Frontend
@@ -179,8 +201,12 @@ CloudFront (invalidation)
 Visitor sees updated shop
 ```
 
-The webhook → rebuild step is not yet wired (the deploy pipeline itself is a
-roadmap item). Until it is, rebuilds are triggered manually.
+The deploy pipeline exists (`.github/workflows/deploy-frontend.yml`) and accepts
+`repository_dispatch` events. What remains is a one-time setup: apply the
+Terraform, populate the GitHub environment variables with the outputs, and
+configure a Sanity webhook that POSTs to the GitHub Actions dispatch endpoint
+with `event_type: sanity-publish`. Step-by-step instructions are in
+[`deployment.md`](./deployment.md) section 9.
 
 ## Order flow
 
@@ -204,14 +230,31 @@ owner reads them in. Payment is out-of-band via EFT; reconciliation is manual.
 
 ## Deployment targets
 
-- **Frontend**: S3 bucket (private, no public ACL) + CloudFront distribution with
-  Origin Access Control. ACM certificate for the custom domain. Route 53 alias.
-- **Backend**: AWS Lambda. Simplest wiring is a Function URL (no API Gateway). The
-  Lambda handler is `backend/dist/lambda.handler` after `pnpm backend build`.
-- **Studio**: hosted by Sanity at `https://merylgreendesigns.sanity.studio` (or
-  similar) via `pnpm studio deploy`. No AWS resources involved.
+- **Frontend**: S3 bucket (private, blocked public access) + CloudFront
+  distribution with Origin Access Control. ACM certificate in `us-east-1`
+  (CloudFront requirement). Route 53 A-alias records for apex and `www`.
+- **Backend**: AWS Lambda with a Function URL (no API Gateway). Bundled to a
+  single `dist/lambda.mjs` file via esbuild, zipped, uploaded by CI. IAM
+  execution role with CloudWatch Logs permission. 30-day log retention.
+- **Studio**: hosted by Sanity at `https://<name>.sanity.studio` via
+  `pnpm studio deploy`. No AWS resources involved.
 
-Infrastructure as Code is deliberately not set up yet. When it is, AWS CDK is the
-recommended tool: one stack, ~60 lines covers bucket, distribution, Lambda,
-function URL, and DNS. The Sanity Studio deployment is separate and handled by
-the Sanity CLI.
+Infrastructure is defined in Terraform at `infra/`. One apply creates all AWS
+resources above plus the GitHub OIDC provider and CI role. State is stored in
+an S3 bucket with a DynamoDB lock table (created manually once; see
+`infra/README.md` for the bootstrap commands). The primary region is
+`af-south-1` (Cape Town); the ACM cert provider alias targets `us-east-1`.
+
+CI/CD lives in `.github/workflows/`:
+- `deploy-frontend.yml` — path-filtered on `frontend/**`; also triggered by
+  `repository_dispatch` events from the Sanity webhook (for content changes)
+- `deploy-backend.yml` — path-filtered on `backend/**`; typechecks, bundles
+  with esbuild, zips, updates the Lambda via `aws lambda update-function-code`
+- `deploy-studio.yml` — path-filtered on `studio/**`; runs `sanity deploy`
+
+All three workflows authenticate to AWS via **GitHub OIDC federation** — no
+long-lived access keys are stored in the repo. The IAM role's trust policy
+is scoped to the `main` branch of the repo only.
+
+Full walkthrough of first-time deployment: see
+[`deployment.md`](./deployment.md).

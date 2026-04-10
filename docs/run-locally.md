@@ -1,7 +1,9 @@
 # Running locally
 
-This guide walks through getting both the frontend and backend running on your
-machine for development.
+This guide walks through getting the frontend, backend, and (optionally) the
+Sanity Studio running on your machine for development.
+
+For deploying to AWS, see [`deployment.md`](./deployment.md) instead.
 
 ## Prerequisites
 
@@ -23,8 +25,8 @@ From the repository root:
 pnpm install
 ```
 
-This installs dependencies for both workspace packages (`frontend/` and
-`backend/`) into a single hoisted `node_modules` at the root.
+This installs dependencies for all three workspace packages (`frontend/`,
+`backend/`, `studio/`) into a single hoisted `node_modules` at the root.
 
 Copy the example env files and fill them in:
 
@@ -144,19 +146,21 @@ curl -X POST http://localhost:3001/orders \
 ## Type-checking and linting
 
 ```bash
-pnpm check                # runs check in both packages
+pnpm check                # runs check in all three packages
 pnpm frontend check       # svelte-check + tsc on frontend
 pnpm backend check        # tsc --noEmit on backend
+pnpm studio check         # tsc --noEmit on studio
 ```
 
-Do this before committing. Both should report 0 errors.
+Do this before committing. All three should report 0 errors.
 
 ## Building
 
 ```bash
-pnpm build                # builds both packages
+pnpm build                # builds all three packages
 pnpm frontend build       # emits frontend/build/ (static site for S3)
-pnpm backend build        # emits backend/dist/ (compiled JS for Lambda)
+pnpm backend build        # emits backend/dist/lambda.mjs (esbuild bundle for Lambda)
+pnpm studio build         # emits studio/dist/ (React SPA, for self-hosted deploys)
 ```
 
 ## Common issues
@@ -195,3 +199,9 @@ pnpm backend build        # emits backend/dist/ (compiled JS for Lambda)
 **Studio fails to start with "SANITY_STUDIO_PROJECT_ID is not set"**
 : You haven't created `studio/.env` or you left `SANITY_STUDIO_PROJECT_ID`
   empty. Follow the Sanity setup steps above.
+
+## Next step: deploying
+
+Once the site runs correctly on your machine, see
+[`deployment.md`](./deployment.md) for the first-time AWS deployment
+walkthrough (Terraform apply, GitHub Actions setup, Sanity webhook wiring).

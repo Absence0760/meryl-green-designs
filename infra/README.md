@@ -1,0 +1,116 @@
+# Infrastructure
+
+Terraform configuration for the Meryl Green Designs AWS resources.
+
+## What it creates
+
+- **S3 bucket** hosting the prerendered SvelteKit site
+- **CloudFront distribution** with Origin Access Control in front of the bucket
+- **ACM certificate** (in us-east-1, as CloudFront requires) with DNS validation
+- **Route 53 records** for the apex domain, `www`, and cert validation
+- **Lambda function** running the Hono backend as an ESM bundle
+- **Lambda Function URL** (no API Gateway) with CORS scoped to the site domain
+- **Lambda execution IAM role** + CloudWatch log group (30-day retention)
+- **GitHub OIDC provider** + IAM role for CI, scoped to `main` branch only
+
+For a full architectural picture see [`../docs/architecture.md`](../docs/architecture.md).
+For first-time deploy walkthrough see [`../docs/deployment.md`](../docs/deployment.md).
+
+## Prerequisites
+
+- Terraform `>= 1.6.0`
+- AWS CLI v2 configured with credentials for a user that can create IAM, S3,
+  CloudFront, Lambda, and Route 53 resources
+- The apex domain's Route 53 hosted zone must already exist (Terraform will
+  not create it, only add records to it)
+- The `af-south-1` region must be **enabled** in your AWS account (Account
+  → AWS Regions → enable Africa (Cape Town))
+
+## One-time bootstrap (before `terraform init`)
+
+Terraform stores its state in an S3 bucket with a DynamoDB lock table. You
+must create these manually the first time, because Terraform can't create its
+own state backend.
+
+```bash
+export AWS_REGION=af-south-1
+
+aws s3api create-bucket \
+  --bucket meryl-green-designs-tfstate \
+  --region "$AWS_REGION" \
+  --create-bucket-configuration LocationConstraint="$AWS_REGION"
+
+aws s3api put-bucket-versioning \
+  --bucket meryl-green-designs-tfstate \
+  --versioning-configuration Status=Enabled
+
+aws s3api put-bucket-encryption \
+  --bucket meryl-green-designs-tfstate \
+  --server-side-encryption-configuration '{
+    "Rules": [{"ApplyServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}]
+  }'
+
+aws s3api put-public-access-block \
+  --bucket meryl-green-designs-tfstate \
+  --public-access-block-configuration \
+    BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
+
+aws dynamodb create-table \
+  --table-name meryl-green-designs-tfstate-lock \
+  --attribute-definitions AttributeName=LockID,AttributeType=S \
+  --key-schema AttributeName=LockID,KeyType=HASH \
+  --billing-mode PAY_PER_REQUEST \
+  --region "$AWS_REGION"
+```
+
+Then open `main.tf` and uncomment the `backend "s3"` block.
+
+## Configure
+
+```bash
+cp terraform.tfvars.example terraform.tfvars
+$EDITOR terraform.tfvars  # fill in real values
+```
+
+`terraform.tfvars` is gitignored.
+
+## Apply
+
+```bash
+terraform init
+terraform plan            # review the changes
+terraform apply
+```
+
+The first apply takes ~15 minutes (most of it waiting for CloudFront to
+propagate). After it finishes, Terraform prints the outputs — copy
+`github_actions_role_arn`, `lambda_function_url`, and `cloudfront_distribution_id`
+into your GitHub Actions workflow secrets/variables (see `docs/deployment.md`).
+
+## Rotating secrets
+
+To rotate `resend_api_key`, update the value in `terraform.tfvars` and run
+`terraform apply`. This updates the Lambda's environment variables in place.
+No code redeploy needed.
+
+## Tearing down
+
+```bash
+terraform destroy
+```
+
+This removes everything Terraform created. It does **not** remove the state
+bucket or DynamoDB lock table — those were created manually in the bootstrap
+step and you must delete them by hand if you want a clean slate.
+
+## Why not CDK?
+
+The rest of the stack is TypeScript, so CDK would have been a natural fit.
+Terraform was chosen because:
+
+- It's declarative HCL, which is easier to read and review than generated
+  CloudFormation
+- State is explicit and portable — you can see exactly what Terraform thinks
+  exists, and moving it between machines is a single `s3 cp` command
+- The provider ecosystem covers Sanity, GitHub, and Cloudflare if the project
+  ever needs them, without switching tools

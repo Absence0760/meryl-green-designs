@@ -1,22 +1,83 @@
-# dependencies
+# ---------------------------------------------------------------------------
+# Dependencies
+# ---------------------------------------------------------------------------
 node_modules/
+.pnpm-store/
 
-# build output
+# ---------------------------------------------------------------------------
+# Build output
+# ---------------------------------------------------------------------------
 .svelte-kit/
 build/
 dist/
 frontend/build/
 frontend/.svelte-kit/
 backend/dist/
+studio/dist/
 
-# environment
+# Sanity CLI local state (auth cache, deploy cache)
+.sanity/
+
+# Vite cache (outside node_modules)
+.vite/
+
+# TypeScript incremental build info
+*.tsbuildinfo
+
+# ---------------------------------------------------------------------------
+# Environment & secrets
+# ---------------------------------------------------------------------------
 .env
 .env.*
 !.env.example
 
-# OS
-.DS_Store
+# Terraform variable files (real values live in terraform.tfvars, which is
+# secret). The example file is safe to commit.
+*.tfvars
+!*.tfvars.example
 
-# editor
+# ---------------------------------------------------------------------------
+# Logs
+# ---------------------------------------------------------------------------
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ---------------------------------------------------------------------------
+# Test artifacts (future-proofing — no tests yet)
+# ---------------------------------------------------------------------------
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+.playwright/
+
+# ---------------------------------------------------------------------------
+# OS
+# ---------------------------------------------------------------------------
+.DS_Store
+._*
+.AppleDouble
+.LSOverride
+Thumbs.db
+Desktop.ini
+
+# ---------------------------------------------------------------------------
+# Editors & IDEs
+# ---------------------------------------------------------------------------
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# ---------------------------------------------------------------------------
+# Local agent / AI tooling state
+# ---------------------------------------------------------------------------
+.claude/

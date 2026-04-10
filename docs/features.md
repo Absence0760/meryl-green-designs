@@ -72,8 +72,10 @@ filled in before launch.
   optimisation needed.
 - **Build-time content fetch**: the frontend pulls products at build time via
   a GROQ query. After an edit in the studio, the site must be rebuilt to
-  reflect the change. A Sanity webhook → CI rebuild is the intended production
-  setup (see the roadmap).
+  reflect the change. The CI workflow for this exists
+  (`.github/workflows/deploy-frontend.yml` accepts `repository_dispatch`
+  events); a Sanity webhook wires publish events to it — see
+  [`deployment.md`](./deployment.md) for the wiring step.
 
 ## Backend behaviour
 

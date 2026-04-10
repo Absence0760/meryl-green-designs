@@ -22,24 +22,22 @@ These must be done before the site can go live.
 
 ### Infrastructure
 - [ ] Register a Resend account and verify the sending domain
-- [ ] Create a Sanity project at https://www.sanity.io/manage, note the project
-      ID, and populate `studio/.env` and `frontend/.env` with it
-- [ ] Run `pnpm studio deploy` to publish the studio to a free
-      `*.sanity.studio` URL and share it with Meryl
-- [ ] Set up an AWS account if one does not exist
-- [ ] Provision S3 bucket + CloudFront distribution for the frontend
-- [ ] Provision Lambda Function URL for the backend
-- [ ] Configure the custom domain (ACM cert, Route 53, CloudFront alias)
-- [ ] Set `PUBLIC_API_URL` and `PUBLIC_SANITY_PROJECT_ID` at build time in the
-      deploy pipeline
-- [ ] Set backend env vars in Lambda (`RESEND_API_KEY`, `FROM_EMAIL`,
-      `OWNER_EMAIL`, `ALLOWED_ORIGINS`)
-- [ ] Write a CDK stack (or SAM template) so the infrastructure is reproducible
-- [ ] Set up a deploy pipeline (GitHub Actions) that builds the frontend with the
-      right env vars, uploads to S3, invalidates CloudFront, and deploys the
-      Lambda
-- [ ] Configure a Sanity webhook to trigger the deploy pipeline whenever Meryl
-      publishes content changes in the studio
+- [ ] Create a Sanity project at https://www.sanity.io/manage and note the project
+      ID
+- [ ] Enable the `af-south-1` region in your AWS account
+- [ ] Bootstrap the Terraform state backend (one-time manual step — see
+      `infra/README.md`)
+- [ ] Fill in `infra/terraform.tfvars` and run `terraform apply`
+- [ ] Create the `production` GitHub environment and populate the variables
+      listed in `docs/deployment.md` step 5
+- [ ] Run the `Deploy frontend` workflow manually for the first deploy
+- [ ] Run the `Deploy backend` workflow manually for the first deploy
+- [ ] Run `pnpm studio deploy` locally for the first studio publish, then let
+      the workflow handle subsequent deploys
+- [ ] Wire the Sanity webhook to `repository_dispatch` on the frontend
+      workflow (see `docs/deployment.md` step 9)
+- [x] ~~Write a CDK stack~~ — done with Terraform instead, see `infra/`
+- [x] ~~Set up a deploy pipeline~~ — done, see `.github/workflows/`
 
 ### Quality / polish
 - [ ] End-to-end test the order flow against the real Resend account
