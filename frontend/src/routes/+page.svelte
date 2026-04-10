@@ -1,6 +1,54 @@
 <script lang="ts">
-	// TODO: replace with real hero photograph once supplied.
-	const heroImage = '';
+	import { base } from '$app/paths';
+
+	const heroImage = `${base}/two_trees.JPG`;
+
+	const storyParagraphs: string[] = [
+		'Bring a snapshot of beauty, peace and tranquility from a place where time stands still to a place where time seems to move too quickly. Let it infuse your everyday environment, be it your home, place of work or any other space of your choice.',
+		'Let the sounds and calls of the African bush envelope your senses and take you on a journey of deep inner reflection, where everything seems right in the world; a meditative state of deep healing, that only nature can provide.',
+		'It all started more than 10 years ago in a very special place in the African bush, where I fell in love with the perfection, simplicity and vibrancy of the natural world. Using my very simple but exceptional camera, I began a journey capturing the \u2018Big 5\u2019, antelope, smaller creatures, beautiful birds, plant life and unforgettable \u2018bush sunsets\u2019.',
+		'I invite you to enter this world with me where I have created works of art in the form of room dividers/screens using Meranti hardwood for the frames. A traditional teak stain has been applied to the wood to enhance the picture.',
+		'My photographs have been digitally printed onto a durable canvas which is 100% cotton. The fabric has an additional coating which allows for colour-fastness and extra durability.'
+	];
+
+	const poemTitle = 'Africa';
+	const poemAuthor = 'Author unknown';
+	// Verses stored as an array so each one can be rendered as its own
+	// stanza with blank lines between. Lines inside a stanza are joined
+	// with newlines and rendered via `white-space: pre-line`.
+	const poemStanzas: string[][] = [
+		[
+			'When you have acquired a taste for the dust,',
+			'And the scent of our first rain,',
+			'You’re hooked for life on Africa,',
+			'And you’ll not be right again.',
+			'Until you can watch the setting moon',
+			'And hear the jackals bark,',
+			'And know they are around you',
+			'Waiting in the dark.'
+		],
+		[
+			'When you long to see the elephants',
+			'Or hear the coucal’s song,',
+			'When the moonrise sets your blood on fire,',
+			'Then you’ve been away too long.',
+			'It is time to cut the traces loose,',
+			'And let your heart go free,',
+			'',
+			'Beyond that far horizon',
+			'Where your spirit yearns to be.'
+		],
+		[
+			'Africa is waiting – come!',
+			'Since you have touched the open sky',
+			'And learned to love the rustling grass',
+			'And the wild fish eagle’s cry.',
+			'You’ll always hunger for the bush;',
+			'For the lion’s rasping roar,',
+			'To camp at last beneath the stars',
+			'And to be at peace once more.'
+		]
+	];
 </script>
 
 <section class="hero" style={heroImage ? `background-image: url(${heroImage})` : ''}>
@@ -13,28 +61,33 @@
 	</div>
 </section>
 
+<svelte:head>
+	<link rel="preload" as="image" href={heroImage} />
+</svelte:head>
+
 <section class="section">
 	<div class="container narrow">
-		<p class="eyebrow">Our Story</p>
-		<h2>A little about the collection</h2>
-		<!-- TODO: replace with the real story copy supplied by Meryl. -->
-		<p class="placeholder">
-			[Story goes here. This paragraph is a placeholder until the final copy is provided. It will
-			introduce the collection, the inspiration behind it, and the maker.]
-		</p>
+		<p class="eyebrow">Our story</p>
+		<h2>How it all began</h2>
+		{#each storyParagraphs as paragraph}
+			<p class="story-paragraph">{paragraph}</p>
+		{/each}
 	</div>
 </section>
 
 <section class="section section--alt">
 	<div class="container narrow">
 		<p class="eyebrow">A Poem</p>
-		<!-- TODO: replace with the real poem once supplied. -->
-		<blockquote class="poem placeholder">
-			[Poem goes here.]<br />
-			[Line two of the poem.]<br />
-			[Line three of the poem.]<br />
-			[Line four of the poem.]
+		<h2 class="poem-title">{poemTitle}</h2>
+		<blockquote class="poem">
+			{#each poemStanzas as stanza, i}
+				<p class="poem-stanza">{stanza.join('\n')}</p>
+				{#if i < poemStanzas.length - 1}
+					<span class="poem-break" aria-hidden="true"></span>
+				{/if}
+			{/each}
 		</blockquote>
+		<cite class="poem-author">— {poemAuthor}</cite>
 	</div>
 </section>
 
@@ -71,10 +124,13 @@
 		content: '';
 		position: absolute;
 		inset: 0;
-		background: repeating-linear-gradient(
-			135deg,
-			rgba(74, 107, 58, 0.18) 0 12px,
-			rgba(47, 74, 37, 0.18) 12px 24px
+		/* Gentle dark vignette that lifts text legibility on top of a real
+		   photograph, without washing the image out. */
+		background: linear-gradient(
+			to bottom,
+			rgba(20, 30, 15, 0.1) 0%,
+			rgba(20, 30, 15, 0) 40%,
+			rgba(20, 30, 15, 0) 100%
 		);
 		pointer-events: none;
 	}
@@ -83,7 +139,7 @@
 		position: relative;
 		width: 100%;
 		padding: var(--space-5) 0;
-		background: linear-gradient(to top, rgba(20, 30, 15, 0.72), rgba(20, 30, 15, 0));
+		background: linear-gradient(to top, rgba(20, 30, 15, 0.78), rgba(20, 30, 15, 0));
 	}
 
 	.hero :global(h1) {
@@ -111,13 +167,54 @@
 		font-style: italic;
 	}
 
+	.story-paragraph {
+		margin: 0 0 var(--space-2);
+		font-size: 1rem;
+		line-height: 1.75;
+		color: var(--color-ink);
+	}
+
+	.story-paragraph:last-child {
+		margin-bottom: 0;
+	}
+
+	.poem-title {
+		font-family: var(--font-display);
+		font-size: 1.75rem;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		margin: 0 0 var(--space-2);
+		color: var(--color-leaf-dark);
+	}
+
 	.poem {
 		font-family: var(--font-display);
-		font-size: 1.25rem;
-		line-height: 1.8;
+		font-size: 1.15rem;
+		line-height: 1.75;
 		margin: 0;
 		padding-left: var(--space-3);
 		border-left: 3px solid var(--color-leaf);
+	}
+
+	.poem-stanza {
+		/* Preserve line breaks supplied in the verse data so each line of a
+		   stanza renders on its own row without needing <br> tags. */
+		white-space: pre-line;
+		margin: 0;
+	}
+
+	.poem-break {
+		display: block;
+		height: var(--space-2);
+	}
+
+	.poem-author {
+		display: block;
+		margin-top: var(--space-2);
+		padding-left: var(--space-3);
+		font-size: 0.9rem;
+		color: var(--color-ink-soft);
+		font-style: italic;
 	}
 
 	.cta-grid {

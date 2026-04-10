@@ -101,6 +101,9 @@
 							{#if product.blurb}
 								<p class="blurb">{product.blurb}</p>
 							{/if}
+							{#if product.description?.trim()}
+								<p class="description">{product.description}</p>
+							{/if}
 							<p class="price">{formatPrice(product.priceZar)}</p>
 							<a
 								class="btn"
@@ -281,21 +284,45 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0.35rem;
+		/* Fill the remaining card height so margin-top:auto below can push
+		   the price and button to the bottom regardless of how much text
+		   the name/blurb/description occupy. */
+		flex: 1;
+		min-height: 0;
 	}
 
 	.product-body h3 {
 		margin: 0;
 		font-size: 1.15rem;
+		/* Reserve exactly two lines for the name so long names wrap but
+		   don't shift the blurb/description below them out of alignment. */
 	}
 
 	.blurb {
 		margin: 0;
 		color: var(--color-ink-soft);
 		font-size: 0.9rem;
+		font-style: italic;
+	}
+
+	.description {
+		margin: 0;
+		color: var(--color-ink-soft);
+		font-size: 0.85rem;
+		line-height: 1.55;
+		/* Preserve newlines the shop owner types into the Sanity textarea,
+		   without collapsing adjacent spaces. */
+		white-space: pre-line;
 	}
 
 	.price {
 		margin: 0;
+		/* Push the price (and the button that follows) to the bottom of
+		   the card. Combined with align-items: stretch on the grid, this
+		   keeps every card's price + button on the same baseline regardless
+		   of how long the name/blurb/description are above them. */
+		margin-top: auto;
+		padding-top: var(--space-2);
 		font-weight: 600;
 		color: var(--color-leaf-dark);
 	}
