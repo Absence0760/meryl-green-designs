@@ -21,7 +21,68 @@ permissions:
   contents: read
 
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      should_deploy: ${{ steps.check.outputs.should_deploy }}
+    steps:
+      - name: Checkout (full history + tags)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Decide whether to deploy frontend
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # Manual dispatch AND Sanity content-rebuild events always deploy.
+          # Content changes don't show up in git, so skip-if-unchanged can't
+          # see them and would incorrectly skip the rebuild.
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" \
+             || "${GITHUB_EVENT_NAME}" == "repository_dispatch" ]]; then
+            echo "Triggered by ${GITHUB_EVENT_NAME} — deploying unconditionally."
+            echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          CURRENT_TAG="${GITHUB_REF_NAME}"
+          echo "Current release tag: $CURRENT_TAG"
+
+          PREV_TAG=$(gh release list --exclude-drafts --limit 10 --json tagName \
+            --jq ".[] | select(.tagName != \"$CURRENT_TAG\") | .tagName" \
+            | head -n 1 || true)
+
+          if [[ -z "$PREV_TAG" ]]; then
+            echo "No previous release found — deploying (first release)."
+            echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Previous release tag: $PREV_TAG"
+          git fetch --tags --quiet
+
+          CHANGED=$(git diff --name-only "$PREV_TAG..$CURRENT_TAG" -- \
+            'frontend/' \
+            'pnpm-lock.yaml' \
+            '.github/workflows/deploy-frontend.yml' \
+            || true)
+
+          if [[ -n "$CHANGED" ]]; then
+            echo "Frontend files changed since $PREV_TAG:"
+            echo "$CHANGED" | sed 's/^/  /'
+            echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No frontend files changed between $PREV_TAG and $CURRENT_TAG — skipping deploy."
+            echo "should_deploy=false" >> "$GITHUB_OUTPUT"
+          fi
+
   deploy:
+    needs: check
+    if: needs.check.outputs.should_deploy == 'true'
     runs-on: ubuntu-latest
     environment: production
 

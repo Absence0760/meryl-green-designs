@@ -491,6 +491,16 @@ After first-time setup, deployments are **release-gated**. Pushing code to
 `main` runs CI (typecheck + tests via `ci.yml`) but does **not** trigger any
 production deploy. Production ships only when you publish a GitHub release.
 
+### TL;DR
+
+```bash
+git push origin main                                    # just runs CI
+gh release create v0.1.0 --generate-notes --target main # triggers all 3 deploys
+```
+
+Bump the version (`v0.1.0` → `v0.1.1`, etc.) each time. Everything else on
+this page is context and edge cases.
+
 ### The release flow
 
 1. Merge your changes into `main`. CI runs on every push + PR.
@@ -506,18 +516,34 @@ production deploy. Production ships only when you publish a GitHub release.
    - `deploy-backend.yml` — rebuilds the Lambda bundle, updates `$LATEST`
    - `deploy-studio.yml` — re-publishes the Sanity Studio
 
-   A single release ships all three in lockstep. There's no per-workspace
-   release train — simplicity over partial ships.
+   Each workflow has a **check → deploy** structure. The check job compares
+   the current release tag against the previous release tag using
+   `git diff --name-only`, scoped to that workspace's paths
+   (`backend/**`, `frontend/**`, `studio/**`, plus `pnpm-lock.yaml` and the
+   workflow file itself). If nothing relevant changed, the deploy job is
+   skipped and appears as "skipped" in the Actions UI — no CloudFront
+   invalidation, no Lambda update, no Sanity redeploy.
 
-4. Watch the Actions tab until the three workflows go green. Spot-check the
-   live site.
+   **Manual dispatch** (`workflow_dispatch`) and **Sanity content rebuilds**
+   (`repository_dispatch: sanity-publish`, frontend only) always deploy —
+   the skip logic is bypassed, since manual operator intent and
+   content-out-of-git changes are not detectable by a file diff.
+
+   A single release tag still governs all three workspaces — this is
+   lockstep with an optimization, not per-app release trains. If the
+   frontend didn't change since the last release, publishing a backend
+   hotfix release will only redeploy the backend.
+
+4. Watch the Actions tab until the three check jobs complete and their
+   deploy jobs either run or skip. Spot-check the live site if anything
+   actually changed.
 
 ### Triggers summary
 
 | When this happens | What gets deployed | How it's triggered |
 |---|---|---|
 | PR opened or push to `main`/`dev` | Nothing is deployed; CI runs `pnpm check` + `pnpm test` | `ci.yml` |
-| GitHub release is published | Frontend + backend + studio all rebuild and deploy | `release: types: [published]` on each deploy workflow |
+| GitHub release is published | Frontend + backend + studio workflows each run a `check` job; only the workspaces whose files changed since the previous release actually deploy | `release: types: [published]` on each deploy workflow, with an early-exit check job |
 | You click "Run workflow" in the Actions tab | That single workflow re-runs against the current `main` | `workflow_dispatch` |
 | Meryl publishes a product or gallery photo in Studio | Frontend rebuild (no release required — content changes shouldn't need a version tag) | Sanity webhook → `repository_dispatch: sanity-publish` → `deploy-frontend.yml` |
 | Meryl changes an order's status in Studio | Customer status email sent (payment received / shipped / delivered / cancelled) | Sanity webhook → backend `/webhooks/sanity-order` route → Resend |

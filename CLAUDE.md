@@ -48,7 +48,7 @@ Tests live in `frontend/` and `backend/` (vitest). Studio has none — don't add
 - `docs/orders-and-tracking.md` — implemented design for orders as Sanity docs + public track page
 - `docs/security.md` — risk register, mitigations, incident playbook, hardening gaps
 - `infra/README.md` — Terraform module specifics
-- `.github/workflows/` — deploy pipelines (OIDC, no long-lived AWS keys) + `claude.yml` Claude Code automation
+- `.github/workflows/` — `ci.yml` (PR + push typecheck/test), three release-gated deploy workflows with a skip-if-unchanged check job, `claude.yml` Claude Code automation. OIDC for AWS, no long-lived keys.
 
 Prefer reading these over guessing. Update them when behavior changes.
 
