@@ -1,15 +1,18 @@
 terraform {
   required_version = ">= 1.6.0"
 
-  # Uncomment and fill in after creating the state bucket manually.
-  # See infra/README.md for the one-time bootstrap steps.
-  # backend "s3" {
-  #   bucket         = "meryl-green-designs-tfstate"
-  #   key            = "prod/terraform.tfstate"
-  #   region         = "af-south-1"
-  #   dynamodb_table = "meryl-green-designs-tfstate-lock"
-  #   encrypt        = true
-  # }
+  # State backend values are hardcoded because terraform backend blocks
+  # can't reference variables. The state bucket and lock table are created
+  # by bin/setup.sh on first run — if you run `terraform init` before the
+  # script, you'll see a "bucket does not exist" error, which is the hint
+  # to run the setup script instead.
+  backend "s3" {
+    bucket         = "meryl-green-designs-tfstate"
+    key            = "prod/terraform.tfstate"
+    region         = "af-south-1"
+    dynamodb_table = "meryl-green-designs-tfstate-lock"
+    encrypt        = true
+  }
 
   required_providers {
     aws = {

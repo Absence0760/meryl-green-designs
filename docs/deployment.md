@@ -1,364 +1,712 @@
 # Deployment
 
-This document walks through the first-time deployment of the three apps to
-production, and the ongoing deploy pipeline that keeps them updated.
+This document is the operational guide for getting Meryl Green Designs from a
+fresh clone to a live site, and keeping it running afterwards.
 
 For the conceptual picture of how the pieces fit together, see
-[architecture.md](./architecture.md).
+[`architecture.md`](./architecture.md).
+
+## Contents
+
+1. [What gets deployed where](#what-gets-deployed-where)
+2. [Fastest path: `bin/setup.sh`](#fastest-path-binsetupsh)
+3. [The full setup flow](#the-full-setup-flow)
+4. [Prerequisites](#prerequisites)
+5. [Step-by-step first-time setup](#step-by-step-first-time-setup)
+6. [End-to-end verification](#end-to-end-verification)
+7. [Environment variable reference](#environment-variable-reference)
+8. [Ongoing deployments](#ongoing-deployments)
+9. [Rollback](#rollback)
+10. [Adding a new content type](#adding-a-new-content-type)
+11. [Cost expectations](#cost-expectations)
+12. [Tearing everything down](#tearing-everything-down)
+13. [Troubleshooting](#troubleshooting)
+14. [Appendix A: Understanding what `bin/setup.sh` does](#appendix-a-understanding-what-binsetupsh-does)
 
 ## What gets deployed where
 
-| App | Target | How |
+| App | Target | Trigger |
 |---|---|---|
-| Frontend | S3 + CloudFront (AWS) | `deploy-frontend.yml` workflow |
-| Backend | Lambda + Function URL (AWS) | `deploy-backend.yml` workflow |
-| Studio | Sanity hosted (`*.sanity.studio`) | `deploy-studio.yml` workflow |
+| Frontend | S3 + CloudFront (AWS) | `deploy-frontend.yml` workflow on push to `main` |
+| Backend | Lambda + Function URL (AWS) | `deploy-backend.yml` workflow on push to `main` |
+| Studio | Sanity hosted (`*.sanity.studio`) | `deploy-studio.yml` workflow on push to `main` |
 
-Infrastructure (the S3 bucket, Lambda, IAM role, DNS records, etc.) is managed
-by Terraform in `infra/`. Application code is deployed by GitHub Actions
-workflows in `.github/workflows/`. The two are separate: Terraform sets up
-the resources, the workflows update them.
+Infrastructure (S3 bucket, CloudFront, Lambda, IAM, Route 53, ACM certificate,
+GitHub OIDC provider + CI role) is managed by Terraform in `infra/`. GitHub
+Actions workflows in `.github/workflows/` deploy code on top of that
+infrastructure. The two are decoupled: Terraform creates the resources,
+workflows update them.
 
-## First-time deployment
+## Fastest path: `bin/setup.sh`
 
-### 1. Pre-requisites
-
-- An AWS account with the **Africa (Cape Town) `af-south-1` region enabled**
-  (Account Settings → AWS Regions → enable)
-- A registered domain (e.g. `merylgreendesigns.co.za`)
-- A **Route 53 hosted zone** for that domain. If the domain is currently with
-  a different DNS provider, create the hosted zone in Route 53 first and
-  update the domain's nameservers to point at it.
-- A **Sanity account + project** — create one at https://www.sanity.io/manage.
-  Once created, go to **Project → API → Datasets** and set the `production`
-  dataset to **Private**. The backend uses an API token for all Sanity
-  access; anonymous queries are not required.
-- A **Resend account** with a verified sending domain — sign up at
-  https://resend.com
-- Terraform `>= 1.6.0` and AWS CLI v2 installed locally
-
-### 2. Bootstrap the Terraform state backend
-
-Terraform stores its state in S3 with a DynamoDB lock. Both must exist before
-`terraform init` works. Create them manually, once:
+If you have the [prerequisites](#prerequisites) installed and authenticated,
+the entire AWS + GitHub Actions + Sanity setup is **one command**:
 
 ```bash
-export AWS_REGION=af-south-1
+# Recommended: dry-run first to check prereqs and preview what will happen
+./bin/setup.sh --dry
 
-aws s3api create-bucket \
-  --bucket meryl-green-designs-tfstate \
-  --region "$AWS_REGION" \
-  --create-bucket-configuration LocationConstraint="$AWS_REGION"
-
-aws s3api put-bucket-versioning \
-  --bucket meryl-green-designs-tfstate \
-  --versioning-configuration Status=Enabled
-
-aws s3api put-bucket-encryption \
-  --bucket meryl-green-designs-tfstate \
-  --server-side-encryption-configuration \
-    '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}'
-
-aws s3api put-public-access-block \
-  --bucket meryl-green-designs-tfstate \
-  --public-access-block-configuration \
-    BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
-
-aws dynamodb create-table \
-  --table-name meryl-green-designs-tfstate-lock \
-  --attribute-definitions AttributeName=LockID,AttributeType=S \
-  --key-schema AttributeName=LockID,KeyType=HASH \
-  --billing-mode PAY_PER_REQUEST \
-  --region "$AWS_REGION"
+# Then the real run:
+SANITY_ADMIN_TOKEN=<token> ./bin/setup.sh
 ```
 
-Then uncomment the `backend "s3"` block at the top of `infra/main.tf`.
+The script is **idempotent** — safe to re-run. Every step checks whether its
+target resource already exists and skips creation if so. If it fails partway
+through (network blip, expired AWS credentials, etc.), fix the issue and run
+it again; it will pick up where it left off.
 
-### 3. Configure Terraform variables
+**What it automates:**
+
+1. Verifies `aws`, `terraform`, `gh`, `jq`, `curl` are installed and that
+   `aws` + `gh` are authenticated
+2. Parses `infra/terraform.tfvars` for the values it needs
+3. Creates the Terraform state S3 bucket + DynamoDB lock table (first run only)
+4. Runs `terraform init` → `terraform plan` → interactive `apply` prompt
+5. Reads outputs from `terraform output -json`
+6. Creates the `production` GitHub Actions environment
+7. Populates all 8 GitHub Actions **variables** from the Terraform outputs
+8. *(if `SANITY_ADMIN_TOKEN` is set)* Flips the Sanity dataset to private
+9. *(if `SANITY_ADMIN_TOKEN` is set)* Creates the backend webhook for order
+   status emails (idempotent: skips if a webhook with the same name exists)
+10. Prints a final checklist of the remaining manual steps
+
+**What it does NOT automate** (because it genuinely can't):
+
+- Creating accounts at AWS, Sanity, Resend
+- Verifying your Resend sending domain (DNS records at your registrar)
+- Enabling the `af-south-1` region in your AWS account (opt-in regions require
+  a one-time click in the AWS console)
+- Creating the content-rebuild Sanity webhook (needs a fine-grained GitHub PAT
+  that can't be pulled from your local `gh` CLI — see step 4 below)
+- First interactive Sanity Studio deploy (`pnpm studio deploy`)
+- Adding the `SANITY_AUTH_TOKEN` GitHub Actions secret for CI studio deploys
+- Entering initial content in the studio
+
+Detailed step-by-step with these manual parts interleaved is in
+[§ Step-by-step first-time setup](#step-by-step-first-time-setup). If you want
+to understand what the script is doing under the hood, see
+[Appendix A](#appendix-a-understanding-what-binsetupsh-does).
+
+## The full setup flow
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│  ONE-TIME EXTERNAL SETUP          (cannot be automated — ~20 min)    │
+├──────────────────────────────────────────────────────────────────────┤
+│  1. AWS account                                                      │
+│  2. Enable af-south-1 region (opt-in regions need manual activation) │
+│  3. Domain registered + Route 53 hosted zone                         │
+│  4. Sanity account + project                                         │
+│  5. Resend account + verified sending domain                         │
+│  6. Install CLI tools: terraform, aws, gh, jq                        │
+└──────────────────────────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│  CONFIGURE                                           (~5 min)        │
+├──────────────────────────────────────────────────────────────────────┤
+│  cp infra/terraform.tfvars.example infra/terraform.tfvars            │
+│  $EDITOR infra/terraform.tfvars   (fill in values — see Step 2)      │
+└──────────────────────────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│  RUN THE SCRIPT                                      (~15 min)       │
+├──────────────────────────────────────────────────────────────────────┤
+│  ./bin/setup.sh --dry                                                │
+│  SANITY_ADMIN_TOKEN=<token> ./bin/setup.sh                           │
+│                                                                      │
+│  (Most of the 15 min is CloudFront propagation during terraform      │
+│  apply — there's no way to speed that up, it's on AWS's side.)       │
+└──────────────────────────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│  MANUAL WRAP-UP                                      (~15 min)       │
+├──────────────────────────────────────────────────────────────────────┤
+│  1. First interactive studio deploy: pnpm studio deploy              │
+│  2. Create content-rebuild Sanity webhook (dashboard, needs GH PAT)  │
+│  3. Add SANITY_AUTH_TOKEN GitHub Actions secret                      │
+│  4. Trigger first GitHub Actions deploys                             │
+│  5. Add initial content in Sanity Studio                             │
+└──────────────────────────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│  VERIFY                                               (~5 min)       │
+├──────────────────────────────────────────────────────────────────────┤
+│  See § End-to-end verification                                       │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+## Prerequisites
+
+### External accounts
+
+- **AWS** — a root or IAM-user account with permission to create S3, IAM,
+  Lambda, CloudFront, Route 53, ACM, and DynamoDB resources
+- **Sanity** — free account at [sanity.io/manage](https://www.sanity.io/manage),
+  with a project created (the project ID will be your
+  `PUBLIC_SANITY_PROJECT_ID`). Leave the dataset public for now — the script
+  will flip it to private later
+- **Resend** — free account at [resend.com](https://resend.com), with your
+  sending domain added and DNS records verified. Takes 5-30 minutes depending
+  on DNS propagation
+- **Domain name** — registered with any registrar; it must be resolvable via a
+  Route 53 hosted zone. If your registrar isn't Route 53, create the zone in
+  Route 53 first and update the registrar's nameservers
+
+### AWS account settings
+
+- **`af-south-1` region enabled**. Cape Town is an opt-in region and requires
+  a one-time manual activation. Go to AWS Console → top-right account menu →
+  Account → AWS Regions → Enable *Africa (Cape Town)*. Takes ~5 minutes for
+  the region to become available.
+
+### Tools on your machine
+
+- [Terraform](https://developer.hashicorp.com/terraform/downloads) ≥ 1.6
+- [AWS CLI v2](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
+  — run `aws configure` with credentials that can do everything above
+- [GitHub CLI](https://cli.github.com/) (`gh`) — run `gh auth login`
+- [`jq`](https://jqlang.github.io/jq/download/) — JSON parser
+- `curl` (usually pre-installed)
+
+The setup script fails fast with clear messages if any of these are missing
+or not authenticated, so you'll know quickly.
+
+## Step-by-step first-time setup
+
+### Step 1. Create external accounts (if you don't have them)
+
+Work through the [Prerequisites](#prerequisites) list. You can start the
+Resend domain verification while you're doing the rest — the DNS propagation
+wait is often the longest individual step.
+
+### Step 2. Configure Terraform variables
 
 ```bash
-cd infra
-cp terraform.tfvars.example terraform.tfvars
-$EDITOR terraform.tfvars
+cp infra/terraform.tfvars.example infra/terraform.tfvars
+$EDITOR infra/terraform.tfvars
 ```
 
-Fill in:
+Required values:
 
-- `domain_name` — the apex domain
-- `route53_zone_id` — look it up with
-  `aws route53 list-hosted-zones-by-name --dns-name <domain>`
-- `github_repo` — `owner/name` form (e.g. `jaredhoward/meryl-green-designs`)
-- `resend_api_key` — from the Resend dashboard
-- `from_email` — a verified sender in Resend
-- `owner_email` — where order notifications go
-- `sanity_project_id` — from https://www.sanity.io/manage
-- `sanity_api_token` — Sanity dashboard → API → Tokens → Add API token,
-  Editor role (or custom role scoped to `order`)
-- `sanity_webhook_secret` — generate with `openssl rand -hex 32`. Keep a
-  copy, you'll paste the same value into the Sanity webhook in step 9
-
-### 4. Apply the infrastructure
-
-```bash
-cd infra
-terraform init
-terraform plan    # review — should show ~20 resources being created
-terraform apply
-```
-
-The first apply takes ~15 minutes — most of the wait is CloudFront
-propagating globally. When it finishes, note the outputs:
-
-```
-frontend_bucket_name         = meryl-green-designs-frontend
-cloudfront_distribution_id   = E1ABCDEFGHIJKL
-lambda_function_name         = meryl-green-designs-backend
-lambda_function_url          = https://xxxxx.lambda-url.af-south-1.on.aws/
-github_actions_role_arn      = arn:aws:iam::123456789012:role/meryl-green-designs-github-actions
-site_url                     = https://merylgreendesigns.co.za
-```
-
-### 5. Configure GitHub Actions
-
-In the GitHub repo, go to **Settings → Secrets and variables → Actions** and
-create a new environment named `production`. In that environment, add these
-**variables** (not secrets — none of these are sensitive):
-
-| Variable name | Value (from Terraform outputs) |
+| Variable | Where to get it |
 |---|---|
-| `AWS_REGION` | `af-south-1` |
-| `AWS_ROLE_TO_ASSUME` | `github_actions_role_arn` |
-| `FRONTEND_BUCKET` | `frontend_bucket_name` |
-| `CLOUDFRONT_DISTRIBUTION_ID` | `cloudfront_distribution_id` |
-| `LAMBDA_FUNCTION_NAME` | `lambda_function_name` |
-| `PUBLIC_API_URL` | `lambda_function_url` (copy as-is) |
-| `PUBLIC_SANITY_PROJECT_ID` | Your Sanity project ID |
-| `PUBLIC_SANITY_DATASET` | `production` |
+| `domain_name` | Your apex domain, e.g. `merylgreendesigns.co.za` (no protocol, no trailing slash) |
+| `route53_zone_id` | `aws route53 list-hosted-zones-by-name --dns-name <your-domain>` → copy the `Id` without the `/hostedzone/` prefix |
+| `github_repo` | Your repo in `owner/name` form, e.g. `jaredhoward/meryl-green-designs` |
+| `resend_api_key` | Resend dashboard → API Keys → Create API key → copy the value |
+| `from_email` | A verified sender on your Resend domain, e.g. `"Meryl Green Designs <orders@merylgreendesigns.co.za>"` |
+| `owner_email` | Inbox that should receive new-order notifications |
+| `sanity_project_id` | Sanity dashboard → your project → top of the page |
+| `sanity_api_token` | Sanity → Project → API → Tokens → Add → `Editor` role (used by the Lambda at runtime to create orders and read documents) |
+| `sanity_webhook_secret` | Generate with `openssl rand -hex 32`. Store this somewhere — the setup script reuses it when creating the Sanity webhook |
+| `site_url` | Optional. Defaults to `https://<domain_name>`. Only set this if you want tracking links in emails to point elsewhere |
 
-And add one **secret** (studio deploys only):
+`aws_region` and `sanity_dataset` have sensible defaults (`af-south-1` and
+`production` respectively) and can be left as-is.
 
-| Secret name | How to get it |
+### Step 3. Create the Sanity admin token
+
+This is a **different token from the one in step 2** — the `sanity_api_token`
+above is used by the Lambda at runtime, and has `Editor` scope (can
+read/write documents). The token you're about to create is used only by
+`bin/setup.sh` on your machine, and needs `Administrator` scope (can create
+webhooks and change dataset privacy).
+
+1. Sanity dashboard → project → **API → Tokens → Add API token**
+2. Name: `setup-script-admin`
+3. Permissions: **Administrator**
+4. Copy the value. You'll use it as an environment variable in the next step,
+   and can safely delete it afterwards if you want
+
+If you skip this step, the script will still run, but it'll leave the Sanity
+dataset public and won't create the order-status webhook. You can run it
+again later with the token set.
+
+### Step 4. Run the setup script
+
+```bash
+# Preview without changing anything:
+./bin/setup.sh --dry
+
+# Real run:
+SANITY_ADMIN_TOKEN=<paste token from step 3> ./bin/setup.sh
+```
+
+The script will:
+
+- Check every prerequisite and bail with a clear error if anything's missing
+- Echo back the values it parsed from `terraform.tfvars` for you to confirm
+- Create the state bucket + lock table (first run only)
+- Run `terraform plan` and show it to you, then prompt `[y/N]` before applying
+- Wait ~15 minutes for CloudFront to propagate (nearly all of the apply time
+  is on AWS's side, not yours)
+- Read the Terraform outputs and populate the GitHub Actions environment
+- Flip the Sanity dataset to private and create the backend webhook
+- Print the final checklist for the remaining manual steps (step 5 onward)
+
+If you hit an error, fix the cause and re-run. The script is idempotent and
+will skip anything that's already done.
+
+### Step 5. First Sanity Studio deploy (interactive, one-time)
+
+```bash
+cp studio/.env.example studio/.env
+# Fill in SANITY_STUDIO_PROJECT_ID with your project ID
+pnpm studio exec sanity login     # opens browser for Sanity SSO
+pnpm studio deploy                # pick a subdomain when prompted, e.g. "merylgreendesigns"
+```
+
+This publishes the studio to `https://<subdomain>.sanity.studio`. Share that
+URL with Meryl (after inviting her to the project in Sanity's dashboard).
+Subsequent studio deploys are handled automatically by the
+`deploy-studio.yml` workflow on pushes that touch `studio/`.
+
+### Step 6. Add the `SANITY_AUTH_TOKEN` GitHub Actions secret
+
+This token is used by the `deploy-studio.yml` workflow to publish studio
+changes in CI. It needs **Deploy Studio** scope only — it's not the same as
+`SANITY_ADMIN_TOKEN` from step 3.
+
+1. Sanity dashboard → project → **API → Tokens → Add API token**
+2. Name: `github-actions-studio-deploy`
+3. Permissions: **Deploy Studio**
+4. Copy the value, then:
+
+```bash
+gh secret set SANITY_AUTH_TOKEN \
+  --env production \
+  --body '<paste deploy-studio token>' \
+  --repo <your owner>/<your repo>
+```
+
+The name `SANITY_AUTH_TOKEN` is what Sanity's own CLI reads from the
+environment — don't rename it.
+
+### Step 7. Create the content-rebuild Sanity webhook
+
+This is the only webhook the setup script can't create, because it needs a
+GitHub fine-grained PAT in its Authorization header, and your local `gh` CLI
+token doesn't have the right scopes to be safely reused.
+
+1. **Create the fine-grained PAT** at
+   [github.com/settings/tokens?type=beta](https://github.com/settings/tokens?type=beta):
+   - **Repository access**: Only select `<your owner>/<your repo>`
+   - **Repository permissions**: **Contents: Read and write**
+   - **Expiration**: 1 year
+   - Copy the token
+
+2. **Create the webhook** at
+   [sanity.io/manage](https://www.sanity.io/manage) → project →
+   **API → Webhooks → Create webhook**:
+
+| Field | Value |
 |---|---|
-| `SANITY_AUTH_TOKEN` | Run `pnpm studio exec sanity manage` locally, go to **API → Tokens**, create a token with `Deploy Studio` permissions, copy the value |
+| Name | `Rebuild site on publish` |
+| Description | Triggers frontend redeploy via GitHub Actions |
+| URL | `https://api.github.com/repos/<your owner>/<your repo>/dispatches` |
+| Dataset | `production` |
+| Trigger on | Create, Update, Delete |
+| Filter (GROQ) | `_type == "product" \|\| _type == "galleryPhoto"` |
+| HTTP method | `POST` |
+| HTTP header: Authorization | `Bearer <paste PAT from step 1>` |
+| HTTP header: Accept | `application/vnd.github+json` |
+| HTTP header: X-GitHub-Api-Version | `2022-11-28` |
+| HTTP body | `{"event_type": "sanity-publish"}` |
+| Enabled | yes |
 
-### 6. First frontend deploy
+3. Save the webhook. Test it by editing a product and clicking Publish — a
+   **Deploy frontend** workflow run should start within a few seconds.
 
-```bash
-# Option A — trigger via the GitHub Actions UI
-# Go to Actions → Deploy frontend → Run workflow → main
+### Step 8. Trigger the first deploys
 
-# Option B — push an empty commit to trigger it
-git commit --allow-empty -m "chore: trigger first deploy"
-git push origin main
-```
-
-Wait for the workflow to complete (~2 min). Check the site:
-
-```bash
-curl -I https://merylgreendesigns.co.za
-# Expect HTTP/2 200, content-type: text/html
-```
-
-### 7. First backend deploy
-
-Trigger the **Deploy backend** workflow the same way (Actions → Run workflow,
-or push a change to `backend/`). After it runs, verify the Lambda is healthy:
+Now that everything is configured, kick off the first runs of each workflow:
 
 ```bash
-curl https://xxxxx.lambda-url.af-south-1.on.aws/health
-# Expect {"ok":true}
+gh workflow run deploy-frontend.yml --repo <your owner>/<your repo>
+gh workflow run deploy-backend.yml  --repo <your owner>/<your repo>
 ```
 
-Then submit a test order on the live site. You should receive both the owner
-and customer emails from Resend.
+Watch them in the GitHub Actions UI (or `gh run list`). Each should take
+~2 minutes. After both complete, move on to verification.
 
-### 8. First studio deploy
+### Step 9. Add initial content
+
+Open `https://<subdomain>.sanity.studio` in a browser, log in, and create at
+least one product and one gallery photo so you can verify the full flow.
+Click **Publish** on each document you create.
+
+## End-to-end verification
+
+Run these checks after setup is complete. If any fail, see
+[Troubleshooting](#troubleshooting).
+
+### 1. Frontend is reachable
 
 ```bash
-# Locally — this is a one-time interactive step the first time.
-cd studio
-cp .env.example .env
-# Fill in SANITY_STUDIO_PROJECT_ID from your Sanity project
-pnpm exec sanity login    # opens a browser for Sanity SSO
-pnpm exec sanity deploy
-# Pick a subdomain when prompted, e.g. "merylgreendesigns"
+curl -I https://<your-domain>
+# Expect: HTTP/2 200, content-type: text/html
 ```
 
-This publishes the studio to `https://merylgreendesigns.sanity.studio`.
-Share that URL with Meryl — she logs in with a Sanity account you've invited
-her to from https://www.sanity.io/manage.
+Then open the site in a browser and click through Home, Gallery, Shop,
+Track, Contact. Every page should render without console errors.
 
-After the first interactive deploy, the **Deploy studio** workflow handles
-subsequent deploys automatically on pushes to `studio/`.
+### 2. Backend health check
 
-### 9. Wire the Sanity webhooks
+```bash
+curl https://<lambda-url>/health
+# Expect: {"ok":true}
+```
 
-There are **two** Sanity webhooks to configure, both done once in the Sanity
-dashboard. They serve different purposes:
+The Lambda URL is in your Terraform outputs
+(`terraform output lambda_function_url`) or the GitHub Actions
+`PUBLIC_API_URL` variable.
 
-- **Webhook A — Rebuild frontend on product publish.** Fires when Meryl
-  publishes a product edit, triggers a GitHub Actions workflow that rebuilds
-  and redeploys the frontend with the latest content baked in.
-- **Webhook B — Send customer email on order status change.** Fires when
-  Meryl changes an order's `status` field, triggers the backend's
-  `/webhooks/sanity-order` endpoint, which sends the appropriate customer
-  email (payment received / shipped / etc.).
+### 3. Products and gallery load live
 
-#### Webhook A: Rebuild frontend on product publish
+With your browser devtools **Network** tab open, visit `/shop`. You should
+see a fetch to `<lambda-url>/products` returning your real products. Same for
+`/gallery` → `<lambda-url>/gallery`.
 
-1. Create a **fine-grained GitHub PAT** at
-   https://github.com/settings/tokens?type=beta:
-   - Repository access: only select `jaredhoward/meryl-green-designs`
-   - Repository permissions: **Contents: Read and write**
-   - Expiration: 1 year
-   - Copy the token.
+### 4. Full order flow
 
-2. Go to https://www.sanity.io/manage, pick your project, then **API →
-   Webhooks → Create webhook**:
-   - **Name**: `Rebuild site on publish`
-   - **Description**: Triggers frontend redeploy via GitHub Actions
-   - **URL**: `https://api.github.com/repos/jaredhoward/meryl-green-designs/dispatches`
-   - **Dataset**: `production`
-   - **Trigger on**: Create, Update, Delete
-   - **Filter**: `_type == "product"` (leave empty to rebuild on any change)
-   - **HTTP method**: `POST`
-   - **HTTP headers**:
-     - `Authorization: Bearer <your GitHub PAT from step 1>`
-     - `Accept: application/vnd.github+json`
-     - `X-GitHub-Api-Version: 2022-11-28`
-   - **HTTP body**:
-     ```json
-     {"event_type": "sanity-publish"}
-     ```
-   - **Enabled**: yes
+1. On the live site's `/shop` page, click **Enquire / Order** on a product
+2. Scroll to the order form, fill it in with a real email you control, submit
+3. Within ~10 seconds you should receive:
+   - The owner notification email at `owner_email`
+   - The customer confirmation email at the address you entered, containing
+     the tracking link
+4. Click the tracking link in the email. The `/track` page should load with
+   your order status as "Pending payment"
+5. Open Sanity Studio, find the new order document, change status to
+   "Payment received", click **Publish**
+6. Within ~10 seconds you should receive the payment-received email
+7. Refresh the `/track` page — it should show the new status
 
-3. Save the webhook. Test it by editing a product in the studio and clicking
-   Publish — a **Deploy frontend** workflow run should start in GitHub within
-   a few seconds.
+If all seven steps work, the full flow is live end-to-end.
 
-Total time from Meryl clicking Publish on a product to the change being live
-on the site: ~60 seconds.
+### 5. Content rebuild on publish
 
-#### Webhook B: Send customer email on order status change
+Edit a product in the studio (change the name or price), click **Publish**.
+Within ~60 seconds a new **Deploy frontend** workflow run should appear in
+GitHub Actions, and the change should be visible on the live site.
 
-1. Generate a webhook secret locally:
-   ```bash
-   openssl rand -hex 32
-   ```
-   Copy the output. You'll use it in two places: Sanity's webhook config
-   below, and the `sanity_webhook_secret` variable in `infra/terraform.tfvars`
-   (then re-apply Terraform to push it to the Lambda's env vars).
+## Environment variable reference
 
-2. Go to https://www.sanity.io/manage → your project → **API → Webhooks →
-   Create webhook**:
-   - **Name**: `Order status email`
-   - **Description**: Sends the customer the right email when an order's
-     status changes
-   - **URL**: `<lambda_function_url>/webhooks/sanity-order`
-     (take `lambda_function_url` from your Terraform outputs — it looks like
-     `https://xxxxx.lambda-url.af-south-1.on.aws/`; append
-     `/webhooks/sanity-order` on the end)
-   - **Dataset**: `production` (or the orders dataset, if you've done the
-     PII fix from `orders-and-tracking.md`)
-   - **Trigger on**: **Update** (do NOT also tick Create — order creation
-     emails are sent by the backend directly, not via webhook)
-   - **Filter** (GROQ): `_type == "order" && delta::changedAny(status)`
-     — this is critical so non-status edits (e.g. Meryl fixing a typo in
-     internal notes) don't spam the customer
-   - **Projection**: leave empty (Sanity sends the whole document)
-   - **HTTP method**: `POST`
-   - **API version**: `v2024-10-01` (or whatever matches the backend)
-   - **HTTP headers**: none — Sanity adds the `sanity-webhook-signature`
-     header automatically
-   - **HTTP body**: leave empty (Sanity sends the document)
-   - **Secret**: paste the random value from step 1
-   - **Enabled**: yes
+All the environment variables used by the three apps, in one place.
 
-3. Save the webhook. Test it by creating an order through the site,
-   opening the resulting document in Studio, changing its status from
-   "Pending payment" to "Payment received", and clicking Publish. The
-   customer should receive a "Payment received" email within ~10 seconds.
+### Backend Lambda runtime env
 
-**Troubleshooting:**
+Set by Terraform (from `infra/terraform.tfvars`) → `aws_lambda_function`
+environment block. Update by editing tfvars and re-running `terraform apply`.
 
-- **Webhook never fires** — check the filter is exactly
-  `_type == "order" && delta::changedAny(status)`. The filter expression
-  runs against the changed document; a typo makes it never match.
-- **Webhook fires but returns 401** — signature mismatch. Usually means the
-  secret in Sanity doesn't match `SANITY_WEBHOOK_SECRET` on the Lambda.
-  Re-run `terraform apply` after updating `terraform.tfvars`.
-- **Webhook fires, returns 200, but customer doesn't receive email** — check
-  CloudWatch Logs for the Lambda. Usual causes: Resend API key invalid,
-  `FROM_EMAIL` not verified in Resend, or the customer's email address is
-  malformed.
+| Variable | Source | Purpose |
+|---|---|---|
+| `RESEND_API_KEY` | tfvars `resend_api_key` | Resend API authentication |
+| `FROM_EMAIL` | tfvars `from_email` | Sender address on outgoing emails |
+| `OWNER_EMAIL` | tfvars `owner_email` | Where new-order notifications go |
+| `ALLOWED_ORIGINS` | derived from tfvars `domain_name` | CORS allow-list (apex + www) |
+| `SITE_URL` | tfvars `site_url` (defaults to `https://<domain>`) | Base URL for tracking links in emails |
+| `SANITY_PROJECT_ID` | tfvars `sanity_project_id` | Which Sanity project to read/write |
+| `SANITY_DATASET` | tfvars `sanity_dataset` (default `production`) | Which dataset |
+| `SANITY_API_TOKEN` | tfvars `sanity_api_token` | Runtime Sanity client auth (Editor scope) |
+| `SANITY_WEBHOOK_SECRET` | tfvars `sanity_webhook_secret` | Shared HMAC secret for verifying Sanity webhook signatures |
 
-Total time from Meryl changing order status to the customer's inbox:
-~5-10 seconds.
+### Frontend build-time env
+
+Set by GitHub Actions from the `production` environment → populated by
+`bin/setup.sh` from Terraform outputs. Baked into the JS bundle at build
+time; rebuilding is required to change them.
+
+| Variable | Source |
+|---|---|
+| `PUBLIC_API_URL` | `lambda_function_url` Terraform output |
+| `PUBLIC_SANITY_PROJECT_ID` | tfvars `sanity_project_id` |
+| `PUBLIC_SANITY_DATASET` | tfvars `sanity_dataset` |
+
+### GitHub Actions variables (the `production` environment)
+
+All populated automatically by `bin/setup.sh`.
+
+| Variable | From | Used by |
+|---|---|---|
+| `AWS_REGION` | tfvars `aws_region` | All three deploy workflows (`configure-aws-credentials`) |
+| `AWS_ROLE_TO_ASSUME` | TF output `github_actions_role_arn` | All three deploy workflows (OIDC role assumption) |
+| `FRONTEND_BUCKET` | TF output `frontend_bucket_name` | `deploy-frontend.yml` (S3 sync target) |
+| `CLOUDFRONT_DISTRIBUTION_ID` | TF output `cloudfront_distribution_id` | `deploy-frontend.yml` (invalidation) |
+| `LAMBDA_FUNCTION_NAME` | TF output `lambda_function_name` | `deploy-backend.yml` (update-function-code) |
+| `PUBLIC_API_URL` | TF output `lambda_function_url` | `deploy-frontend.yml` (build env) |
+| `PUBLIC_SANITY_PROJECT_ID` | tfvars `sanity_project_id` | `deploy-frontend.yml` + `deploy-studio.yml` |
+| `PUBLIC_SANITY_DATASET` | tfvars `sanity_dataset` | `deploy-frontend.yml` + `deploy-studio.yml` |
+
+### GitHub Actions secrets (the `production` environment)
+
+Set manually in step 6 of the setup.
+
+| Secret | Scope | Used by |
+|---|---|---|
+| `SANITY_AUTH_TOKEN` | Deploy Studio | `deploy-studio.yml` (runs `sanity deploy`) |
+
+### Local development (not production)
+
+- `frontend/.env` — `PUBLIC_API_URL`, `PUBLIC_SANITY_PROJECT_ID`, `PUBLIC_SANITY_DATASET`
+- `backend/.env` — same as Lambda runtime env above, plus `PORT=3001`
+- `studio/.env` — `SANITY_STUDIO_PROJECT_ID`, `SANITY_STUDIO_DATASET`
+
+See [`run-locally.md`](./run-locally.md) for local dev setup.
+
+### Token summary (the tricky one)
+
+There are **four** Sanity-related tokens. They serve different purposes
+and have different names for good reasons — don't conflate them.
+
+| Name | Where it lives | Scope | Used by |
+|---|---|---|---|
+| `sanity_api_token` (tfvars) → `SANITY_API_TOKEN` (Lambda env) | Encrypted Terraform state + Lambda env | Editor (read + write documents) | Backend runtime: creates orders, reads products/gallery, reads orders |
+| `SANITY_ADMIN_TOKEN` | Your shell environment, only while running `bin/setup.sh` | Administrator (manage webhooks, change dataset privacy) | Setup script only; not stored anywhere after the run |
+| `SANITY_AUTH_TOKEN` (GitHub Actions secret) | GitHub repo secrets (`production` env) | Deploy Studio | `deploy-studio.yml` — runs `sanity deploy` in CI |
+| GitHub fine-grained PAT | Sanity webhook HTTP header | GitHub repo Contents: write | Sanity's content-rebuild webhook, to trigger `repository_dispatch` on the GitHub Actions workflow |
 
 ## Ongoing deployments
 
-After first-time setup, deploys are automatic:
+After first-time setup, all deployment is automatic:
 
-- **Code changes**: push to `main`. Path filters on the workflows mean only
-  the affected package redeploys (change `backend/` → only the backend
-  workflow runs).
-- **Content changes**: Meryl publishes in the studio → Sanity webhook →
-  frontend workflow runs → S3 sync → CloudFront invalidation → live.
-- **Rotating Lambda env vars** (e.g., new Resend key): update
-  `infra/terraform.tfvars` and run `terraform apply`. No code redeploy
-  needed.
+| When this happens | What gets deployed | How it's triggered |
+|---|---|---|
+| Push to `main` touching `frontend/**` | Frontend rebuild + S3 sync + CloudFront invalidation | `deploy-frontend.yml` path filter |
+| Push to `main` touching `backend/**` | Lambda function code update (via esbuild bundle) | `deploy-backend.yml` path filter |
+| Push to `main` touching `studio/**` | Sanity Studio re-published to `*.sanity.studio` | `deploy-studio.yml` path filter |
+| Meryl publishes a product or gallery photo in Studio | Frontend rebuild (so static HTML reflects any server-loader-derived content) | Sanity webhook → `repository_dispatch` → `deploy-frontend.yml` |
+| Meryl changes an order's status in Studio | Customer status email sent (payment received / shipped / delivered / cancelled) | Sanity webhook → backend `/webhooks/sanity-order` route → Resend |
+| You edit `infra/terraform.tfvars` (e.g. rotating `RESEND_API_KEY`) | Lambda env vars update in place | `cd infra && terraform apply` |
+
+The `deploy-frontend` workflow also accepts `repository_dispatch` with
+`event_type: sanity-publish`, which is what the content-rebuild webhook
+sends. It also accepts `workflow_dispatch` from the Actions UI, which is how
+you trigger manual rebuilds.
 
 ## Rollback
 
 ### Frontend
 
-CloudFront caches are short-lived on HTML (60 seconds) and long-lived on
-hashed assets (1 year, immutable). To roll back the frontend, re-run a
-previous successful **Deploy frontend** workflow run from the Actions UI —
-the old commit will be rebuilt and synced.
+CloudFront caches HTML for 60 seconds and hashed assets for 1 year (immutable).
+To roll back to a previous frontend version, re-run a previous successful
+**Deploy frontend** workflow run from the Actions UI (three-dot menu → Re-run
+all jobs). The previous commit will be rebuilt and synced. Invalidation
+propagates globally in ~1 minute.
+
+If you need to roll back further than the workflow run history, create a
+revert commit and push it:
+
+```bash
+git revert <bad-commit-sha>
+git push origin main
+```
 
 ### Backend
 
-Lambda versions are published automatically by the deploy workflow (`--publish`
-flag). To roll back:
+The Lambda is deployed with `aws lambda update-function-code --publish`,
+which creates a numbered version each time. The **Function URL is bound to
+`$LATEST`**, not to a specific version or alias, so rollback works by
+overwriting `$LATEST` with earlier code. Two ways:
 
-```bash
-aws lambda update-alias \
-  --function-name meryl-green-designs-backend \
-  --name live \
-  --function-version <previous-version>
-```
+1. **Re-run a previous successful `deploy-backend.yml` workflow run** from
+   the Actions UI. The workflow re-checks out the commit from that run,
+   rebuilds the Lambda bundle, and pushes it as the new `$LATEST`. This is
+   the easiest option.
+2. **Revert the offending commit** and push to `main`:
 
-Or simply re-run a previous successful **Deploy backend** workflow run.
+   ```bash
+   git revert <bad-commit-sha>
+   git push origin main
+   ```
+
+   The deploy-backend workflow fires automatically on the new commit.
+
+Historical versions are preserved by the `--publish` flag (you can see them
+with `aws lambda list-versions-by-function`), so you could also invoke a
+specific version manually if you wanted — but the Function URL will keep
+pointing at `$LATEST` until you either overwrite it or create an alias. For
+now, the two workflow-based options above are the supported rollback path.
 
 ### Studio
 
-The Sanity CLI does not provide first-class rollback for the studio itself.
-If a studio deploy breaks things, redeploy an earlier commit:
+The Sanity CLI doesn't provide first-class rollback for the studio app. If
+a studio deploy breaks things, re-check out the previous commit for the
+`studio/` folder and re-run the deploy:
 
 ```bash
 git checkout <previous-commit> -- studio
-pnpm studio exec sanity deploy
+pnpm studio deploy
 git checkout HEAD -- studio
+```
+
+Or revert the commit on `main` — the `deploy-studio.yml` workflow will pick
+it up automatically.
+
+### Infrastructure (Terraform)
+
+Terraform state is versioned in S3. If a bad `terraform apply` breaks
+something, roll back by either:
+
+- `git revert` the infra change and re-running `terraform apply`
+- `terraform state rollback` to a previous state version (S3 versioning)
+- Manually editing state with `terraform import` / `terraform state rm` —
+  only as a last resort
+
+## Adding a new content type
+
+Suppose you want to add "testimonials" or "blog posts" to the CMS. The
+pattern for doing so is consistent across all the document types we have
+today (`product`, `galleryPhoto`, `order`):
+
+### 1. Create the Sanity schema
+
+Create `studio/schemas/testimonial.ts`:
+
+```typescript
+import { defineField, defineType } from 'sanity';
+
+export const testimonial = defineType({
+  name: 'testimonial',
+  title: 'Testimonial',
+  type: 'document',
+  fields: [
+    defineField({ name: 'author', type: 'string', validation: (r) => r.required() }),
+    defineField({ name: 'quote', type: 'text', rows: 4, validation: (r) => r.required() }),
+    defineField({ name: 'visible', type: 'boolean', initialValue: true }),
+    defineField({ name: 'order', type: 'number', initialValue: 0 })
+  ],
+  orderings: [{ title: 'Display order', name: 'orderAsc', by: [{ field: 'order', direction: 'asc' }] }]
+});
+```
+
+### 2. Register it in the schema index
+
+`studio/schemas/index.ts`:
+
+```typescript
+import { testimonial } from './testimonial';
+// ... plus existing imports ...
+
+export const schemaTypes = [product, galleryPhoto, order, testimonial];
+```
+
+### 3. Add the backend type + query helper
+
+In `backend/src/sanity.ts`, add the TypeScript type, the GROQ query, and a
+fetcher:
+
+```typescript
+export type SanityTestimonial = {
+  _id: string;
+  author: string;
+  quote: string;
+  visible: boolean;
+  order: number;
+};
+
+const TESTIMONIALS_QUERY = `*[_type == "testimonial" && visible == true] | order(order asc) {
+  _id, author, quote, visible, order
+}`;
+
+export async function getTestimonials(): Promise<SanityTestimonial[]> {
+  const client = getClient();
+  return client.fetch<SanityTestimonial[]>(TESTIMONIALS_QUERY);
+}
+```
+
+### 4. Create the backend route
+
+`backend/src/routes/testimonials.ts`:
+
+```typescript
+import { Hono } from 'hono';
+import { getTestimonials } from '../sanity.js';
+
+export const testimonials = new Hono();
+
+testimonials.get('/', async (c) => {
+  try {
+    const list = await getTestimonials();
+    return c.json({ testimonials: list });
+  } catch (err) {
+    console.error('Failed to fetch testimonials', err);
+    return c.json({ testimonials: [], error: 'Failed to load' }, 500);
+  }
+});
+```
+
+### 5. Mount it in `app.ts`
+
+```typescript
+import { testimonials } from './routes/testimonials.js';
+// ...
+app.route('/testimonials', testimonials);
+```
+
+### 6. Frontend consumption
+
+Two options depending on the route's characteristics:
+
+- **Static with a server loader** (`+page.server.ts` with `prerender = true`)
+  — data is fetched at build time and baked into HTML. Good for content that
+  changes rarely and benefits from SEO.
+- **Client-side fetch** (`+page.ts` with `prerender = true, ssr = true`,
+  `onMount` fetch) — data is fetched on mount with a skeleton loading state.
+  Good for content that changes frequently or is behind the fold. This is
+  what `/shop` and `/gallery` use.
+
+### 7. Deploy
+
+```bash
+git add studio/ backend/ frontend/
+git commit -m "feat: add testimonials content type"
+git push origin main
+```
+
+The CI workflows will deploy the backend (path filter picks up `backend/**`)
+and the frontend (picks up `frontend/**`). The studio won't redeploy until
+you push something touching `studio/` specifically — if you want Meryl to
+see the new content type immediately, run `pnpm studio deploy` manually once,
+or trigger `deploy-studio.yml` from the Actions UI.
+
+If the new type should trigger content rebuilds, extend the content-rebuild
+Sanity webhook's GROQ filter to include it:
+
+```groq
+_type == "product" || _type == "galleryPhoto" || _type == "testimonial"
 ```
 
 ## Cost expectations
 
-Approximate monthly costs for a site with hundreds of visitors and a few
-orders per week:
+Approximate monthly cost for a site with hundreds of visitors and a few
+orders per week, in South African Rand:
 
-- **S3**: ~R1 (storage) + ~R0 (requests, under free tier)
-- **CloudFront**: ~R0–10 (under 1TB/month free tier for the first year, then
-  ~R1.50/GB out)
-- **Lambda**: R0 (free tier covers millions of requests/month)
-- **Route 53**: ~R10 (R9 per hosted zone per month)
-- **ACM certificate**: free
-- **CloudWatch Logs**: ~R0–5 depending on log volume
-- **DynamoDB lock table**: R0 (pay-per-request, negligible)
-- **Sanity**: free (free tier covers this scale indefinitely)
-- **Resend**: free (3000 emails/month free tier)
+| Service | Cost | Notes |
+|---|---|---|
+| S3 (frontend bucket + state bucket) | ~R1 | Storage + requests, mostly under free tier |
+| CloudFront | R0–10 | First 1 TB of egress is free for 12 months, then ~R1.50/GB |
+| Lambda (requests + compute) | R0 | Free tier covers 1M requests + 400k GB-seconds/month |
+| Lambda Function URL | R0 | No extra cost beyond Lambda itself |
+| Route 53 hosted zone | ~R10 | Flat ~R9 per zone per month |
+| ACM certificate | R0 | Free for public certs |
+| CloudWatch Logs | R0–5 | Depends on log volume; 30-day retention in the config |
+| DynamoDB lock table | R0 | Pay-per-request, negligible at this usage |
+| Sanity | R0 | Free "Growth" tier is plenty for this scale |
+| Resend | R0 | Free tier: 3000 emails/month |
 
-**Total: ~R15–30/month**, most of which is the Route 53 hosted zone fee.
+**Total: ~R15–30/month**, most of which is the Route 53 hosted zone. If you
+host DNS elsewhere you can save ~R10 of this, but you lose the ability for
+Terraform to manage DNS records automatically.
+
+These numbers are approximate and will vary with traffic. A sudden spike
+(thousands of visitors/day, e.g. going viral) could push CloudFront and
+Resend costs up — budget alerts are a good idea, see the CloudWatch +
+Billing console.
 
 ## Tearing everything down
 
@@ -367,7 +715,206 @@ cd infra
 terraform destroy
 ```
 
-This removes all AWS resources Terraform created. It does **not** touch the
-state bucket, the lock table, the Sanity project, Resend, or the domain
-registration — those were set up manually and you'll delete them separately
-if you want to.
+This removes every AWS resource Terraform created — S3 bucket, CloudFront,
+Lambda, IAM, Route 53 records, ACM cert, DynamoDB lock table, OIDC provider.
+
+It does **not** remove:
+
+- The Terraform state bucket or lock table (created by the setup script, not
+  Terraform itself — delete manually if you want a clean slate)
+- Your Sanity project (delete via Sanity dashboard)
+- Your Resend account or verified domain
+- Your domain registration or the Route 53 hosted zone
+
+Destroying is permanent. Everything can be re-created by running the setup
+script again, but any content in Sanity will still be there (because Sanity
+is separate from AWS).
+
+## Troubleshooting
+
+**`terraform init` fails with "bucket does not exist"**
+: You ran Terraform directly without running `bin/setup.sh` first. The state
+  bucket is created by the script. Either run `./bin/setup.sh` or create the
+  bucket manually (see [Appendix A](#appendix-a-understanding-what-binsetupsh-does)).
+
+**Setup script: "af-south-1 is not enabled"**
+: Opt-in regions require manual activation. AWS Console → account menu →
+  Account → AWS Regions → Enable *Africa (Cape Town)*. Takes ~5 minutes
+  before the region responds.
+
+**Setup script: "SANITY_ADMIN_TOKEN env var is not set"**
+: Not fatal — the AWS and GitHub parts will still run. You can re-run the
+  script later with the token set to automate the Sanity dataset privacy and
+  webhook creation. Or do those two steps manually in the Sanity dashboard.
+
+**Setup script: Sanity webhook creation returns 401**
+: Your `SANITY_ADMIN_TOKEN` doesn't have Administrator scope. Create a new
+  token with Administrator permissions and re-run.
+
+**Frontend deployed but shows "Could not load products"**
+: Check the browser devtools Network tab for the failing request. Common
+  causes: backend not yet deployed, `PUBLIC_API_URL` GitHub variable wrong,
+  Lambda cold-starting (first request after a long idle period can take 2–3
+  seconds — retry).
+
+**Order submission succeeds but no emails arrive**
+: Check Resend dashboard → Emails → Log for the attempted send. If it's not
+  there, the Lambda isn't reaching Resend — check CloudWatch Logs for the
+  Lambda. If it's there but marked `failed`, your sending domain isn't fully
+  verified.
+
+**Sanity webhook fires but returns 401**
+: The backend's `SANITY_WEBHOOK_SECRET` doesn't match the secret configured
+  in the Sanity webhook. Make sure you pasted the same value into
+  `terraform.tfvars` and the webhook's "Secret" field in Sanity.
+
+**Content-rebuild webhook fires but GitHub workflow doesn't run**
+: Common causes: the GitHub PAT in the webhook has expired, the PAT doesn't
+  have `Contents: write` on the repo, or the URL has the wrong owner/repo.
+  Check the Sanity webhook's **Attempts** tab — it shows the response GitHub
+  returned, which will tell you what's wrong.
+
+**Order-status email sent on every publish (even non-status edits)**
+: The Sanity webhook's GROQ filter is wrong. It should be
+  `_type == "order" && delta::changedAny(status)` — the `delta::changedAny`
+  is what restricts firing to actual status changes. `delta::changedAny` is
+  a Sanity-specific GROQ function; it's not a typo.
+
+**Lambda cold start is slow on first request after idle**
+: Expected. Node 20 Lambda cold starts are ~300–800 ms for our 787 KB
+  bundle. Subsequent requests are ~5–20 ms. If this becomes a UX problem,
+  look at Provisioned Concurrency (costs extra) or a scheduled CloudWatch
+  rule that pings `/health` every 5 minutes to keep the function warm.
+
+## Appendix A: Understanding what `bin/setup.sh` does
+
+For anyone who wants to understand the automated steps, or run them by hand
+in an emergency. Each section below is what the script does for the
+corresponding step.
+
+### A1. Prerequisite checks
+
+```bash
+command -v aws terraform gh jq curl
+aws sts get-caller-identity    # must succeed
+gh auth status                 # must succeed
+test -f infra/terraform.tfvars # must exist
+```
+
+### A2. State backend bootstrap
+
+```bash
+export AWS_REGION=af-south-1
+STATE_BUCKET=meryl-green-designs-tfstate
+LOCK_TABLE=meryl-green-designs-tfstate-lock
+
+# S3 bucket
+aws s3api create-bucket \
+  --bucket "$STATE_BUCKET" --region "$AWS_REGION" \
+  --create-bucket-configuration LocationConstraint="$AWS_REGION"
+
+aws s3api put-bucket-versioning \
+  --bucket "$STATE_BUCKET" \
+  --versioning-configuration Status=Enabled
+
+aws s3api put-bucket-encryption \
+  --bucket "$STATE_BUCKET" \
+  --server-side-encryption-configuration \
+    '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}'
+
+aws s3api put-public-access-block \
+  --bucket "$STATE_BUCKET" \
+  --public-access-block-configuration \
+    BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
+
+# DynamoDB lock table
+aws dynamodb create-table \
+  --table-name "$LOCK_TABLE" \
+  --attribute-definitions AttributeName=LockID,AttributeType=S \
+  --key-schema AttributeName=LockID,KeyType=HASH \
+  --billing-mode PAY_PER_REQUEST \
+  --region "$AWS_REGION"
+```
+
+### A3. Terraform apply
+
+```bash
+cd infra
+terraform init -upgrade
+terraform plan -out=.setup.tfplan
+terraform apply .setup.tfplan
+```
+
+### A4. Populate GitHub Actions variables
+
+```bash
+# Read outputs
+cd infra
+OUTPUTS=$(terraform output -json)
+FRONTEND_BUCKET=$(echo "$OUTPUTS" | jq -r '.frontend_bucket_name.value')
+CLOUDFRONT_ID=$(echo "$OUTPUTS" | jq -r '.cloudfront_distribution_id.value')
+LAMBDA_NAME=$(echo "$OUTPUTS" | jq -r '.lambda_function_name.value')
+LAMBDA_URL=$(echo "$OUTPUTS" | jq -r '.lambda_function_url.value')
+ROLE_ARN=$(echo "$OUTPUTS" | jq -r '.github_actions_role_arn.value')
+cd -
+
+# Create environment (idempotent)
+gh api --silent -X PUT "repos/$GITHUB_REPO/environments/production"
+
+# Set variables
+for pair in \
+  "AWS_REGION=af-south-1" \
+  "AWS_ROLE_TO_ASSUME=$ROLE_ARN" \
+  "FRONTEND_BUCKET=$FRONTEND_BUCKET" \
+  "CLOUDFRONT_DISTRIBUTION_ID=$CLOUDFRONT_ID" \
+  "LAMBDA_FUNCTION_NAME=$LAMBDA_NAME" \
+  "PUBLIC_API_URL=$LAMBDA_URL" \
+  "PUBLIC_SANITY_PROJECT_ID=$SANITY_PROJECT_ID" \
+  "PUBLIC_SANITY_DATASET=production"
+do
+  name="${pair%%=*}"
+  value="${pair#*=}"
+  gh variable set "$name" --env production --body "$value" --repo "$GITHUB_REPO"
+done
+```
+
+### A5. Flip Sanity dataset to private
+
+```bash
+curl -X PATCH \
+  "https://api.sanity.io/v2021-06-07/projects/$SANITY_PROJECT_ID/datasets/production" \
+  -H "Authorization: Bearer $SANITY_ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"aclMode": "private"}'
+```
+
+### A6. Create backend Sanity webhook
+
+```bash
+curl -X POST \
+  "https://api.sanity.io/v2021-06-07/projects/$SANITY_PROJECT_ID/hooks" \
+  -H "Authorization: Bearer $SANITY_ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d @- <<EOF
+{
+  "name": "Order status email",
+  "url": "${LAMBDA_URL}webhooks/sanity-order",
+  "dataset": "production",
+  "type": "document",
+  "rule": {
+    "on": ["update"],
+    "filter": "_type == \"order\" && delta::changedAny(status)",
+    "projection": ""
+  },
+  "httpMethod": "POST",
+  "apiVersion": "v2024-10-01",
+  "secret": "$SANITY_WEBHOOK_SECRET",
+  "isDisabled": false
+}
+EOF
+```
+
+This is roughly the full script in bash. The real
+[`bin/setup.sh`](../bin/setup.sh) adds prerequisite checks, error handling,
+idempotency guards, and the final checklist output — around 500 lines total
+— but the core logic is what's above.

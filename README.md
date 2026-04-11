@@ -43,6 +43,22 @@ pnpm studio dev             # Sanity Studio (:3333) — run separately when need
 
 See [`docs/run-locally.md`](./docs/run-locally.md) for the full setup walkthrough.
 
+## One-command production deploy
+
+Once prerequisites are in place (AWS / GitHub / Sanity / Resend accounts,
+`af-south-1` enabled, `infra/terraform.tfvars` filled in), the entire
+infrastructure setup is one command:
+
+```bash
+./bin/setup.sh
+```
+
+It creates the Terraform state backend, runs `terraform apply`, populates
+GitHub Actions environment variables, and (with `SANITY_AUTH_TOKEN` set)
+configures the Sanity webhook and dataset privacy. See
+[`docs/deployment.md`](./docs/deployment.md) for the complete walkthrough
+and what still needs manual attention.
+
 ## Documentation
 
 - [`docs/architecture.md`](./docs/architecture.md) — how the pieces fit together

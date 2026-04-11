@@ -26,7 +26,22 @@ For first-time deploy walkthrough see [`../docs/deployment.md`](../docs/deployme
 - The `af-south-1` region must be **enabled** in your AWS account (Account
   → AWS Regions → enable Africa (Cape Town))
 
+## Easiest path: use `bin/setup.sh`
+
+The project ships with a one-command bootstrap script at
+[`../bin/setup.sh`](../bin/setup.sh) that handles every step below
+automatically (plus populates GitHub Actions env vars and Sanity webhooks).
+
+```bash
+./bin/setup.sh
+```
+
+If you'd rather run things by hand — or you want to understand what the
+script does — read on.
+
 ## One-time bootstrap (before `terraform init`)
+
+> The setup script does this for you. This section is the manual version.
 
 Terraform stores its state in an S3 bucket with a DynamoDB lock table. You
 must create these manually the first time, because Terraform can't create its
@@ -63,7 +78,8 @@ aws dynamodb create-table \
   --region "$AWS_REGION"
 ```
 
-Then open `main.tf` and uncomment the `backend "s3"` block.
+The `backend "s3"` block in `main.tf` is already configured with these
+bucket/table names, so the next `terraform init` will pick them up.
 
 ## Configure
 
