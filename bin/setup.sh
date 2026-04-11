@@ -46,11 +46,17 @@ LOCK_TABLE="meryl-green-designs-tfstate-lock"
 STATE_KEY="prod/terraform.tfstate"
 INFRA_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/infra"
 TFVARS_FILE="$INFRA_DIR/terraform.tfvars"
+TFVARS_SOPS_FILE="$INFRA_DIR/terraform.tfvars.sops"
 
 DRY_RUN=0
 if [[ "${1:-}" == "--dry" || "${1:-}" == "--dry-run" ]]; then
 	DRY_RUN=1
 fi
+
+# Track whether we decrypted tfvars ourselves, so we only clean up a file we
+# created (and don't shred a pre-existing plaintext tfvars the operator has
+# been editing by hand).
+DECRYPTED_TFVARS=0
 
 # ----------------------------------------------------------------------------
 # Output helpers
@@ -75,6 +81,17 @@ warn()  { printf "    ${C_YELLOW}!${C_RESET} %s\n" "$*" >&2; }
 err()   { printf "    ${C_RED}✗${C_RESET} %s\n" "$*" >&2; }
 fatal() { err "$*"; exit 1; }
 
+cleanup() {
+	# Shred any plaintext tfvars file we decrypted so it doesn't survive
+	# this script invocation. Only runs if we created the file ourselves —
+	# leaves a pre-existing plaintext tfvars (from before the SOPS migration)
+	# alone.
+	if (( DECRYPTED_TFVARS == 1 )) && [[ -f "$TFVARS_FILE" ]]; then
+		rm -f "$TFVARS_FILE"
+	fi
+}
+trap cleanup EXIT
+
 trap 'err "Script failed at line $LINENO (see output above)"' ERR
 
 # ----------------------------------------------------------------------------
@@ -85,7 +102,7 @@ check_prereqs() {
 	step "Checking prerequisites"
 
 	local missing=0
-	for tool in aws terraform gh jq curl; do
+	for tool in aws terraform gh jq curl sops; do
 		if command -v "$tool" >/dev/null 2>&1; then
 			ok "$tool is installed"
 		else
@@ -107,14 +124,56 @@ check_prereqs() {
 		fatal "GitHub CLI is not authenticated. Run: gh auth login"
 	fi
 
-	if [[ -f "$TFVARS_FILE" ]]; then
-		ok "$TFVARS_FILE exists"
-	else
-		err "$TFVARS_FILE is missing"
-		log "Copy the example and fill it in:"
-		log "  cp $INFRA_DIR/terraform.tfvars.example $TFVARS_FILE"
-		exit 1
+	ensure_plaintext_tfvars
+}
+
+# Make sure a plaintext terraform.tfvars exists for this script's run.
+# Order of preference:
+#   1. If a plaintext terraform.tfvars already exists, use it as-is (legacy
+#      flow, no SOPS involved — operator will see a warning nudging them to
+#      migrate).
+#   2. If terraform.tfvars.sops exists, decrypt it into terraform.tfvars for
+#      the duration of this script. The cleanup trap shreds the plaintext
+#      on exit.
+#   3. Otherwise, fail and tell the operator to run bin/sops-init.sh.
+ensure_plaintext_tfvars() {
+	if [[ -f "$TFVARS_FILE" && -f "$TFVARS_SOPS_FILE" ]]; then
+		warn "Both $TFVARS_FILE (plaintext) and $TFVARS_SOPS_FILE exist."
+		warn "Using the plaintext file and leaving it untouched."
+		warn "Once you've migrated, delete the plaintext file so future runs"
+		warn "decrypt from the SOPS copy instead."
+		return
 	fi
+
+	if [[ -f "$TFVARS_FILE" ]]; then
+		ok "$TFVARS_FILE exists (plaintext, pre-SOPS flow)"
+		log "Consider migrating: bin/sops-init.sh then"
+		log "  sops infra/terraform.tfvars.sops  # paste current values, save"
+		log "  rm infra/terraform.tfvars         # remove the plaintext file"
+		return
+	fi
+
+	if [[ -f "$TFVARS_SOPS_FILE" ]]; then
+		log "Decrypting $TFVARS_SOPS_FILE..."
+		if (( DRY_RUN )); then
+			log "  [dry run] would decrypt to $TFVARS_FILE"
+			# On a dry run we still need *something* to read — create an
+			# empty file and let require_var() complain if fields are missing.
+			touch "$TFVARS_FILE"
+			DECRYPTED_TFVARS=1
+			return
+		fi
+		sops --decrypt "$TFVARS_SOPS_FILE" > "$TFVARS_FILE"
+		chmod 600 "$TFVARS_FILE"
+		DECRYPTED_TFVARS=1
+		ok "Decrypted to $TFVARS_FILE (will be shredded on exit)"
+		return
+	fi
+
+	err "Neither $TFVARS_FILE nor $TFVARS_SOPS_FILE exists."
+	log "Run bin/sops-init.sh first — it generates an age key, seeds an"
+	log "encrypted tfvars from the example, and wires up .sops.yaml."
+	exit 1
 }
 
 # ----------------------------------------------------------------------------

@@ -35,14 +35,25 @@ meryl-green-designs/
 
 ```bash
 pnpm install
+
+# First-time only: provision a dedicated KMS key for this project's secrets
+# and seed the SOPS-encrypted files from examples. Requires AWS CLI auth.
+# See docs/deployment.md § Secrets management for the full workflow.
+./bin/sops-init.sh
+
+# Decrypt the backend secrets into a local .env for pnpm dev:
+sops -d backend/.env.sops > backend/.env
+
+# Frontend and studio have public, non-secret env vars — plain copy is fine:
 cp frontend/.env.example frontend/.env
-cp backend/.env.example backend/.env
 cp studio/.env.example studio/.env
+
 pnpm dev                    # frontend (:7777) + backend (:3001)
 pnpm studio dev             # Sanity Studio (:3333) — run separately when needed
 ```
 
-See [`docs/run-locally.md`](./docs/run-locally.md) for the full setup walkthrough.
+See [`docs/run-locally.md`](./docs/run-locally.md) for the full setup walkthrough
+and [`docs/deployment.md`](./docs/deployment.md) for the SOPS workflow.
 
 ## One-command production deploy
 

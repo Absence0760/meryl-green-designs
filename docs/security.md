@@ -255,28 +255,66 @@ into submitting requests to the backend on their behalf.
 | **Impact** | high |
 
 **What could happen:** A secret (Resend API key, Sanity API token, webhook
-secret) leaks via git history, CI logs, or a compromised dev machine.
+secret) leaks via git history, CI logs, a compromised dev machine, or
+ends up encrypted with the wrong key.
 
 **Current mitigations:**
-- All secrets are in `.env` files that are `.gitignore`d, and in Terraform
-  variables marked `sensitive = true`. The example files
-  (`backend/.env.example`, `infra/terraform.tfvars.example`) list the
-  variable names with empty values only.
-- Production secrets are injected into the Lambda as environment variables
-  at `terraform apply` time. They do not appear in the Lambda's source
-  package or any git artifact.
-- CI/CD uses **GitHub OIDC** federation to assume an AWS role — there are
-  no long-lived AWS access keys in GitHub secrets.
+- **SOPS + AWS KMS encryption.** `infra/terraform.tfvars.sops` and
+  `backend/.env.sops` are committed to the repo as encrypted blobs. The
+  encryption root is a project-dedicated KMS key (`alias/meryl-green-designs-sops`
+  in `af-south-1`) with `kms:Decrypt` gated by IAM. See
+  `docs/deployment.md § Secrets management` for the full workflow and
+  recovery procedures.
+- **Access is IAM-bound, not file-bound.** There is no private key file on
+  any laptop. Whoever has `kms:Decrypt` on the project's KMS key — via
+  their IAM identity's policies — can decrypt. Revocation is an IAM
+  change, takes effect immediately.
+- **CloudTrail records every `kms:Decrypt` call** against the key. If a
+  credential is suspected leaked, CloudTrail tells you when it was last
+  used and from what source.
+- **Automatic key-material rotation is enabled** on the KMS key. AWS
+  rotates the underlying cryptographic material annually while keeping
+  the same alias — encrypted files keep working without re-encryption.
+- **Plaintext secrets are gitignored.** `.gitignore` covers `.env`,
+  `.env.*` (with an exception only for `.env.example` and `.env.sops`),
+  and `*.tfvars` (except `.tfvars.example` and `.tfvars.sops`). A stray
+  `git add infra/terraform.tfvars` is blocked before it can stage.
+- **`bin/setup.sh` decrypts to a scratch file and shreds it on exit.**
+  The plaintext `terraform.tfvars` exists only for the duration of a
+  Terraform apply; a bash `trap` on EXIT deletes it even if the script
+  errors out.
+- **Production secrets are injected into the Lambda as env vars** at
+  `terraform apply` time. They do not appear in the Lambda's source
+  package, any git artifact, or CI logs.
+- **CI/CD uses GitHub OIDC** federation to assume an AWS role — there are
+  no long-lived AWS access keys in GitHub secrets. The only GitHub
+  Actions secret is `SANITY_AUTH_TOKEN` (studio deploy), which is a
+  scope-limited "Deploy Studio" token, not an admin token.
 - `.claude/settings.json` denies common destructive AWS commands
-  (`aws s3api delete-bucket`, `aws cloudfront delete*`, etc.) to make
-  accidental leaks less likely during interactive debugging.
+  (`aws s3api delete-bucket`, `aws cloudfront delete*`, etc.) to reduce
+  the chance of accidental disclosure during interactive debugging.
 
 **Residual risk:**
-- Secrets are still in `terraform.tfvars` on the operator's laptop. Treat
-  that file like an SSH key.
-- Resend, Sanity, and AWS console credentials belong to the operator and
-  are outside repo scope. MFA on all three is essential and not enforced by
-  anything in this repo.
+- **An AWS credential with `kms:Decrypt` on the project key is a
+  plaintext secret equivalent.** If an IAM access key with those
+  permissions leaks, the attacker can decrypt everything in the repo.
+  Mitigation: MFA on the AWS console account, short-lived credentials
+  where possible, scoped IAM policies that only grant decrypt to
+  identities that genuinely need it, CloudTrail alerting on unusual
+  decrypt patterns.
+- **Loss of AWS account access is catastrophic to this project** — both
+  the secrets AND the Terraform state bucket AND the running
+  infrastructure are gone. Mitigation is AWS account recovery hygiene:
+  MFA with backup codes stored physically, a verified recovery email, a
+  second admin user or role configured. This is outside the repo.
+- Resend and Sanity dashboard credentials are outside AWS's blast radius
+  and need their own MFA.
+- **Encrypted files in git history survive rotation.** If a secret leaks
+  and you rotate it, the old value is still readable by anyone with
+  `kms:Decrypt` on the project key — but the new value in the current
+  commit is different. Git history of rotated secrets is therefore only
+  useful to an attacker who also has KMS access, which is the same
+  trust boundary as the latest commit. Not a separate risk.
 
 ---
 
@@ -344,6 +382,57 @@ If something goes wrong:
      (it should already be).
    - Revoke and rotate `SANITY_API_TOKEN` regardless, since it was the only
      thing standing between anonymous clients and the order documents.
+6. **IAM credential with `kms:Decrypt` leaked.** (e.g. an AWS access key
+   pair for your operator user showed up in a public place, or a role's
+   temporary credentials were exfiltrated.)
+   - Revoke the credential immediately — deactivate the access key in the
+     IAM console, or `aws iam update-access-key --status Inactive`.
+   - Pull CloudTrail to see what the credential actually did: every
+     `Decrypt` call against the project KMS key is logged.
+     ```bash
+     aws cloudtrail lookup-events \
+       --lookup-attributes AttributeKey=EventName,AttributeValue=Decrypt \
+       --region af-south-1 --max-results 50
+     ```
+     Filter for events whose `resources` includes the project key ARN and
+     whose source IP / user agent looks suspicious.
+   - If the attacker could have decrypted the SOPS files during the
+     exposure window, treat every secret in `infra/terraform.tfvars.sops`
+     and `backend/.env.sops` as leaked. Rotate all of them in their source
+     dashboards (Resend, Sanity API token, Sanity webhook secret).
+   - Update the values via `sops infra/terraform.tfvars.sops` and `sops
+     backend/.env.sops`, then `terraform apply`.
+   - Optionally also rotate the KMS key itself by creating a new key and
+     updating the alias (see `docs/deployment.md § Rotating the KMS key`).
+     Not strictly required — the leaked credential can't grant itself new
+     permissions — but a defence-in-depth move.
+7. **AWS account compromised.** (Not just one credential — the whole
+   account.) This is a major incident; treat the project's KMS key as
+   owned by the attacker.
+   - Regain control of the AWS account via AWS account recovery (phone
+     verification, support ticket if needed).
+   - Once back in, rotate every IAM credential in the account, enable
+     MFA on the root user if not already, audit CloudTrail for the full
+     exposure window.
+   - Rotate every secret in the repo at its source dashboard.
+   - Create a new KMS key (or rotate the existing one as in deployment.md),
+     re-encrypt the SOPS files, commit.
+   - Run `terraform apply` to push the new values.
+   - Consider whether the infrastructure itself was tampered with
+     (Lambda code, S3 bucket contents, IAM policies) and reprovision as
+     needed.
+8. **Lost AWS account access entirely** (account closed, recovery failed).
+   - The encrypted files in git are no longer recoverable by you — they
+     were encrypted under a KMS key you no longer control. This is a
+     recovery incident, not a security incident (the secrets are not
+     leaked, they're just no longer readable by you).
+   - Regenerate every secret from its source dashboard (Resend, Sanity).
+   - Create a new AWS account, run `bin/sops-init.sh` to provision a
+     fresh KMS key, fill in the encrypted files with the new values.
+   - Commit. Run the full `bin/setup.sh` to re-provision infrastructure
+     under the new account.
+   - Total downtime depends on how long AWS account creation takes and
+     DNS propagation — typically 1–2 hours.
 
 ---
 

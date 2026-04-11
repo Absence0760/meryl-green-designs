@@ -120,8 +120,13 @@ to understand what the script is doing under the hood, see
 ┌──────────────────────────────────────────────────────────────────────┐
 │  CONFIGURE                                           (~5 min)        │
 ├──────────────────────────────────────────────────────────────────────┤
-│  cp infra/terraform.tfvars.example infra/terraform.tfvars            │
-│  $EDITOR infra/terraform.tfvars   (fill in values — see Step 2)      │
+│  ./bin/sops-init.sh                                                  │
+│  sops infra/terraform.tfvars.sops   (fill in values in $EDITOR)      │
+│  sops backend/.env.sops             (same for local-dev secrets)     │
+│                                                                      │
+│  sops-init.sh generates an age keypair at                            │
+│  ~/.config/sops/age/keys.txt (one-time), wires the public recipient  │
+│  into .sops.yaml, and seeds encrypted files from the examples.       │
 └──────────────────────────────────────────────────────────────────────┘
                                   │
                                   ▼
@@ -408,6 +413,158 @@ If all seven steps work, the full flow is live end-to-end.
 Edit a product in the studio (change the name or price), click **Publish**.
 Within ~60 seconds a new **Deploy frontend** workflow run should appear in
 GitHub Actions, and the change should be visible on the live site.
+
+## Secrets management (SOPS + AWS KMS)
+
+Secrets live in the repo as SOPS-encrypted files. A project-dedicated AWS
+KMS key (alias `alias/meryl-green-designs-sops` in `af-south-1`) is the
+encryption root — anyone with `kms:Decrypt` permission on that key can read
+the encrypted files. Access is bound to AWS IAM rather than a file on disk,
+so laptop loss is fully recoverable: a new machine + `aws configure` + the
+same AWS identity gets you back in. The KMS key costs ~$1/month.
+
+### What's encrypted, what isn't
+
+| File | Encrypted? | Why |
+|---|---|---|
+| `infra/terraform.tfvars.sops` | ✅ yes | Committed. Contains the AWS + Resend + Sanity secrets Terraform needs. |
+| `infra/terraform.tfvars` | — | Plaintext, gitignored. Created by `bin/setup.sh` as a scratch file, shredded on exit. |
+| `infra/terraform.tfvars.example` | ❌ no | Template with empty placeholder values — safe to commit. |
+| `backend/.env.sops` | ✅ yes | Committed. Local-dev secrets for `tsx` / `pnpm dev`. |
+| `backend/.env` | — | Plaintext, gitignored. Created by the operator via `sops -d backend/.env.sops > backend/.env`. |
+| `backend/.env.example` | ❌ no | Template — safe to commit. |
+| `frontend/.env`, `studio/.env` | ❌ no | Only contain `PUBLIC_*` vars / project IDs — non-secret by SvelteKit convention. |
+
+### First-time setup
+
+```bash
+./bin/sops-init.sh
+```
+
+The script is idempotent. It:
+
+1. Checks that `sops`, `aws`, and `jq` are installed.
+2. Verifies you're authenticated to AWS (`aws sts get-caller-identity`).
+3. Checks whether the project's KMS alias (`alias/meryl-green-designs-sops`) already exists. If it does, the existing key is reused; if not, a new KMS key is created with annual automatic key-material rotation enabled, tagged with `project=meryl-green-designs`.
+4. Writes the key's alias ARN into `.sops.yaml`, replacing the placeholder.
+5. Seeds `infra/terraform.tfvars.sops` and `backend/.env.sops` from the example files, encrypted under the KMS key.
+6. Prints next steps.
+
+Re-running the script after first setup is safe: it will not create a duplicate KMS key (it reuses the alias), will not overwrite a populated `.sops.yaml`, and will not overwrite existing encrypted files. Each step has an explicit "already exists" short-circuit.
+
+**There is no key file to back up.** Your AWS account IS the backup. If you lose your laptop, install `sops` + `awscli` on a new machine, `aws configure` with your existing credentials, clone the repo, and `sops infra/terraform.tfvars.sops` works immediately.
+
+### Environment overrides
+
+`bin/sops-init.sh` accepts two environment overrides for edge cases:
+
+| Variable | Default | Use when |
+|---|---|---|
+| `KMS_REGION` | `af-south-1` | You want the KMS key in a different AWS region (e.g. to co-locate with other infrastructure) |
+| `KMS_ALIAS` | `meryl-green-designs-sops` | You want to reuse an existing KMS alias from a different name — e.g. to share one key across all your projects. **Default of one-key-per-project is recommended** for blast-radius isolation. |
+
+### Daily workflow
+
+| Action | Command |
+|---|---|
+| Edit a secret | `sops infra/terraform.tfvars.sops` — sops calls KMS, opens plaintext in `$EDITOR`, re-encrypts on save |
+| Rotate a value | Same as "edit" — change the value, save. Git diff shows the whole encrypted blob changed; `git log` tells you when. |
+| Read a secret into dev env | `sops -d backend/.env.sops > backend/.env` |
+| Run Terraform locally | `./bin/setup.sh` — it auto-decrypts `terraform.tfvars.sops` into a scratch plaintext file, runs Terraform, and shreds the plaintext on exit |
+| Add a collaborator | Grant their IAM identity `kms:Decrypt` (and optionally `kms:Encrypt`) on the KMS key — either via the key policy in the AWS console or by attaching an IAM policy to their user/role. **No changes to `.sops.yaml` and no re-encryption required.** IAM is the source of truth for access. |
+| Remove a collaborator | Revoke their `kms:Decrypt` permission in the key policy or their IAM policy. Takes effect immediately on the next decrypt attempt. |
+
+### Access model
+
+Decryption requires two things:
+
+1. **AWS credentials** that are allowed `kms:Decrypt` on the alias `alias/meryl-green-designs-sops` (or the key it resolves to). The default key policy created by `bin/sops-init.sh` grants the AWS account root user full access, and AWS IAM users/roles in the account inherit permissions per their attached policies.
+2. **Network access** to the AWS KMS API in the key's region (`af-south-1` by default).
+
+No key material ever leaves AWS. SOPS passes the encrypted data encryption key (DEK) to KMS, KMS decrypts the DEK under the customer master key (CMK), and SOPS uses the plaintext DEK to decrypt the file contents locally. Neither the CMK material nor the plaintext DEK is stored on disk.
+
+### Audit trail
+
+Every `kms:Decrypt` call against the project's KMS key is logged in **CloudTrail**. To see who has been accessing secrets:
+
+```bash
+aws cloudtrail lookup-events \
+  --lookup-attributes AttributeKey=EventName,AttributeValue=Decrypt \
+  --region af-south-1 \
+  --max-results 20
+```
+
+…filtered down to this project's key by inspecting the `resources.ARN` field. If you suspect a leaked credential, CloudTrail tells you when it was last used.
+
+### Rotating a secret value
+
+Same as editing it: `sops infra/terraform.tfvars.sops`, change the value, save. For Terraform-managed secrets, remember to run `./bin/setup.sh` (or `cd infra && terraform apply`) afterwards to push the new value to the Lambda's environment variables.
+
+### Rotating the KMS key
+
+Two different things, easy to confuse:
+
+1. **Automatic key-material rotation** is already enabled. AWS automatically generates a new key material every 365 days while keeping the same key ID and alias. Your encrypted files keep working unchanged — CloudTrail records the rotation event, nothing else changes. No action required.
+2. **Manual key replacement** — you want a fresh KMS key (e.g. after a suspected compromise). Create a new key, update the alias to point at it, and re-encrypt every SOPS file under the new key material:
+
+   ```bash
+   aws kms create-key --region af-south-1 \
+     --description "SOPS secrets encryption for meryl-green-designs (rotated)"
+   # → note the new KeyId
+   aws kms update-alias --region af-south-1 \
+     --alias-name alias/meryl-green-designs-sops \
+     --target-key-id <new-key-id>
+   sops updatekeys infra/terraform.tfvars.sops
+   sops updatekeys backend/.env.sops
+   ```
+
+   The old key can be scheduled for deletion with `aws kms schedule-key-deletion --pending-window-in-days 7` once you've verified the new one works.
+
+### Partial-failure recovery during first-time setup
+
+If `bin/sops-init.sh` fails after creating the KMS key but before creating the alias (e.g. your network dropped mid-run, or the alias-create call errored), you'll have an **orphan KMS key** — a new key with no alias pointing at it. The next run of the script won't find the alias, so it won't reuse the orphan; it'll create a second key instead. You don't want two keys.
+
+To recover:
+
+1. **List your KMS keys** and find the most recent one that has no alias:
+
+   ```bash
+   aws kms list-keys --region af-south-1 --query 'Keys[*].KeyId' --output text
+   # For each key ID, check its tags:
+   aws kms list-resource-tags --region af-south-1 --key-id <key-id>
+   ```
+
+   The orphan will be tagged `project=meryl-green-designs purpose=sops-secrets` (from `bin/sops-init.sh`) but have no `alias/meryl-green-designs-sops` pointing at it.
+
+2. **Either attach the expected alias** to the orphan key:
+
+   ```bash
+   aws kms create-alias \
+     --region af-south-1 \
+     --alias-name alias/meryl-green-designs-sops \
+     --target-key-id <orphan-key-id>
+   ```
+
+   Then re-run `./bin/sops-init.sh` — it'll find the alias, reuse the key, and finish the setup cleanly.
+
+3. **Or schedule the orphan for deletion** and let `bin/sops-init.sh` create a fresh one:
+
+   ```bash
+   aws kms schedule-key-deletion \
+     --region af-south-1 \
+     --key-id <orphan-key-id> \
+     --pending-window-in-days 7
+   ./bin/sops-init.sh
+   ```
+
+   Note the 7-day minimum pending-deletion window — you'll be billed ~$0.23 for the orphan until it's actually deleted. Trivial but annoying.
+
+### Recovery scenarios
+
+- **Lost your laptop.** Install `sops` + `awscli` on a new machine, run `aws configure` with your existing AWS credentials, clone the repo, done. There is no key file to restore.
+- **Lost your AWS credentials too.** Recover AWS account access via the usual AWS account recovery process (email, MFA reset, whatever auth factors you enabled). Once logged back in, `aws configure` a new access key and you're back in business.
+- **Lost your AWS account entirely** (closed, compromised, etc.). The encrypted files in git are then unrecoverable by you. Regenerate every secret from its source dashboard (Resend, Sanity), create a new AWS account, run `bin/sops-init.sh` to create a fresh KMS key and re-seed the encrypted files with the new values. See `docs/security.md § Incident playbook`.
+- **Suspect a secret value has leaked** (not the KMS key itself). Rotate the secret in its source dashboard, update it via `sops infra/terraform.tfvars.sops`, run `terraform apply`. SOPS encryption doesn't rotate the secret values themselves — it only controls who can read the file.
 
 ## Environment variable reference
 

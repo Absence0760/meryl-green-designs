@@ -34,16 +34,20 @@ Tests live in `frontend/` and `backend/` (vitest). Studio has none — don't add
 ## First-time setup
 
 1. `pnpm install`
-2. Copy env templates: `cp backend/.env.example backend/.env` (and the same for `frontend/` and `studio/`), then fill in secrets.
-3. `pnpm dev` — or `pnpm dev:all` if you need the CMS.
+2. `./bin/sops-init.sh` — verifies AWS auth, creates a dedicated KMS key + alias (`alias/meryl-green-designs-sops` in `af-south-1`) if missing, writes the ARN into `.sops.yaml`, seeds encrypted `infra/terraform.tfvars.sops` and `backend/.env.sops` from the examples. Idempotent — re-running reuses the existing key.
+3. `sops backend/.env.sops` to fill in real secrets (opens plaintext in `$EDITOR`, re-encrypts on save via KMS). Then `sops -d backend/.env.sops > backend/.env` for local dev.
+4. `cp frontend/.env.example frontend/.env` and same for `studio/` — these only contain `PUBLIC_*` vars, no secrets.
+5. `pnpm dev` — or `pnpm dev:all` if you need the CMS.
 
-`bin/setup.sh` is a one-shot **production bootstrap** (Terraform state backend, apply, GitHub Actions secrets, Sanity webhook). Do not run it for local dev.
+`bin/setup.sh` is a one-shot **production bootstrap** (Terraform state backend, apply, GitHub Actions secrets, Sanity webhook). It decrypts `infra/terraform.tfvars.sops` into a scratch plaintext file at start and shreds it on exit. Do not run it for local dev.
+
+**Secrets policy** — all secrets (Resend API key, Sanity tokens) live in the repo as SOPS-encrypted `*.sops` files. Decryption requires `kms:Decrypt` permission on the project's KMS key via AWS IAM — there is no key file to back up. Plaintext siblings (`terraform.tfvars`, `backend/.env`) are gitignored and exist only transiently. Never run `git add -f` on a plaintext secrets file. Never add a SOPS backend other than the project's KMS key without discussing — that changes who can decrypt. See `docs/deployment.md § Secrets management` for the full workflow.
 
 ## Where to look
 
 - `docs/architecture.md` — system diagram and service boundaries
 - `docs/run-locally.md` — detailed local dev setup
-- `docs/deployment.md` — CI/CD, OIDC, release flow
+- `docs/deployment.md` — CI/CD, OIDC, release flow, SOPS secrets workflow
 - `docs/features.md`, `docs/roadmap.md` — current and planned features
 - `docs/orders-and-tracking.md` — implemented design for orders as Sanity docs + public track page
 - `docs/security.md` — risk register, mitigations, incident playbook, hardening gaps
