@@ -284,31 +284,18 @@
 	<div class="container narrow">
 		<p class="eyebrow">Payment</p>
 		<h2>How to pay — Electronic Funds Transfer</h2>
-		<p>
-			Online purchases are paid by Electronic Funds Transfer (EFT) directly into our bank
-			account. After placing an order you will receive an email confirmation containing the
-			full banking details and a unique order reference.
+		<ol class="payment-steps">
+			<li>Place an order using the form above.</li>
+			<li>
+				We'll email you a confirmation with our banking details and a unique order
+				reference.
+			</li>
+			<li>Pay by Electronic Funds Transfer, using the reference on your payment.</li>
+			<li>Once the payment reflects in our account, we ship your order.</li>
+		</ol>
+		<p class="note">
+			Banking details are only sent by email — we don't publish them on the site.
 		</p>
-
-		<div class="eft-card">
-			<h3>Banking details</h3>
-			<dl>
-				<dt>Account name</dt>
-				<dd>[ To be provided ]</dd>
-				<dt>Bank</dt>
-				<dd>[ To be provided ]</dd>
-				<dt>Account number</dt>
-				<dd>[ To be provided ]</dd>
-				<dt>Branch code</dt>
-				<dd>[ To be provided ]</dd>
-				<dt>Reference</dt>
-				<dd>Your order number</dd>
-			</dl>
-			<p class="note">
-				Please use your order number as the payment reference. Orders are shipped once payment
-				reflects in the account.
-			</p>
-		</div>
 	</div>
 </section>
 
@@ -619,40 +606,22 @@
 		color: #6b2a1b;
 	}
 
-	.eft-card {
-		background: var(--color-surface);
-		border: 1px solid var(--color-rule);
-		border-left: 4px solid var(--color-leaf);
-		padding: var(--space-3);
-		margin-top: var(--space-3);
-	}
-
-	.eft-card h3 {
-		margin-top: 0;
-	}
-
-	dl {
+	.payment-steps {
+		margin: var(--space-3) 0 var(--space-2);
+		padding-left: 1.2rem;
 		display: grid;
-		grid-template-columns: max-content 1fr;
-		gap: 0.4rem var(--space-3);
-		margin: 0 0 var(--space-2);
+		gap: 0.5rem;
+		color: var(--color-ink);
 	}
 
-	dt {
-		font-weight: 600;
-		color: var(--color-ink-soft);
-		font-size: 0.85rem;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-	}
-
-	dd {
-		margin: 0;
+	.payment-steps li {
+		line-height: 1.5;
 	}
 
 	.note {
 		font-size: 0.9rem;
 		color: var(--color-ink-soft);
 		margin: 0;
+		font-style: italic;
 	}
 </style>

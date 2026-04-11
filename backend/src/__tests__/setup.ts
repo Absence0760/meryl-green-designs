@@ -13,3 +13,11 @@ process.env.SANITY_PROJECT_ID = 'test-project';
 process.env.SANITY_DATASET = 'production';
 process.env.SANITY_API_TOKEN = 'test-sanity-token';
 process.env.SANITY_WEBHOOK_SECRET = 'test-webhook-secret';
+
+// Banking details are injected into the pending-payment email at send time
+// so they never live in git. Tests use fake values; real ones are set via
+// Lambda env vars (see infra/variables.tf) and backend/.env locally.
+process.env.BANK_ACCOUNT_NAME = 'Test Account Holder';
+process.env.BANK_NAME = 'Test Bank';
+process.env.BANK_ACCOUNT_NUMBER = '0000000000';
+process.env.BANK_BRANCH_CODE = '000000';

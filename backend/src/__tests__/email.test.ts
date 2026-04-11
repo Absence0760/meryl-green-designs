@@ -129,6 +129,43 @@ describe('customerEmailForStatus', () => {
 		expect(mail!.html).toContain('MG-260410-ABCD');
 	});
 
+	it('injects banking details from env vars into the pending-payment email', () => {
+		const mail = customerEmailForStatus(makeOrder({ status: 'pending_payment' }));
+		expect(mail!.html).toContain('Test Account Holder');
+		expect(mail!.html).toContain('Test Bank');
+		expect(mail!.html).toContain('0000000000');
+		expect(mail!.html).toContain('000000');
+		// Defensive: must not leak the old hardcoded placeholder when env vars are set.
+		expect(mail!.html).not.toContain('[ To be provided ]');
+	});
+
+	it('escapes banking detail values injected from env vars', () => {
+		vi.stubEnv('BANK_ACCOUNT_NAME', '<script>alert(1)</script>');
+		try {
+			const mail = customerEmailForStatus(makeOrder({ status: 'pending_payment' }));
+			expect(mail!.html).not.toContain('<script>alert(1)</script>');
+			expect(mail!.html).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
+		} finally {
+			vi.unstubAllEnvs();
+		}
+	});
+
+	it('falls back to a contact-us message when any banking env var is missing', () => {
+		vi.stubEnv('BANK_ACCOUNT_NUMBER', '');
+		try {
+			const mail = customerEmailForStatus(makeOrder({ status: 'pending_payment' }));
+			// Still a usable email — customer knows their ref and how to pay.
+			expect(mail!.html).toContain('MG-260410-ABCD');
+			// But no partial/broken banking details are shown.
+			expect(mail!.html).not.toContain('Test Account Holder');
+			expect(mail!.html).not.toContain('Account number');
+			// And a clear next step is included.
+			expect(mail!.html.toLowerCase()).toMatch(/reply|contact/);
+		} finally {
+			vi.unstubAllEnvs();
+		}
+	});
+
 	it('returns a payment-received template', () => {
 		const mail = customerEmailForStatus(makeOrder({ status: 'payment_received' }));
 		expect(mail!.subject.toLowerCase()).toContain('payment received');

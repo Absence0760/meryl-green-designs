@@ -22,14 +22,34 @@ function trackingLink(order: { orderRef: string; customerEmail: string }): strin
 	return `${base}/track?ref=${ref}&email=${email}`;
 }
 
+// Banking details are injected from Lambda env vars at send time so they
+// never live in git and never appear on public pages. If any of the four
+// fields is missing (e.g. the Lambda hasn't been configured yet), we render a
+// graceful fallback that still tells the customer how to proceed rather than
+// a half-filled card.
 function bankingDetailsHtml(ref: string): string {
+	const accountName = process.env.BANK_ACCOUNT_NAME;
+	const bankName = process.env.BANK_NAME;
+	const accountNumber = process.env.BANK_ACCOUNT_NUMBER;
+	const branchCode = process.env.BANK_BRANCH_CODE;
+
+	if (!accountName || !bankName || !accountNumber || !branchCode) {
+		console.warn('Banking env vars are not fully configured — sending fallback copy.');
+		return `
+			<h3>Banking details</h3>
+			<p>Please reply to this email and we'll send our banking details so you
+			can complete payment. Use <strong>${escapeHtml(ref)}</strong> as your
+			payment reference.</p>
+		`;
+	}
+
 	return `
 		<h3>Banking details</h3>
 		<p>
-			Account name: [ To be provided ]<br>
-			Bank: [ To be provided ]<br>
-			Account number: [ To be provided ]<br>
-			Branch code: [ To be provided ]<br>
+			Account name: ${escapeHtml(accountName)}<br>
+			Bank: ${escapeHtml(bankName)}<br>
+			Account number: ${escapeHtml(accountNumber)}<br>
+			Branch code: ${escapeHtml(branchCode)}<br>
 			Reference: ${escapeHtml(ref)}
 		</p>
 	`;
