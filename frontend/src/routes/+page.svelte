@@ -54,7 +54,6 @@
 <section class="hero" style={heroImage ? `background-image: url(${heroImage})` : ''}>
 	<div class="hero-overlay">
 		<div class="container">
-			<p class="eyebrow">The Green Collection</p>
 			<h1>Inspired by Nature</h1>
 			<p class="tagline">Handcrafted screens &amp; designs drawn from the living world.</p>
 		</div>
@@ -62,6 +61,16 @@
 </section>
 
 <svelte:head>
+	<title>Meryl Green Designs — Inspired by Nature</title>
+	<meta
+		name="description"
+		content="Handcrafted screens and designs from Meryl Green, inspired by the light, colour and stillness of the African bush."
+	/>
+	<meta property="og:title" content="Meryl Green Designs — Inspired by Nature" />
+	<meta
+		property="og:description"
+		content="Handcrafted screens and designs from Meryl Green, inspired by the light, colour and stillness of the African bush."
+	/>
 	<link rel="preload" as="image" href={heroImage} />
 </svelte:head>
 
@@ -144,10 +153,6 @@
 
 	.hero :global(h1) {
 		color: #f6f4ee;
-	}
-
-	.hero .eyebrow {
-		color: #cfd6bf;
 	}
 
 	.tagline {

@@ -63,7 +63,7 @@ These must be done before the site can go live.
 
 ### Quality / polish
 - [ ] End-to-end test the order flow against the real Resend account
-- [ ] Remove the under-construction banner
+- [x] ~~Remove the under-construction banner~~ — done
 - [ ] Run Lighthouse and address any critical findings
 - [ ] Add basic SEO meta tags and Open Graph images per route
 

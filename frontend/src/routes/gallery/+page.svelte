@@ -28,6 +28,19 @@
 	});
 </script>
 
+<svelte:head>
+	<title>Gallery — Meryl Green Designs</title>
+	<meta
+		name="description"
+		content="Photographs of screens, finishes and bespoke options from Meryl Green Designs."
+	/>
+	<meta property="og:title" content="Gallery — Meryl Green Designs" />
+	<meta
+		property="og:description"
+		content="Photographs of screens, finishes and bespoke options from Meryl Green Designs."
+	/>
+</svelte:head>
+
 <section class="section">
 	<div class="container">
 		<p class="eyebrow">Gallery</p>

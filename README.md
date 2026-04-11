@@ -1,9 +1,10 @@
 # Meryl Green Designs
 
-Website for Meryl Green Designs — a small South African studio selling work from
-_The Green Collection_. A static brochure site with a gallery, a shop with
-Electronic Funds Transfer ordering, and a content management dashboard the shop
-owner uses to manage products herself.
+Website for Meryl Green Designs — a small South African studio selling
+handcrafted screens and designs inspired by the African bush. A static
+brochure site with a gallery, a shop with Electronic Funds Transfer ordering,
+and a content management dashboard the shop owner uses to manage products
+herself.
 
 ## Stack
 

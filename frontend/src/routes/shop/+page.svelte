@@ -89,13 +89,25 @@
 	});
 </script>
 
+<svelte:head>
+	<title>Shop — Meryl Green Designs</title>
+	<meta
+		name="description"
+		content="Finished pieces from Meryl Green Designs — printed on durable cotton canvas, framed in stained Meranti hardwood. Order by Electronic Funds Transfer."
+	/>
+	<meta property="og:title" content="Shop — Meryl Green Designs" />
+	<meta
+		property="og:description"
+		content="Finished pieces from Meryl Green Designs — printed on durable cotton canvas, framed in stained Meranti hardwood. Order by Electronic Funds Transfer."
+	/>
+</svelte:head>
+
 <section class="section">
 	<div class="container">
 		<p class="eyebrow">Shop</p>
 		<h1>Finished products</h1>
 		<p class="lede">
-			A selection of finished pieces from The Green Collection, available to order. The shop is
-			currently under construction — product details and imagery will be added shortly.
+			A selection of finished pieces from Meryl Green Designs, available to order.
 		</p>
 
 		{#if productsLoading}

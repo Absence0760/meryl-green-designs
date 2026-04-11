@@ -6,8 +6,6 @@ filled in before launch.
 
 ## Site-wide
 
-- **Under-construction banner** across the top of every page, stating that the
-  site is still being built.
 - **Sticky header** with brand and navigation. The active route is highlighted.
 - **Nature-inspired theme**: muted greens, bark accents, cream background, serif
   display type (`Georgia`/`Cormorant Garamond`) with a sans-serif body.
@@ -16,9 +14,8 @@ filled in before launch.
 
 ## Home (`/`)
 
-- **Hero** with the eyebrow "The Green Collection" and the heading "Inspired by
-  Nature". A background image slot is reserved for the lead photograph. Until
-  supplied, a subtle diagonal pattern fills the space.
+- **Hero** with the eyebrow "Meryl Green Designs" and the heading "Inspired by
+  Nature", rendered across a full-bleed photograph of the African bush.
 - **Story** section with a placeholder paragraph to be replaced with the real
   text.
 - **Poem** section on an alternate background with a styled blockquote and leaf

@@ -47,6 +47,7 @@ jobs:
         working-directory: frontend
         env:
           PUBLIC_API_URL: ${{ vars.PUBLIC_API_URL }}
+          PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL }}
           PUBLIC_SANITY_PROJECT_ID: ${{ vars.PUBLIC_SANITY_PROJECT_ID }}
           PUBLIC_SANITY_DATASET: ${{ vars.PUBLIC_SANITY_DATASET }}
         run: pnpm build

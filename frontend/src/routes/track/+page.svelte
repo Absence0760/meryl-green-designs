@@ -112,6 +112,16 @@
 
 <svelte:head>
 	<title>Track your order — Meryl Green Designs</title>
+	<meta
+		name="description"
+		content="Track the status of your Meryl Green Designs order using your reference and email."
+	/>
+	<meta property="og:title" content="Track your order — Meryl Green Designs" />
+	<meta
+		property="og:description"
+		content="Track the status of your Meryl Green Designs order using your reference and email."
+	/>
+	<meta name="robots" content="noindex" />
 </svelte:head>
 
 <section class="section">

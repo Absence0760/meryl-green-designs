@@ -44,7 +44,7 @@ meryl-green-designs/
 │       ├── lib/
 │       │   └── sanity.ts            Product type, image URL builder, price formatter
 │       └── routes/
-│           ├── +layout.svelte       Header, nav, under-construction banner, footer
+│           ├── +layout.svelte       Header, nav, footer
 │           ├── +layout.ts           export const prerender = true
 │           ├── +page.svelte         Home: hero / story / poem
 │           ├── gallery/

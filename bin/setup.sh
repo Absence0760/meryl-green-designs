@@ -279,10 +279,17 @@ read_outputs() {
 	LAMBDA_FUNCTION_URL="$(echo "$outputs" | jq -r '.lambda_function_url.value')"
 	GITHUB_ACTIONS_ROLE_ARN="$(echo "$outputs" | jq -r '.github_actions_role_arn.value')"
 
+	# site_url comes from tfvars if set, otherwise defaults to https://<domain>
+	SITE_URL="$(echo "$outputs" | jq -r '.site_url.value // empty')"
+	if [[ -z "$SITE_URL" || "$SITE_URL" == "null" ]]; then
+		SITE_URL="https://$DOMAIN_NAME"
+	fi
+
 	log "Frontend bucket:     $FRONTEND_BUCKET"
 	log "CloudFront dist:     $CLOUDFRONT_DISTRIBUTION_ID"
 	log "Lambda function:     $LAMBDA_FUNCTION_NAME"
 	log "Lambda Function URL: $LAMBDA_FUNCTION_URL"
+	log "Site URL:            $SITE_URL"
 	log "GitHub Actions role: $GITHUB_ACTIONS_ROLE_ARN"
 }
 
@@ -318,6 +325,7 @@ populate_github() {
 	set_var CLOUDFRONT_DISTRIBUTION_ID "$CLOUDFRONT_DISTRIBUTION_ID"
 	set_var LAMBDA_FUNCTION_NAME       "$LAMBDA_FUNCTION_NAME"
 	set_var PUBLIC_API_URL             "$LAMBDA_FUNCTION_URL"
+	set_var PUBLIC_SITE_URL            "$SITE_URL"
 	set_var PUBLIC_SANITY_PROJECT_ID   "$SANITY_PROJECT_ID"
 	set_var PUBLIC_SANITY_DATASET      "$SANITY_DATASET"
 
