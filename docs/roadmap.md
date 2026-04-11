@@ -60,20 +60,48 @@ much of the brief is already shipped.
       Lambda, IAM, GitHub OIDC
 - [x] Three GitHub Actions deploy workflows (frontend, backend, studio)
       with OIDC federation — no long-lived AWS keys in secrets
+- [x] Release-gated deploys: each deploy workflow fires only when a
+      GitHub release is published (not on every push to `main`), with a
+      skip-if-unchanged check job that compares the current release tag
+      against the previous one and skips deploys for workspaces whose
+      files didn't change. `workflow_dispatch` is retained as an escape
+      hatch for manual re-runs, and the frontend also listens for
+      `repository_dispatch: sanity-publish` so content edits rebuild
+      without a code release.
+- [x] Secrets management via SOPS + AWS KMS. `infra/terraform.tfvars.sops`
+      and `backend/.env.sops` are committed encrypted, decryptable by
+      anyone with `kms:Decrypt` on the project's dedicated KMS key
+      (`alias/meryl-green-designs-sops` in `af-south-1`). `bin/sops-init.sh`
+      bootstraps the KMS key idempotently; `bin/setup.sh` decrypts tfvars
+      into a scratch file at start and shreds it on exit. See
+      `docs/deployment.md § Secrets management`.
 - [x] `bin/setup.sh` one-command bootstrap (state bucket, `terraform apply`,
       GitHub Actions variables, Sanity dataset privacy, backend webhook)
+- [x] `bin/sops-init.sh` one-command SOPS bootstrap (KMS key creation,
+      `.sops.yaml` placeholder substitution, encrypted-file seeding)
 - [x] Dependabot configured with grouped weekly updates for all three
       workspace packages + GitHub Actions
 - [x] Backend Lambda bundling via esbuild
-- [x] Backend env loading via `dotenv` for local dev
+- [x] Backend env loading via `dotenv` for local dev (stripped from the
+      Lambda bundle via entry-point isolation — `lambda.ts` deliberately
+      does not import `server.ts`)
 
 ### Testing
-- [x] Vitest test suite across backend and frontend (61 tests, <1s runtime).
-      Backend covers email templates + HTML escaping, Sanity webhook HMAC
-      verification, `POST /orders` + `GET /orders/:ref`, `/products` +
-      `/gallery`, CORS, `/health`, and 404 handling. Frontend covers
-      `formatPrice` and `imageUrl` helpers. All tests mock Sanity and
-      Resend so they run offline. Root `pnpm test` runs both workspaces.
+- [x] Vitest test suite across backend and frontend (79 tests total: 71
+      backend + 8 frontend, <1s runtime). Backend covers email templates
+      + HTML escaping, `sendEmail` with mocked Resend fetch, Sanity
+      webhook HMAC verification, `POST /orders` + `GET /orders/:ref`,
+      `/products` + `/gallery`, CORS (including `ALLOWED_ORIGINS` fallback
+      behaviour), `/health`, 404 handling, and a regression guard that
+      fails if banking details ever reappear in the automated
+      pending-payment email. Frontend covers `formatPrice` (null, zero,
+      positive, large numbers) and `imageUrl` (width omitted/included,
+      null project-id branch in a separate test file). All tests mock
+      Sanity and Resend so they run offline. Root `pnpm test` runs both
+      workspaces.
+- [x] CI workflow (`.github/workflows/ci.yml`) runs `pnpm check` + `pnpm
+      test` on every PR and every push to `main`/`dev`, with
+      cancel-in-progress concurrency so rapid pushes don't stack up.
 
 ### Developer experience
 - [x] All dependencies upgraded to latest major versions (Svelte 5.55,
@@ -90,11 +118,15 @@ much of the brief is already shipped.
 - [x] `docs/architecture.md` — full system overview with flow diagrams
 - [x] `docs/features.md` — per-page feature list
 - [x] `docs/run-locally.md` — local dev setup walkthrough
-- [x] `docs/deployment.md` — 920-line deployment guide with script-first
-      flow, env var reference, rollback, troubleshooting, and "adding a new
-      content type" playbook
-- [x] `docs/orders-and-tracking.md` — detailed order flow + security notes
+- [x] `docs/deployment.md` — deployment guide with release-gated workflow,
+      SOPS + KMS secrets management, env var reference, rollback,
+      troubleshooting, and "adding a new content type" playbook
+- [x] `docs/orders-and-tracking.md` — detailed order flow
+- [x] `docs/security.md` — cross-cutting risk register, mitigations,
+      incident playbook, hardening gaps (rate limiting, `pnpm audit`,
+      order-ref entropy, DMARC/SPF)
 - [x] `infra/README.md` — Terraform module reference
+- [x] `CLAUDE.md` — repo guidance loaded into every Claude Code session
 - [x] Root `README.md`
 
 ## Remaining before launch
@@ -104,9 +136,12 @@ traffic. Most are external, and each is documented with exact steps in
 [`deployment.md`](./deployment.md).
 
 ### Content (needs Meryl)
-- [ ] Real banking details — currently `[ To be provided ]` in two places:
-      - `backend/src/email-templates.ts` (`bankingDetailsHtml()`)
-      - `frontend/src/routes/shop/+page.svelte` (the EFT card at the bottom)
+- [ ] Meryl's reusable banking-details email reply block. The automated
+      pending-payment confirmation no longer contains banking details at
+      all; they're sent manually by Meryl in reply to each order
+      (intentional — see `docs/security.md § Risk 1` for the impersonation
+      threat model). She needs a saved email snippet with the real values
+      so the reply takes 30 seconds per order, not 3 minutes.
 - [ ] Real contact email — currently `hello@merylgreendesigns.co.za`
       placeholder in `frontend/src/routes/contact/+page.svelte`
 - [ ] Meryl populates the shop with real products via Sanity Studio
@@ -122,11 +157,21 @@ traffic. Most are external, and each is documented with exact steps in
 - [ ] Domain registered + Route 53 hosted zone existing
 
 ### Deployment
-- [ ] Fill in `infra/terraform.tfvars` (one 3-minute edit)
+- [ ] Run `./bin/sops-init.sh` to provision the project's KMS key and seed
+      encrypted `infra/terraform.tfvars.sops` + `backend/.env.sops` from
+      the examples
+- [ ] Fill in real values: `sops infra/terraform.tfvars.sops` and `sops
+      backend/.env.sops`
 - [ ] Run `./bin/setup.sh` (one command, ~15 min of which is CloudFront
       propagation)
-- [ ] Run the first GitHub Actions workflows (`deploy-frontend`,
-      `deploy-backend`)
+- [ ] Cut the first GitHub release to trigger the release-gated deploy
+      workflows:
+      ```bash
+      gh release create v0.1.0 --generate-notes --target main
+      ```
+      This fires `deploy-frontend`, `deploy-backend`, and `deploy-studio`
+      in parallel. The first release has no previous tag so all three
+      workspaces deploy regardless of the skip-if-unchanged check.
 - [ ] Run `pnpm studio deploy` once locally (interactive first-time only)
 - [ ] Add `SANITY_AUTH_TOKEN` GitHub Actions secret for CI studio deploys
 - [ ] Create the content-rebuild Sanity webhook via the dashboard (needs

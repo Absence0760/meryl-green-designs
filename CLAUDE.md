@@ -65,6 +65,10 @@ When you modify code, in the same change:
 
 Treat "code changed, docs and tests unchanged" as an incomplete task. Call it out before handing back.
 
+## Project-specific overrides to default behaviour
+
+- **Do not run the dev server to visually verify UI or frontend changes** before reporting a task complete. `pnpm check` (typecheck) and `pnpm test` (vitest) are sufficient. The operator reviews visuals themselves — don't block on browser verification unless they explicitly ask for it.
+
 ## Conventions and gotchas
 
 - **Static frontend** — no SSR. Anything dynamic goes through the backend API, not SvelteKit load functions on the server.

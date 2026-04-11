@@ -3,8 +3,9 @@
 This document describes what the site currently does.
 
 The code and UI are complete for v1. Remaining pre-launch items are content
-(real banking details, real contact email, Meryl's own products and gallery
-photos in Sanity Studio) — see [`roadmap.md`](./roadmap.md).
+(real contact email, Meryl's own products and gallery photos in Sanity
+Studio) and Meryl's reusable banking-details reply block (a saved email
+snippet, not anything in the repo) — see [`roadmap.md`](./roadmap.md).
 
 ## Site-wide
 
@@ -95,8 +96,15 @@ photos in Sanity Studio) — see [`roadmap.md`](./roadmap.md).
   endpoint. On success, the form is replaced by a confirmation showing the
   unique order reference (`MG-YYMMDD-XXXX`). On failure, an error alert is
   shown and the form remains editable.
-- **EFT payment details** section with a bank details card. The real account
-  number, branch code, etc. are marked as "To be provided".
+- **"How to pay" section** explaining the manual-reply EFT flow as a 5-step
+  ordered list: place the order → receive an automatic acknowledgement →
+  Meryl personally replies with banking details → pay by EFT → order ships
+  once payment reflects. Banking details are deliberately **not** shown on
+  the public site and **not** included in the automated acknowledgement
+  email — they're sent only as a direct manual reply from Meryl after she
+  has reviewed the order. See
+  [`docs/security.md`](./security.md) for the impersonation-scam threat
+  model behind this choice.
 
 ## Contact (`/contact`)
 
