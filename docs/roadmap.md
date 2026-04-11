@@ -67,6 +67,14 @@ much of the brief is already shipped.
 - [x] Backend Lambda bundling via esbuild
 - [x] Backend env loading via `dotenv` for local dev
 
+### Testing
+- [x] Vitest test suite across backend and frontend (61 tests, <1s runtime).
+      Backend covers email templates + HTML escaping, Sanity webhook HMAC
+      verification, `POST /orders` + `GET /orders/:ref`, `/products` +
+      `/gallery`, CORS, `/health`, and 404 handling. Frontend covers
+      `formatPrice` and `imageUrl` helpers. All tests mock Sanity and
+      Resend so they run offline. Root `pnpm test` runs both workspaces.
+
 ### Developer experience
 - [x] All dependencies upgraded to latest major versions (Svelte 5.55,
       SvelteKit 2.57, Vite 8, TypeScript 6, Sanity 5, React 19, Hono 4.12,

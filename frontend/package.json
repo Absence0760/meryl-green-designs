@@ -8,7 +8,9 @@
 		"build": "vite build",
 		"preview": "vite preview --port 8888",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
+		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"test": "vitest run",
+		"test:watch": "vitest"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-static": "3.0.10",
@@ -17,7 +19,8 @@
 		"svelte": "5.55.3",
 		"svelte-check": "4.4.6",
 		"typescript": "6.0.2",
-		"vite": "8.0.8"
+		"vite": "8.0.8",
+		"vitest": "^2.1.9"
 	},
 	"type": "module",
 	"dependencies": {

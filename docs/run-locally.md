@@ -187,6 +187,20 @@ pnpm backend build        # emits backend/dist/lambda.mjs (esbuild bundle for La
 pnpm studio build         # emits studio/dist/ (React SPA, for self-hosted deploys)
 ```
 
+## Running tests
+
+```bash
+pnpm test                 # runs tests in all workspace packages
+pnpm backend test         # backend only (Vitest + Hono app.request harness)
+pnpm frontend test        # frontend only (Vitest, helpers in src/lib)
+pnpm backend test:watch   # watch mode
+pnpm frontend test:watch
+```
+
+Tests mock Sanity and Resend, so they never hit real services and don't
+need a network connection or any environment variables beyond what the
+test setup files provide. The full suite runs in well under a second.
+
 ## Common issues
 
 **`PUBLIC_API_URL` is not defined at build time**
