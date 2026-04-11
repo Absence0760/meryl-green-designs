@@ -1,13 +1,13 @@
 name: Deploy frontend
 
+# Release-gated for code changes: deploys only fire when a GitHub release is
+# published. The repository_dispatch trigger is kept so Sanity content edits
+# (via the publish webhook — see docs/deployment.md) still rebuild the static
+# site without requiring a code release. workflow_dispatch remains for manual
+# re-runs.
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'frontend/**'
-      - 'pnpm-lock.yaml'
-      - '.github/workflows/deploy-frontend.yml'
-  # Triggered by the Sanity publish webhook (see docs/deployment.md).
+  release:
+    types: [published]
   repository_dispatch:
     types: [sanity-publish]
   workflow_dispatch:

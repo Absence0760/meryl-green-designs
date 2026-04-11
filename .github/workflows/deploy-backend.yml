@@ -1,12 +1,12 @@
 name: Deploy backend
 
+# Release-gated: deploys only fire when a GitHub release is published.
+# workflow_dispatch is kept so you can manually re-run the deploy against the
+# current `main` (for hotfixes, rollbacks after a flaky AWS call, or
+# re-running a failed step) without cutting a new release.
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'backend/**'
-      - 'pnpm-lock.yaml'
-      - '.github/workflows/deploy-backend.yml'
+  release:
+    types: [published]
   workflow_dispatch:
 
 concurrency:

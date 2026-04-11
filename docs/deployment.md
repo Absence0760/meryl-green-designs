@@ -27,9 +27,24 @@ For the conceptual picture of how the pieces fit together, see
 
 | App | Target | Trigger |
 |---|---|---|
-| Frontend | S3 + CloudFront (AWS) | `deploy-frontend.yml` workflow on push to `main` |
-| Backend | Lambda + Function URL (AWS) | `deploy-backend.yml` workflow on push to `main` |
-| Studio | Sanity hosted (`*.sanity.studio`) | `deploy-studio.yml` workflow on push to `main` |
+| Frontend | S3 + CloudFront (AWS) | `deploy-frontend.yml` on **release published** (+ `repository_dispatch` for Sanity content edits) |
+| Backend | Lambda + Function URL (AWS) | `deploy-backend.yml` on **release published** |
+| Studio | Sanity hosted (`*.sanity.studio`) | `deploy-studio.yml` on **release published** |
+
+All three deploys are **release-gated**: they fire only when a GitHub release
+is published, not on every push to `main`. Cutting a release is an explicit
+act, so each production change has a version tag, release notes, and a clear
+rollback target. See [Ongoing deployments](#ongoing-deployments) below for
+the release workflow.
+
+The frontend also listens for `repository_dispatch: sanity-publish` so that
+content edits Meryl makes in the Studio trigger a rebuild of the static site
+without requiring a code release.
+
+All three deploys expose `workflow_dispatch` as an escape hatch — you can
+manually re-run any deploy from the Actions tab (useful for hotfixes, flaky
+AWS API retries, or re-shipping the current `main` without cutting a new
+release).
 
 Infrastructure (S3 bucket, CloudFront, Lambda, IAM, Route 53, ACM certificate,
 GitHub OIDC provider + CI role) is managed by Terraform in `infra/`. GitHub
@@ -472,21 +487,54 @@ and have different names for good reasons — don't conflate them.
 
 ## Ongoing deployments
 
-After first-time setup, all deployment is automatic:
+After first-time setup, deployments are **release-gated**. Pushing code to
+`main` runs CI (typecheck + tests via `ci.yml`) but does **not** trigger any
+production deploy. Production ships only when you publish a GitHub release.
+
+### The release flow
+
+1. Merge your changes into `main`. CI runs on every push + PR.
+2. Cut a release — either via the `gh` CLI or in the GitHub UI:
+
+   ```bash
+   # Example: tag v0.3.1 on the current main and publish the release
+   gh release create v0.3.1 --generate-notes --target main
+   ```
+
+3. Publishing the release fires all three deploy workflows in parallel:
+   - `deploy-frontend.yml` — rebuilds the static site, syncs to S3, invalidates CloudFront
+   - `deploy-backend.yml` — rebuilds the Lambda bundle, updates `$LATEST`
+   - `deploy-studio.yml` — re-publishes the Sanity Studio
+
+   A single release ships all three in lockstep. There's no per-workspace
+   release train — simplicity over partial ships.
+
+4. Watch the Actions tab until the three workflows go green. Spot-check the
+   live site.
+
+### Triggers summary
 
 | When this happens | What gets deployed | How it's triggered |
 |---|---|---|
-| Push to `main` touching `frontend/**` | Frontend rebuild + S3 sync + CloudFront invalidation | `deploy-frontend.yml` path filter |
-| Push to `main` touching `backend/**` | Lambda function code update (via esbuild bundle) | `deploy-backend.yml` path filter |
-| Push to `main` touching `studio/**` | Sanity Studio re-published to `*.sanity.studio` | `deploy-studio.yml` path filter |
-| Meryl publishes a product or gallery photo in Studio | Frontend rebuild (so static HTML reflects any server-loader-derived content) | Sanity webhook → `repository_dispatch` → `deploy-frontend.yml` |
+| PR opened or push to `main`/`dev` | Nothing is deployed; CI runs `pnpm check` + `pnpm test` | `ci.yml` |
+| GitHub release is published | Frontend + backend + studio all rebuild and deploy | `release: types: [published]` on each deploy workflow |
+| You click "Run workflow" in the Actions tab | That single workflow re-runs against the current `main` | `workflow_dispatch` |
+| Meryl publishes a product or gallery photo in Studio | Frontend rebuild (no release required — content changes shouldn't need a version tag) | Sanity webhook → `repository_dispatch: sanity-publish` → `deploy-frontend.yml` |
 | Meryl changes an order's status in Studio | Customer status email sent (payment received / shipped / delivered / cancelled) | Sanity webhook → backend `/webhooks/sanity-order` route → Resend |
 | You edit `infra/terraform.tfvars` (e.g. rotating `RESEND_API_KEY`) | Lambda env vars update in place | `cd infra && terraform apply` |
 
-The `deploy-frontend` workflow also accepts `repository_dispatch` with
-`event_type: sanity-publish`, which is what the content-rebuild webhook
-sends. It also accepts `workflow_dispatch` from the Actions UI, which is how
-you trigger manual rebuilds.
+### Why release-gated?
+
+- **Every production change has a version tag** and appears in the Releases
+  list — easy to answer "what's running right now?" and "when did this
+  regression start?".
+- **Release notes are forced** — `gh release create --generate-notes` gives
+  you a concrete changelog per deploy.
+- **Rollback has a clear target** — re-running a previous release's
+  workflow runs puts the matching code back on prod.
+- **Main can drift from prod** without risk — WIP commits, in-progress
+  refactors, and typo fixes all accumulate on `main` safely and ship
+  together on the next release.
 
 ## Rollback
 
@@ -499,11 +547,13 @@ all jobs). The previous commit will be rebuilt and synced. Invalidation
 propagates globally in ~1 minute.
 
 If you need to roll back further than the workflow run history, create a
-revert commit and push it:
+revert commit, push it, and cut a release:
 
 ```bash
 git revert <bad-commit-sha>
 git push origin main
+# Under release-gated deploys, the revert alone does nothing until you ship it:
+gh release create v0.3.2 --generate-notes --target main
 ```
 
 ### Backend
@@ -517,14 +567,17 @@ overwriting `$LATEST` with earlier code. Two ways:
    the Actions UI. The workflow re-checks out the commit from that run,
    rebuilds the Lambda bundle, and pushes it as the new `$LATEST`. This is
    the easiest option.
-2. **Revert the offending commit** and push to `main`:
+2. **Revert the offending commit and publish a new release**. Under
+   release-gated deploys, the revert alone won't ship — you need a release
+   to trigger the workflow:
 
    ```bash
    git revert <bad-commit-sha>
    git push origin main
+   gh release create v0.3.2 --generate-notes --target main
    ```
 
-   The deploy-backend workflow fires automatically on the new commit.
+   The deploy-backend workflow fires when the release is published.
 
 Historical versions are preserved by the `--publish` flag (you can see them
 with `aws lambda list-versions-by-function`), so you could also invoke a
@@ -666,13 +719,14 @@ Two options depending on the route's characteristics:
 git add studio/ backend/ frontend/
 git commit -m "feat: add testimonials content type"
 git push origin main
+gh release create v0.4.0 --generate-notes --target main
 ```
 
-The CI workflows will deploy the backend (path filter picks up `backend/**`)
-and the frontend (picks up `frontend/**`). The studio won't redeploy until
-you push something touching `studio/` specifically — if you want Meryl to
-see the new content type immediately, run `pnpm studio deploy` manually once,
-or trigger `deploy-studio.yml` from the Actions UI.
+Publishing the release fires all three deploy workflows in parallel, so the
+backend, frontend, and studio ship together. If you don't want to cut a
+release yet (e.g. you're still iterating), run `pnpm studio deploy` locally
+to push the schema so Meryl can start using the new content type while the
+frontend/backend code is still in progress.
 
 If the new type should trigger content rebuilds, extend the content-rebuild
 Sanity webhook's GROQ filter to include it:

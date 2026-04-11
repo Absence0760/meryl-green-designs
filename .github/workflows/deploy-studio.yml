@@ -1,12 +1,10 @@
 name: Deploy studio
 
+# Release-gated: deploys only fire when a GitHub release is published.
+# workflow_dispatch is kept for manual re-runs.
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'studio/**'
-      - 'pnpm-lock.yaml'
-      - '.github/workflows/deploy-studio.yml'
+  release:
+    types: [published]
   workflow_dispatch:
 
 concurrency:
