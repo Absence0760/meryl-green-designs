@@ -38,12 +38,3 @@ sanity_webhook_secret = ""
 # Optional: override the base URL used in tracking links embedded in order
 # emails. Defaults to https://<domain_name> when empty.
 site_url = ""
-
-# Banking details injected into the EFT confirmation email at send time.
-# Deliberately kept out of the frontend and out of email-templates.ts so they
-# never live in git. Leave any of them blank and the email falls back to a
-# "reply for our banking details" message.
-bank_account_name   = ""
-bank_name           = ""
-bank_account_number = ""
-bank_branch_code    = ""

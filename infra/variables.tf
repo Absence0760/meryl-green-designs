@@ -67,36 +67,3 @@ variable "site_url" {
   type        = string
   default     = ""
 }
-
-# Banking details injected into the pending-payment email at send time.
-# Marked sensitive so they stay out of Terraform plan output and CI logs.
-# They're not secrets in the cryptographic sense, but the account number is
-# PII we don't want leaking into logs or terminal history.
-
-variable "bank_account_name" {
-  description = "Account holder name shown on the EFT confirmation email."
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "bank_name" {
-  description = "Bank name shown on the EFT confirmation email."
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "bank_account_number" {
-  description = "Account number shown on the EFT confirmation email."
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "bank_branch_code" {
-  description = "Bank branch code shown on the EFT confirmation email."
-  type        = string
-  default     = ""
-  sensitive   = true
-}

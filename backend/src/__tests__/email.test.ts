@@ -117,53 +117,45 @@ describe('ownerNotification', () => {
 		expect(mail.html).not.toContain('<script>');
 		expect(mail.html).toContain('&lt;script&gt;');
 	});
+
+	it('prompts the owner to reply manually with banking details', () => {
+		// The customer gets only an acknowledgement — the owner is the gate
+		// that sends banking details, so the notification must make that
+		// action explicit.
+		const mail = ownerNotification({
+			orderRef: 'MG-1',
+			name: 'Jane',
+			email: 'jane@example.com',
+			phone: '',
+			address: 'a',
+			items: 'b',
+			notes: ''
+		});
+		expect(mail.html.toLowerCase()).toMatch(/banking details/);
+		expect(mail.html.toLowerCase()).toMatch(/reply/);
+	});
 });
 
 describe('customerEmailForStatus', () => {
-	it('returns a pending-payment template for a new order', () => {
+	it('returns a pending-payment acknowledgement for a new order', () => {
 		const mail = customerEmailForStatus(makeOrder({ status: 'pending_payment' }));
 		expect(mail).not.toBeNull();
 		expect(mail!.subject).toContain('MG-260410-ABCD');
-		expect(mail!.html).toContain('Thank you for your order');
-		expect(mail!.html).toContain('Banking details');
 		expect(mail!.html).toContain('MG-260410-ABCD');
+		// Acknowledgement tone, not "here's how to pay".
+		expect(mail!.html.toLowerCase()).toMatch(/received|thank/);
+		// Customer is told to expect a manual reply with banking details.
+		expect(mail!.html.toLowerCase()).toMatch(/reply|follow up|get back|separate/);
 	});
 
-	it('injects banking details from env vars into the pending-payment email', () => {
+	it('never leaks banking details in the pending-payment email', () => {
+		// Regression guard: banking details must be sent manually by the owner,
+		// never by the automated confirmation. Any value that looks like a bank
+		// field leaking into the template is a critical bug.
 		const mail = customerEmailForStatus(makeOrder({ status: 'pending_payment' }));
-		expect(mail!.html).toContain('Test Account Holder');
-		expect(mail!.html).toContain('Test Bank');
-		expect(mail!.html).toContain('0000000000');
-		expect(mail!.html).toContain('000000');
-		// Defensive: must not leak the old hardcoded placeholder when env vars are set.
-		expect(mail!.html).not.toContain('[ To be provided ]');
-	});
-
-	it('escapes banking detail values injected from env vars', () => {
-		vi.stubEnv('BANK_ACCOUNT_NAME', '<script>alert(1)</script>');
-		try {
-			const mail = customerEmailForStatus(makeOrder({ status: 'pending_payment' }));
-			expect(mail!.html).not.toContain('<script>alert(1)</script>');
-			expect(mail!.html).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
-		} finally {
-			vi.unstubAllEnvs();
-		}
-	});
-
-	it('falls back to a contact-us message when any banking env var is missing', () => {
-		vi.stubEnv('BANK_ACCOUNT_NUMBER', '');
-		try {
-			const mail = customerEmailForStatus(makeOrder({ status: 'pending_payment' }));
-			// Still a usable email — customer knows their ref and how to pay.
-			expect(mail!.html).toContain('MG-260410-ABCD');
-			// But no partial/broken banking details are shown.
-			expect(mail!.html).not.toContain('Test Account Holder');
-			expect(mail!.html).not.toContain('Account number');
-			// And a clear next step is included.
-			expect(mail!.html.toLowerCase()).toMatch(/reply|contact/);
-		} finally {
-			vi.unstubAllEnvs();
-		}
+		expect(mail!.html).not.toMatch(/account\s*number/i);
+		expect(mail!.html).not.toMatch(/branch\s*code/i);
+		expect(mail!.html).not.toMatch(/\[\s*to be provided\s*\]/i);
 	});
 
 	it('returns a payment-received template', () => {

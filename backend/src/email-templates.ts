@@ -22,38 +22,11 @@ function trackingLink(order: { orderRef: string; customerEmail: string }): strin
 	return `${base}/track?ref=${ref}&email=${email}`;
 }
 
-// Banking details are injected from Lambda env vars at send time so they
-// never live in git and never appear on public pages. If any of the four
-// fields is missing (e.g. the Lambda hasn't been configured yet), we render a
-// graceful fallback that still tells the customer how to proceed rather than
-// a half-filled card.
-function bankingDetailsHtml(ref: string): string {
-	const accountName = process.env.BANK_ACCOUNT_NAME;
-	const bankName = process.env.BANK_NAME;
-	const accountNumber = process.env.BANK_ACCOUNT_NUMBER;
-	const branchCode = process.env.BANK_BRANCH_CODE;
-
-	if (!accountName || !bankName || !accountNumber || !branchCode) {
-		console.warn('Banking env vars are not fully configured — sending fallback copy.');
-		return `
-			<h3>Banking details</h3>
-			<p>Please reply to this email and we'll send our banking details so you
-			can complete payment. Use <strong>${escapeHtml(ref)}</strong> as your
-			payment reference.</p>
-		`;
-	}
-
-	return `
-		<h3>Banking details</h3>
-		<p>
-			Account name: ${escapeHtml(accountName)}<br>
-			Bank: ${escapeHtml(bankName)}<br>
-			Account number: ${escapeHtml(accountNumber)}<br>
-			Branch code: ${escapeHtml(branchCode)}<br>
-			Reference: ${escapeHtml(ref)}
-		</p>
-	`;
-}
+// Banking details are intentionally NOT rendered in any automated email.
+// The owner sends them by hand after reviewing each order — that manual step
+// is the anti-impersonation gate (see docs/security.md). Adding a function
+// that injects banking details into an automated template is a regression
+// and should fail code review.
 
 export function ownerNotification(input: OwnerNotificationInput): { subject: string; html: string } {
 	return {
@@ -67,23 +40,27 @@ export function ownerNotification(input: OwnerNotificationInput): { subject: str
 			<h3>Items</h3>
 			<pre style="font-family: inherit; white-space: pre-wrap;">${escapeHtml(input.items)}</pre>
 			${input.notes ? `<h3>Notes</h3><p>${escapeHtml(input.notes).replace(/\n/g, '<br>')}</p>` : ''}
-			<p>This order has been saved to the Studio. Update its status there to trigger customer emails automatically.</p>
+			<h3>Next step</h3>
+			<p><strong>Reply to this email with your banking details</strong> so the
+			customer can pay. The order has also been saved to the Studio — update
+			its status once payment reflects to trigger the "payment received"
+			email automatically.</p>
 		`
 	};
 }
 
 function pendingPaymentTemplate(order: SanityOrder): { subject: string; html: string } {
 	return {
-		subject: `Order confirmation ${order.orderRef} — Meryl Green Designs`,
+		subject: `Order received ${order.orderRef} — Meryl Green Designs`,
 		html: `
-			<h2>Thank you for your order</h2>
+			<h2>Thank you — your order request has been received</h2>
 			<p>Hi ${escapeHtml(order.customerName)},</p>
 			<p>We've received your order request. Your reference number is:</p>
 			<p style="font-size: 1.25rem;"><strong>${escapeHtml(order.orderRef)}</strong></p>
-			<p>Please make payment by Electronic Funds Transfer using the banking details
-			below, and use <strong>${escapeHtml(order.orderRef)}</strong> as your payment
-			reference.</p>
-			${bankingDetailsHtml(order.orderRef)}
+			<p>Meryl will reply to this email shortly with our banking details so you
+			can complete payment by Electronic Funds Transfer. Please use
+			<strong>${escapeHtml(order.orderRef)}</strong> as your payment reference
+			when you pay.</p>
 			<p>Your order will be shipped once payment reflects in the account. You can
 			check the status of your order at any time here:</p>
 			<p><a href="${trackingLink(order)}">${trackingLink(order)}</a></p>

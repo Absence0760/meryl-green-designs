@@ -77,10 +77,6 @@ resource "aws_lambda_function" "backend" {
       SANITY_DATASET        = var.sanity_dataset
       SANITY_API_TOKEN      = var.sanity_api_token
       SANITY_WEBHOOK_SECRET = var.sanity_webhook_secret
-      BANK_ACCOUNT_NAME     = var.bank_account_name
-      BANK_NAME             = var.bank_name
-      BANK_ACCOUNT_NUMBER   = var.bank_account_number
-      BANK_BRANCH_CODE      = var.bank_branch_code
     }
   }
 

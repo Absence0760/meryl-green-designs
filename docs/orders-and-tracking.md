@@ -213,9 +213,14 @@ New: same inputs, but after validation and before sending emails:
      customerNotes: data.notes
    });
    ```
-3. Send the owner notification email (as today).
-4. Send the customer confirmation email — same template as today, but now
-   includes a tracking link:
+3. Send the owner notification email — includes the full order details and an
+   explicit "reply to this email with your banking details" prompt. This is
+   the owner's cue to send banking info manually (see
+   [`docs/security.md`](./security.md) for why it's manual).
+4. Send the customer acknowledgement email. **This email never contains
+   banking details.** It confirms the order was received, shows the order
+   reference, tells the customer to expect a personal reply from Meryl with
+   the banking details, and includes a tracking link:
    `https://merylgreendesigns.co.za/track?ref=MG-XXX&email=customer@example.com`
 5. Return `{ success: true, ref }`.
 
@@ -362,21 +367,15 @@ Security:
 | `SANITY_DATASET` | no | Same as frontend's `PUBLIC_SANITY_DATASET` but server-side |
 | `SANITY_API_TOKEN` | **yes** | Write token for creating order documents. Scoped to the `order` type if possible. |
 | `SANITY_WEBHOOK_SECRET` | **yes** | Shared secret for verifying webhook signatures |
-| `BANK_ACCOUNT_NAME` | **yes** | Account holder name injected into the pending-payment email |
-| `BANK_NAME` | **yes** | Bank name injected into the pending-payment email |
-| `BANK_ACCOUNT_NUMBER` | **yes** | Account number injected into the pending-payment email |
-| `BANK_BRANCH_CODE` | **yes** | Branch code injected into the pending-payment email |
 
-All added to `infra/variables.tf` with `sensitive = true` on the secret ones,
-and to `backend/.env.example` and `backend/.env` for local development.
+Added to `infra/variables.tf` with `sensitive = true` on the secret ones, and
+to `backend/.env.example` and `backend/.env` for local development.
 
-If any of the four `BANK_*` vars is blank, `bankingDetailsHtml()` in
-`email-templates.ts` falls back to a "reply to this email for our banking
-details" message instead of rendering a half-filled card. This is the
-preferred failure mode: the customer still receives a usable email with their
-order reference, and the owner is never surprised by a partial leak in a
-template. Rotate the details by changing the Lambda env vars — no code
-change, no redeploy of the function package.
+**Banking details are intentionally not environment variables.** They're not
+stored anywhere in the repo, the Lambda, or any automated email — Meryl
+sends them by hand as a direct reply to each order. See
+[`docs/security.md`](./security.md) for the rationale (impersonation
+mitigation, no cryptographic automation).
 
 ## Frontend changes
 
@@ -501,26 +500,19 @@ The `/orders/:ref` response shape explicitly omits `internalNotes`,
 hand-written `sanitise()` function (see `backend/src/routes/order-lookup.ts`)
 rather than passing through whatever Sanity returns.
 
-### 8. Banking details never appear on public pages or in git
+### 8. Banking details are sent by hand, not by any automation
 
-Banking details (`BANK_ACCOUNT_NAME`, `BANK_NAME`, `BANK_ACCOUNT_NUMBER`,
-`BANK_BRANCH_CODE`) are stored only as Lambda environment variables and
-injected into the pending-payment email at send time. They are deliberately
-**not** shown on the shop page, not hardcoded in `email-templates.ts`, and
-not committed to `backend/.env.example` or `infra/terraform.tfvars.example`
-(the example files list the variables with empty values so operators know to
-fill them in). The shop page instead explains the EFT flow and tells
-customers that details will arrive by email.
+Banking details are not on the public site, not in this repo, and not
+injected into any automated email. Meryl sends them manually by replying to
+the owner-notification email after she's seen the order. The shop page
+explains this flow explicitly so customers know to expect a two-email
+sequence (auto acknowledgement → personal reply with bank details).
 
-Why this matters:
-
-- Public pages are scraped by bots and indexed by search engines. Published
-  account numbers invite impersonation and fake-invoice scams.
-- Bank details in the repo would survive in git history even if deleted
-  later; an env var can be rotated in seconds with no code change.
-- Keeping details out of the site means the only way for a customer to see
-  them is to submit an order with a valid email address — a small but real
-  gate.
+The `pendingPaymentTemplate()` in `backend/src/email-templates.ts` is
+regression-guarded by a test (`never leaks banking details in the
+pending-payment email`) that fails if strings like `account number` or
+`branch code` start appearing in the automated customer email. See
+[`docs/security.md`](./security.md) for the full impersonation threat model.
 
 ## What's NOT in this plan
 

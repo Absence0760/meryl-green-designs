@@ -45,7 +45,8 @@ Tests live in `frontend/` and `backend/` (vitest). Studio has none — don't add
 - `docs/run-locally.md` — detailed local dev setup
 - `docs/deployment.md` — CI/CD, OIDC, release flow
 - `docs/features.md`, `docs/roadmap.md` — current and planned features
-- `docs/orders-and-tracking.md` — planned (not yet built) design for orders as Sanity docs + public track page
+- `docs/orders-and-tracking.md` — implemented design for orders as Sanity docs + public track page
+- `docs/security.md` — risk register, mitigations, incident playbook, hardening gaps
 - `infra/README.md` — Terraform module specifics
 - `.github/workflows/` — deploy pipelines (OIDC, no long-lived AWS keys) + `claude.yml` Claude Code automation
 

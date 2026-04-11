@@ -287,14 +287,22 @@
 		<ol class="payment-steps">
 			<li>Place an order using the form above.</li>
 			<li>
-				We'll email you a confirmation with our banking details and a unique order
-				reference.
+				You'll immediately receive an email confirming your order request and
+				a unique order reference.
 			</li>
-			<li>Pay by Electronic Funds Transfer, using the reference on your payment.</li>
+			<li>
+				Meryl will then reply to that email personally with our banking
+				details.
+			</li>
+			<li>
+				Pay by Electronic Funds Transfer, using your order reference as the
+				payment reference.
+			</li>
 			<li>Once the payment reflects in our account, we ship your order.</li>
 		</ol>
 		<p class="note">
-			Banking details are only sent by email — we don't publish them on the site.
+			Banking details are only ever sent by a direct reply from Meryl — we
+			don't publish them on the site, and they aren't in any automated email.
 		</p>
 	</div>
 </section>
