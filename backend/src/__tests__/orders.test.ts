@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { SanityOrder } from '../sanity.js';
 
 vi.mock('../email.js', async () => {
@@ -128,6 +128,21 @@ describe('POST /orders', () => {
 				field: 'items length',
 				body: { ...validOrderBody, items: 'x'.repeat(2001) },
 				message: /too long/i
+			},
+			{
+				field: 'phone length',
+				body: { ...validOrderBody, phone: '0'.repeat(41) },
+				message: /too long/i
+			},
+			{
+				field: 'address length',
+				body: { ...validOrderBody, address: 'x'.repeat(501) },
+				message: /too long/i
+			},
+			{
+				field: 'notes length',
+				body: { ...validOrderBody, notes: 'x'.repeat(1001) },
+				message: /too long/i
 			}
 		];
 
@@ -158,6 +173,20 @@ describe('POST /orders', () => {
 		expect(data.success).toBe(true);
 		expect(data.warning).toBeDefined();
 		expect(sanity.createOrder).toHaveBeenCalledOnce();
+	});
+
+	describe('without OWNER_EMAIL', () => {
+		afterEach(() => vi.unstubAllEnvs());
+
+		it('returns 500 and does not create a Sanity order', async () => {
+			vi.stubEnv('OWNER_EMAIL', '');
+			const res = await postOrder(validOrderBody);
+			expect(res.status).toBe(500);
+			const data = (await res.json()) as any;
+			expect(data.error).toMatch(/not configured/i);
+			expect(sanity.createOrder).not.toHaveBeenCalled();
+			expect(email.sendEmail).not.toHaveBeenCalled();
+		});
 	});
 });
 

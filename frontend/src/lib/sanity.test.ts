@@ -22,6 +22,15 @@ describe('formatPrice', () => {
 	it('formats zero as "R 0" rather than "Price on enquiry"', () => {
 		expect(formatPrice(0)).toBe('R 0');
 	});
+
+	it('uses the en-ZA thousand separator for large numbers', () => {
+		// en-ZA groups with a non-breaking space or comma depending on ICU;
+		// whichever it is, matchers here are locale-aware rather than literal.
+		const expected = `R ${(1_000_000).toLocaleString('en-ZA')}`;
+		expect(formatPrice(1_000_000)).toBe(expected);
+		// Defensive: ensure grouping actually happened and we're not seeing "R 1000000".
+		expect(formatPrice(1_000_000)).not.toBe('R 1000000');
+	});
 });
 
 describe('imageUrl', () => {
@@ -41,5 +50,10 @@ describe('imageUrl', () => {
 	it('includes w=640 when a width is provided', () => {
 		const url = imageUrl(source, 640);
 		expect(url).toContain('w=640');
+	});
+
+	it('omits the w= parameter when no width is provided', () => {
+		const url = imageUrl(source);
+		expect(url).not.toContain('w=');
 	});
 });

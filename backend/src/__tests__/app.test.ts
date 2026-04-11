@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 
 vi.mock('../sanity.js', () => ({
 	createOrder: vi.fn(),
@@ -74,5 +74,37 @@ describe('error handling', () => {
 		const app = createApp();
 		const res = await app.request('/does-not-exist');
 		expect(res.status).toBe(404);
+	});
+});
+
+describe('ALLOWED_ORIGINS fallback', () => {
+	// The `??` in createApp() only fires the fallback when the env var is
+	// undefined — empty string would split to an empty list. Delete the var
+	// directly so the nullish check actually triggers.
+	const originalAllowedOrigins = process.env.ALLOWED_ORIGINS;
+	afterEach(() => {
+		if (originalAllowedOrigins === undefined) {
+			delete process.env.ALLOWED_ORIGINS;
+		} else {
+			process.env.ALLOWED_ORIGINS = originalAllowedOrigins;
+		}
+	});
+
+	it('falls back to http://localhost:7777 when ALLOWED_ORIGINS is unset', async () => {
+		delete process.env.ALLOWED_ORIGINS;
+		const app = createApp();
+		const res = await app.request('/health', {
+			headers: { Origin: 'http://localhost:7777' }
+		});
+		expect(res.headers.get('access-control-allow-origin')).toBe('http://localhost:7777');
+	});
+
+	it('does not allow the production domain when ALLOWED_ORIGINS is unset', async () => {
+		delete process.env.ALLOWED_ORIGINS;
+		const app = createApp();
+		const res = await app.request('/health', {
+			headers: { Origin: 'https://merylgreendesigns.co.za' }
+		});
+		expect(res.headers.get('access-control-allow-origin')).toBeNull();
 	});
 });

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createHmac } from 'node:crypto';
 
 // Mock email and sanity modules BEFORE importing app.
@@ -188,5 +188,44 @@ describe('POST /webhooks/sanity-order', () => {
 		});
 		expect(res.status).toBe(400);
 		expect(email.sendEmail).not.toHaveBeenCalled();
+	});
+
+	describe('without SANITY_WEBHOOK_SECRET', () => {
+		afterEach(() => vi.unstubAllEnvs());
+
+		it('returns 500 before attempting signature verification', async () => {
+			vi.stubEnv('SANITY_WEBHOOK_SECRET', '');
+			const body = JSON.stringify(makeOrderDoc());
+			const app = createApp();
+			const res = await app.request('/webhooks/sanity-order', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					// Any signature — route should short-circuit before checking it.
+					'sanity-webhook-signature': 't=1,v1=nope'
+				},
+				body
+			});
+			expect(res.status).toBe(500);
+			expect(email.sendEmail).not.toHaveBeenCalled();
+		});
+	});
+
+	it('returns 500 when sendEmail throws on a valid signed request', async () => {
+		vi.mocked(email.sendEmail).mockRejectedValueOnce(new Error('resend down'));
+		const body = JSON.stringify(makeOrderDoc());
+		const signature = signPayload(body);
+		const app = createApp();
+		const res = await app.request('/webhooks/sanity-order', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				'sanity-webhook-signature': signature
+			},
+			body
+		});
+		expect(res.status).toBe(500);
+		const data = (await res.json()) as any;
+		expect(data.error).toMatch(/email/i);
 	});
 });

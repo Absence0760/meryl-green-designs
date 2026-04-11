@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { escapeHtml } from '../email.js';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { escapeHtml, sendEmail } from '../email.js';
 import {
 	ownerNotification,
 	customerEmailForStatus
@@ -185,5 +185,91 @@ describe('customerEmailForStatus', () => {
 		);
 		expect(mail!.html).not.toContain('<img src=x');
 		expect(mail!.html).toContain('&lt;img src=x onerror=alert(1)&gt;');
+	});
+});
+
+describe('sendEmail', () => {
+	const fetchMock = vi.fn();
+
+	beforeEach(() => {
+		fetchMock.mockReset();
+		vi.stubGlobal('fetch', fetchMock);
+	});
+
+	afterEach(() => {
+		vi.unstubAllGlobals();
+		vi.unstubAllEnvs();
+	});
+
+	function okResponse() {
+		return new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } });
+	}
+
+	it('POSTs to the Resend API with the expected body', async () => {
+		fetchMock.mockResolvedValueOnce(okResponse());
+
+		await sendEmail({
+			to: 'jane@example.com',
+			subject: 'Hi',
+			html: '<p>Hello</p>'
+		});
+
+		expect(fetchMock).toHaveBeenCalledOnce();
+		const [url, init] = fetchMock.mock.calls[0]!;
+		expect(url).toBe('https://api.resend.com/emails');
+		expect(init.method).toBe('POST');
+		expect(init.headers.Authorization).toBe('Bearer test-resend-key');
+		expect(init.headers['Content-Type']).toBe('application/json');
+		const body = JSON.parse(init.body);
+		expect(body).toMatchObject({
+			from: 'Meryl Green Designs <test@example.com>',
+			to: 'jane@example.com',
+			subject: 'Hi',
+			html: '<p>Hello</p>'
+		});
+		// No replyTo passed → no reply_to field should be set.
+		expect(body).not.toHaveProperty('reply_to');
+	});
+
+	it('includes reply_to only when replyTo is provided', async () => {
+		fetchMock.mockResolvedValueOnce(okResponse());
+
+		await sendEmail({
+			to: 'owner@example.com',
+			subject: 'Hi',
+			html: '<p>Hello</p>',
+			replyTo: 'customer@example.com'
+		});
+
+		const body = JSON.parse(fetchMock.mock.calls[0]![1].body);
+		expect(body.reply_to).toBe('customer@example.com');
+	});
+
+	it('throws when RESEND_API_KEY is missing', async () => {
+		vi.stubEnv('RESEND_API_KEY', '');
+
+		await expect(
+			sendEmail({ to: 'a@b.c', subject: 's', html: '<p/>' })
+		).rejects.toThrow(/not configured/i);
+		expect(fetchMock).not.toHaveBeenCalled();
+	});
+
+	it('throws when FROM_EMAIL is missing', async () => {
+		vi.stubEnv('FROM_EMAIL', '');
+
+		await expect(
+			sendEmail({ to: 'a@b.c', subject: 's', html: '<p/>' })
+		).rejects.toThrow(/not configured/i);
+		expect(fetchMock).not.toHaveBeenCalled();
+	});
+
+	it('throws with the status code when Resend returns a non-OK response', async () => {
+		fetchMock.mockResolvedValueOnce(
+			new Response('{"message":"bad auth"}', { status: 401 })
+		);
+
+		await expect(
+			sendEmail({ to: 'a@b.c', subject: 's', html: '<p/>' })
+		).rejects.toThrow(/401/);
 	});
 });
