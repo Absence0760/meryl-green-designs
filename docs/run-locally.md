@@ -38,30 +38,54 @@ cp studio/.env.example studio/.env
 
 Edit `backend/.env` and set at minimum:
 
+**For the order flow + email (Resend):**
 - `RESEND_API_KEY` — your Resend API key
 - `FROM_EMAIL` — a verified sender in your Resend account (e.g. a Resend
   sandbox address, or `orders@yourdomain.com` once the domain is verified)
 - `OWNER_EMAIL` — where order notifications go (your inbox while developing)
 
-`frontend/.env` contains `PUBLIC_API_URL=http://localhost:3001` (leave as-is
-for local dev) and `PUBLIC_SANITY_PROJECT_ID` / `PUBLIC_SANITY_DATASET`. The
-Sanity values can stay empty for initial setup — the shop page will render
-with an empty product list.
+**For products + gallery + order storage (Sanity):**
+- `SANITY_PROJECT_ID` — your Sanity project ID
+- `SANITY_DATASET` — defaults to `production`
+- `SANITY_API_TOKEN` — an Editor-scoped token from your Sanity project's
+  API → Tokens tab. Required for the backend to read products and gallery
+  photos and to write orders.
 
-### Setting up Sanity (optional, but required for managing products)
+**Optional but useful:**
+- `SANITY_WEBHOOK_SECRET` — only needed if you're testing the order-status
+  email webhook locally (via ngrok or similar)
+- `SITE_URL` — base URL used in tracking link emails. Defaults to
+  `http://localhost:7777`
+
+Edit `frontend/.env`:
+
+- `PUBLIC_API_URL=http://localhost:3001` — where the browser finds the backend
+- `PUBLIC_SITE_URL=http://localhost:7777` — used for absolute URLs in Open
+  Graph social share tags
+- `PUBLIC_SANITY_PROJECT_ID` — same project ID as the backend. The frontend
+  uses it to build image URLs from Sanity's public asset CDN (it doesn't
+  query documents directly)
+- `PUBLIC_SANITY_DATASET` — same dataset name as the backend
+
+### Setting up Sanity
 
 1. Log in at https://www.sanity.io/manage and click **Create new project**.
 2. Give it a name (e.g. "Meryl Green Designs") and choose the default dataset
    `production`.
 3. Copy the **Project ID** shown on the project dashboard.
-4. Paste the project ID into **both**:
+4. Paste the project ID into **all three** env files:
    - `studio/.env` → `SANITY_STUDIO_PROJECT_ID=...`
+   - `backend/.env` → `SANITY_PROJECT_ID=...`
    - `frontend/.env` → `PUBLIC_SANITY_PROJECT_ID=...`
-5. Start the studio with `pnpm studio dev` (see below).
-6. Log into the studio in your browser, create some products, and click
-   **Publish**.
-7. Rebuild the frontend (`pnpm frontend build` or restart `pnpm dev`) and the
-   products will appear on the shop page.
+5. Create an **Editor** API token in the Sanity dashboard (API → Tokens → Add)
+   and paste it into `backend/.env` as `SANITY_API_TOKEN=...`. The backend
+   needs this to read products and gallery and to create orders.
+6. Start the studio with `pnpm studio dev` (see below).
+7. Log into the studio in your browser, create some products and gallery
+   photos, and click **Publish**.
+8. Refresh the shop and gallery pages in your browser — the new content
+   appears immediately. (Shop and gallery fetch data client-side on every
+   page load, so there's no rebuild required.)
 
 ## Running the site
 
@@ -189,12 +213,25 @@ pnpm studio build         # emits studio/dist/ (React SPA, for self-hosted deplo
   actual error from the backend. Common cause: missing `OWNER_EMAIL` in
   `backend/.env`.
 
-**Shop page shows "No products are listed yet" even after adding products**
-: Three common causes: (1) `PUBLIC_SANITY_PROJECT_ID` is empty or wrong in
-  `frontend/.env`; (2) the products were saved as drafts in the studio but
-  not published — click the **Publish** button in the studio; (3) the frontend
-  hasn't been rebuilt since the content was published — restart `pnpm dev` or
-  run `pnpm frontend build`.
+**Shop or gallery page stays on the skeleton / empty state even after adding content**
+: Shop and gallery fetch from the backend at runtime, so the usual causes
+  are backend-side:
+  1. **Backend isn't running.** `pnpm dev` starts both frontend and backend.
+     Confirm with `lsof -i :3001` or `curl http://localhost:3001/health`.
+  2. **Backend `SANITY_API_TOKEN` is missing or wrong** in `backend/.env`.
+     Without the token, the backend returns 500 on `/products` and `/gallery`.
+     Check the backend terminal for `SANITY_PROJECT_ID is not configured` or
+     authentication errors.
+  3. **Backend `SANITY_PROJECT_ID` is missing or doesn't match** the studio
+     project.
+  4. **`tsx watch` hasn't picked up `.env` changes.** `tsx watch` does not
+     auto-reload on `.env` edits. Stop and restart `pnpm dev` after changing
+     backend env vars.
+  5. **Content saved as drafts, not published.** Click **Publish** in Sanity
+     Studio — unpublished drafts are invisible to the API.
+  6. **Browser devtools → Network tab** shows you exactly what the backend
+     returned. Click the failing `/products` or `/gallery` request to see
+     the actual error message.
 
 **Studio fails to start with "SANITY_STUDIO_PROJECT_ID is not set"**
 : You haven't created `studio/.env` or you left `SANITY_STUDIO_PROJECT_ID`

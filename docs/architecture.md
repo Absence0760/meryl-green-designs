@@ -8,7 +8,9 @@ pnpm workspace with three packages, plus a Terraform module for infrastructure
 and GitHub Actions workflows for CI/CD:
 
 - `frontend/` — SvelteKit (Svelte 5), built with `@sveltejs/adapter-static`. Ships as
-  pre-rendered HTML + assets. Fetches product data from Sanity at build time.
+  pre-rendered HTML + assets. Shop and gallery prerender as static shells with
+  skeleton loading states, then fetch product/gallery data from the backend at
+  runtime via client-side `onMount`.
 - `backend/` — Hono app, written once and deployed two ways: as a local Node HTTP
   server for development and as an AWS Lambda handler for production. Bundled
   with esbuild.
@@ -48,11 +50,11 @@ meryl-green-designs/
 │           ├── +layout.ts           export const prerender = true
 │           ├── +page.svelte         Home: hero / story / poem
 │           ├── gallery/
-│           │   ├── +page.server.ts  Loader — fetches gallery photos from backend at build time
-│           │   └── +page.svelte     Photo grid + empty state
+│           │   ├── +page.ts         export const prerender = true (SSR'd shell with skeletons)
+│           │   └── +page.svelte     Photo grid + skeleton loader + empty state (client-side fetch)
 │           ├── shop/
-│           │   ├── +page.server.ts  Loader — fetches products from Sanity at build time
-│           │   └── +page.svelte     Product grid + order form + EFT details
+│           │   ├── +page.ts         export const prerender = true (SSR'd shell with skeletons)
+│           │   └── +page.svelte     Product grid + order form + EFT details (client-side fetch)
 │           ├── track/
 │           │   ├── +page.ts         prerender=true, ssr=false (client-only)
 │           │   └── +page.svelte     Order lookup form + status card
@@ -123,23 +125,33 @@ backend via `fetch`. The backend URL is baked into the bundle at build time from
 `PUBLIC_API_URL` via `$env/static/public`. There is no runtime environment resolution
 on the frontend — rebuilding is required to change the backend URL.
 
-Product data is loaded at build time by
-`frontend/src/routes/shop/+page.server.ts`, which fetches
-`${PUBLIC_API_URL}/products` from the backend (not Sanity directly). The
-backend reads from Sanity using its API token, so the Sanity dataset can
-stay private even though the shop is publicly visible. The result is baked
-into `shop.html` and `shop/__data.json` at build time.
+Product and gallery data are fetched at **runtime** by the browser, not at
+build time. Each route prerenders a static HTML shell containing the layout
+chrome, heading, lede, and a skeleton loading state. On hydration, the
+component's `onMount` fires and makes a client-side `fetch` to
+`${PUBLIC_API_URL}/products` or `/gallery`. The backend reads from Sanity
+using its API token and returns the data as JSON. The skeleton swaps for
+real content, then `loading="lazy"` images download progressively as the
+user scrolls.
 
-When Meryl edits a product in the Studio, the site must be rebuilt to
-reflect the change — a Sanity webhook triggers a CI redeploy (see
-[`deployment.md`](./deployment.md) section 9).
+This pattern has three deliberate properties:
 
-If the backend is unreachable at build time (or returns an error), the
-loader logs a warning and returns an empty product list so the build still
-succeeds. The shop page shows a friendly empty state in that case. This is
-forgiving for local dev without the backend running; in CI a broken backend
-would still produce a deployable (if empty) site, and the failure would show
-up in the Lambda logs.
+1. **First paint is instant** — the shell comes from CloudFront/S3 in
+   ~100 ms globally; visitors see layout, heading, and skeletons before
+   any data or images are requested
+2. **Content is live** — because the fetch runs on every visit, a product
+   edit in Sanity Studio is visible within seconds without a frontend
+   rebuild (the "rebuild on publish" webhook still exists but is only
+   strictly needed for content that's baked at build time, which for now
+   is nothing)
+3. **The site stays fully static** — no server, no SSR at runtime, no
+   Node process on the hot path. S3 + CloudFront serves everything; the
+   Lambda is only invoked when a browser makes an `/orders`, `/products`,
+   `/gallery`, or `/webhooks/sanity-order` call
+
+If the backend is unreachable when the client tries to fetch, the component
+shows an error state and the skeleton clears. Empty responses (no products
+yet) show a friendly "no products listed yet" empty state instead.
 
 ## Backend
 
@@ -159,12 +171,12 @@ difference is how requests reach the app.
 
 - `GET /health` — liveness check, returns `{ ok: true }`
 - `GET /products` — returns the list of published + available products from
-  Sanity. Called by the frontend's shop loader at build time. This endpoint
-  exists so the Sanity dataset can stay private while the product catalogue
-  is still visible on the public site.
+  Sanity. Called by the frontend's shop page at runtime (client-side `fetch`
+  in `onMount`). This endpoint exists so the Sanity dataset can stay private
+  while the product catalogue is still visible on the public site.
 - `GET /gallery` — returns the list of visible gallery photos from Sanity,
-  ordered by the `order` field. Called by the frontend's gallery loader at
-  build time. Same private-dataset rationale as `/products`.
+  ordered by the `order` field. Called by the frontend's gallery page at
+  runtime, same pattern as `/products`.
 - `POST /orders` — accepts an order JSON body, validates it, generates a reference
   `MG-YYMMDD-XXXX`, **creates a Sanity `order` document via an authenticated
   client**, sends two emails via Resend (owner + customer confirmation with a
@@ -237,34 +249,42 @@ own `.env`. The frontend reads the *same* project via `PUBLIC_SANITY_PROJECT_ID`
 and `PUBLIC_SANITY_DATASET` in its `.env`. Both sides must point to the same
 project for content to flow through.
 
-## Content flow (products)
+## Content flow (products + gallery)
+
+Products and gallery photos are fetched at **runtime** by the visitor's
+browser, not baked into the static build. Meryl's edits appear on the live
+site within seconds — no rebuild, no webhook, no CI round-trip.
 
 ```
-Meryl (browser)
-    │ edits products in Sanity Studio
-    ▼
-Sanity (hosted content dataset)
-    │
-    │ on publish: webhook → CI
-    ▼
-GitHub Actions / deploy pipeline
-    │ pnpm frontend build   (loader fetches products)
-    ▼
-S3 bucket (new shop.html baked with latest products)
-    │
-    ▼
-CloudFront (invalidation)
-    │
-    ▼
-Visitor sees updated shop
+Meryl edits in Sanity Studio                      Visitor on the site
+          │                                               │
+          │ clicks Publish                                │ opens /shop or /gallery
+          ▼                                               ▼
+     Sanity dataset                                CloudFront → S3
+     (updated instantly)                                   │
+          │                                               │ static HTML shell (skeleton)
+          │                                               ▼
+          │                                          Browser hydrates
+          │                                               │
+          │                                               │ GET /products or /gallery
+          │                                               ▼
+          │                                          Lambda (backend)
+          │                                               │
+          ▼                                               │ queries Sanity with token
+     Sanity CDN  ◄──────────────────────────────────────┘
+          │
+          │ returns latest products/photos
+          ▼
+     Skeleton swaps for real content
+     Images lazy-load from Sanity's asset CDN
 ```
 
-The deploy pipeline exists (`.github/workflows/deploy-frontend.yml`) and accepts
-`repository_dispatch` events. What remains is a one-time setup: apply the
-Terraform, populate the GitHub environment variables with the outputs, and
-configure a Sanity webhook that POSTs to the GitHub Actions dispatch endpoint
-with `event_type: sanity-publish`. Step-by-step instructions are in
-[`deployment.md`](./deployment.md) section 9.
+The `deploy-frontend.yml` workflow also accepts `repository_dispatch` events
+from a content-rebuild webhook, which is useful for content baked at build
+time. With products and gallery fetched at runtime, this webhook isn't
+strictly required today, but it's ready to wire up if home page story/poem
+ever move into Sanity (they're currently hardcoded). Setup instructions are
+in [`deployment.md`](./deployment.md) section 9.
 
 ## Order creation flow
 

@@ -1,25 +1,46 @@
 # Features
 
-This document describes what the site currently does. Content (the real story,
-poem, photographs, and banking details) is still placeholder text that will be
-filled in before launch.
+This document describes what the site currently does.
+
+The code and UI are complete for v1. Remaining pre-launch items are content
+(real banking details, real contact email, Meryl's own products and gallery
+photos in Sanity Studio) — see [`roadmap.md`](./roadmap.md).
 
 ## Site-wide
 
-- **Sticky header** with brand and navigation. The active route is highlighted.
-- **Nature-inspired theme**: muted greens, bark accents, cream background, serif
-  display type (`Georgia`/`Cormorant Garamond`) with a sans-serif body.
+- **Sticky header** with brand ("Meryl Green Designs") and navigation. The
+  active route is highlighted.
+- **Nature-inspired theme**: muted greens, bark accents, cream background,
+  serif display type (`Georgia`/`Cormorant Garamond`) with a sans-serif body.
 - **Responsive layout**: grids collapse to single column on narrow viewports.
-- **Footer** with copyright and the collection tagline.
+- **Footer** with copyright and brand tagline.
+- **Favicon** — brand-colored SVG "M" monogram in `static/favicon.svg`, referenced
+  from `app.html` so it appears on every route, including those with
+  `ssr = false`.
+- **`theme-color` meta** — mobile browsers tint the address bar with the brand
+  dark-green (`#2f4a25`).
+- **`robots.txt`** — allows all indexable routes, disallows `/track` (which
+  is per-order and useless to crawlers without query params).
+- **Per-route SEO + Open Graph + Twitter Card tags** — every page has its own
+  `<title>`, meta description, `og:title`, and `og:description` in
+  `<svelte:head>`. Site-wide `og:type`, `og:site_name`, `og:image`, `og:url`,
+  `twitter:card`, and `twitter:image` live in `+layout.svelte` and are set
+  once. The hero photograph (`/two_trees.JPG`) is the default social share
+  image. Absolute URLs for OG tags use `PUBLIC_SITE_URL`, baked in at build
+  time.
 
 ## Home (`/`)
 
-- **Hero** with the eyebrow "Meryl Green Designs" and the heading "Inspired by
-  Nature", rendered across a full-bleed photograph of the African bush.
-- **Story** section with a placeholder paragraph to be replaced with the real
-  text.
-- **Poem** section on an alternate background with a styled blockquote and leaf
-  accent.
+- **Hero** rendered across a full-bleed photograph of the African bush
+  (`static/two_trees.JPG`, compressed to 643 KB at 1920 px wide). The H1
+  reads "Inspired by Nature" followed by a short italic tagline. The hero
+  image is preloaded via `<link rel="preload" as="image">` so the first
+  paint shows the photograph immediately.
+- **Story** section with Meryl's five-paragraph introduction to The Green
+  Collection, covering where the work comes from, the materials (Meranti
+  hardwood frames, 100% cotton canvas), and what she's trying to evoke.
+- **Poem** section on an alternate background, rendering "Africa" (author
+  unknown) as three stanzas with a styled blockquote and leaf-green accent.
 - **Call-to-action cards** linking to the Gallery and Shop.
 
 ## Gallery (`/gallery`)
@@ -28,34 +49,52 @@ filled in before launch.
   sets display order, and toggles visibility from the same studio she uses
   for products and orders. No dev involvement needed to add or remove gallery
   photos.
-- **Responsive tile grid** (minimum 240px per tile). Each tile shows a photo
+- **Responsive tile grid** (minimum 240 px per tile). Each tile shows a photo
   cropped to a consistent 4:3 aspect ratio via `object-fit: cover`, with an
   optional caption below.
+- **Runtime fetch from the backend**: the page prerenders a static shell with
+  the heading, lede, and 8 shimmering skeleton tiles. After hydration,
+  `onMount` calls `GET /gallery` on the backend, the skeletons swap for real
+  tiles, and images lazy-load as the user scrolls.
 - **Images served by Sanity's CDN** with auto-format conversion and resized
-  to 800px width at request time. No manual optimisation — Meryl can upload
-  any size straight from her camera.
-- **Empty state** shown when no photos have been added yet, so the page still
-  looks intentional before Meryl populates it.
-- **Build-time fetch** through the backend's `GET /gallery` endpoint, same
-  pattern as the shop. The Sanity dataset stays private; the frontend never
-  calls Sanity's query API directly.
+  to 640 px width. Meryl can upload any size from her camera; the browser
+  never downloads the original.
+- **Empty state** shown when no photos have been published yet.
+- **Error state** shown if the backend is unreachable — clears the skeletons
+  and prompts the visitor to refresh.
+- **`prefers-reduced-motion` guard** — skeleton shimmer animation disabled
+  for users who've opted out of motion.
+- **Backend-mediated reads** keep the Sanity dataset private; the frontend
+  never calls Sanity's query API directly.
 
 ## Shop (`/shop`)
 
-- **Product grid** rendered from the Sanity CMS. Each product card shows the
-  main photo, name, blurb, and price (formatted as ZAR). When there are no
-  products yet, a friendly empty state is shown instead.
-- **"Enquire / Order" button** on each card pre-fills the order form's items
-  field with `1 x {product name} — R{price}` and smooth-scrolls to the form.
-  Clicking multiple products appends each one as a new line, so customers can
-  order several items from a single product browse.
-- **Order form** with fields for name, email, phone (optional), shipping address,
-  items, and notes. Validation is client-side and server-side. A hidden honeypot
-  field deters simple bots.
-- **Submission flow**: the form POSTs JSON to the backend's `/orders` endpoint.
-  On success, the form is replaced by a confirmation showing the unique order
-  reference (`MG-YYMMDD-XXXX`). On failure, an error message is shown and the
-  form remains editable.
+- **Product grid rendered at runtime from the backend.** The page prerenders
+  a static shell with heading, lede, and 6 shimmering skeleton cards. After
+  hydration, `onMount` calls `GET /products`, the skeletons swap for real
+  cards, and product photos lazy-load from Sanity's CDN (capped at 640 px
+  wide, not the original upload resolution).
+- **Product card layout** — name, optional blurb, optional multi-line
+  description, price (formatted as ZAR), "Enquire / Order" button. Cards
+  are flexbox-columns with `margin-top: auto` on the price row so prices and
+  buttons stay on the same baseline across cards regardless of how much
+  text is above them.
+- **Empty state** when no products have been published. **Error state**
+  when the backend is unreachable.
+- **"Enquire / Order" button** pre-fills the order form's items field with
+  `1 x {product name} — R{price}` and smooth-scrolls to the form. Multiple
+  clicks append new lines so customers can order several items in one submit.
+- **Order form** with fields for name, email, phone (optional), shipping
+  address, items, and notes. All inputs have proper `name`, `id`,
+  `autocomplete`, and `inputmode` attributes so mobile autofill and form
+  fillers work correctly. Required fields show a red `*` and a legend
+  explains the marker. The submit button is full-width and visibly primary.
+  A hidden honeypot field (`name="website"`, offscreen-absolute) deters
+  simple bots.
+- **Submission flow**: the form POSTs JSON to the backend's `/orders`
+  endpoint. On success, the form is replaced by a confirmation showing the
+  unique order reference (`MG-YYMMDD-XXXX`). On failure, an error alert is
+  shown and the form remains editable.
 - **EFT payment details** section with a bank details card. The real account
   number, branch code, etc. are marked as "To be provided".
 
@@ -109,12 +148,13 @@ filled in before launch.
 - **Image handling** is provided by Sanity's CDN — automatic format
   conversion, resizing, and hotspot-aware cropping. No manual image
   optimisation needed.
-- **Build-time content fetch**: the frontend pulls products at build time via
-  a GROQ query. After an edit in the studio, the site must be rebuilt to
-  reflect the change. The CI workflow for this exists
-  (`.github/workflows/deploy-frontend.yml` accepts `repository_dispatch`
-  events); a Sanity webhook wires publish events to it — see
-  [`deployment.md`](./deployment.md) for the wiring step.
+- **Runtime content fetch**: the frontend fetches products and gallery
+  photos on every visit, from the backend, which in turn reads from
+  Sanity with its API token. Meryl's edits appear within seconds of
+  clicking Publish — no rebuild needed. The `deploy-frontend.yml` workflow
+  still accepts `repository_dispatch` events for content that's baked at
+  build time (e.g. if the home page story ever moves into Sanity), but
+  products and gallery don't currently require it.
 - **Automated status emails**: when Meryl changes an order's `status` field
   in the studio and publishes, a separate Sanity webhook calls the backend's
   `/webhooks/sanity-order` endpoint, which verifies the signature and sends
