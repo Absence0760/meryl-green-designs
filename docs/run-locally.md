@@ -145,18 +145,56 @@ pnpm studio dev           # studio only
 
 These are shortcuts for `pnpm --filter @meryl-green-designs/{frontend,backend,studio}`.
 
-## Smoke test
+## End-to-end test
 
-With both servers running:
+A full run through the app exercises studio content → frontend rendering →
+backend order submission → Sanity order doc → tracking link. Run all three
+servers (`pnpm dev:all`) and walk through the steps below.
 
-1. Open http://localhost:7777 — the home page should load.
-2. Navigate to **Shop**, scroll to **Order form**, fill it in and submit.
-3. Backend terminal should log the request. If email is configured, two emails
-   arrive shortly (owner + customer).
-4. If email is not configured, the browser shows an error — the rest of the
-   site still works.
+**1. Publish content in the studio** (http://localhost:3333)
 
-You can also hit the backend directly:
+Sign in, create one or two products and a gallery photo, and **click Publish**
+— unpublished drafts are invisible to the backend's Sanity queries.
+
+**2. Verify the frontend renders that content** (http://localhost:7777)
+
+- Home page loads.
+- **Shop** page shows the products you just published.
+- **Gallery** page shows the photo.
+
+If a page stays on the skeleton/empty state, see the "Shop or gallery page
+stays on the skeleton" entry under [Common issues](#common-issues).
+
+**3. Submit an order**
+
+On the Shop page, scroll to the order form, fill it in with your own email
+address, and submit. In the backend terminal you should see the `POST /orders`
+request logged. Two emails arrive shortly: one to `OWNER_EMAIL`, one to the
+customer address.
+
+**4. Verify the order doc in Sanity Studio**
+
+A new document appears under **Orders** in the studio. Change its status
+(e.g. `pending` → `confirmed`) and click Publish.
+
+**5. Open the tracking link**
+
+The customer email contains a `/track?token=…` link. Open it — the track
+page should show the current order status.
+
+**6. (Optional) Test the status-change email**
+
+The status-change email fires from a Sanity webhook, which needs a
+publicly-reachable backend URL. To test locally, run an ngrok tunnel to
+`localhost:3001`, point a Sanity webhook at `<ngrok-url>/webhooks/sanity`
+with `SANITY_WEBHOOK_SECRET` as the shared secret, and re-publish an order
+with a new status. See [`orders-and-tracking.md`](./orders-and-tracking.md)
+for the full webhook wiring. Skip this on the first pass — everything else
+works without it.
+
+## Quick backend smoke test
+
+To exercise the backend without touching the frontend:
 
 ```bash
 curl http://localhost:3001/health
