@@ -39,8 +39,9 @@ snippet, not anything in the repo) — see [`roadmap.md`](./roadmap.md).
   paint shows the photograph immediately.
 - **Story** section with Meryl's three-paragraph introduction to The Green
   Collection, covering where the work comes from and what she's trying to
-  evoke. Materials detail (Meranti hardwood frames, 100% cotton canvas) lives
-  on the Shop page instead, alongside the products it describes.
+  evoke. Materials detail (Meranti hardwood frames, 100% cotton canvas)
+  lives on the Shop page as a compact spec block rather than here, so the
+  story stays narrative.
 - **Poem** section on an alternate background, rendering "Africa" (author
   unknown) as three stanzas with a styled blockquote and leaf-green accent.
 - **Call-to-action cards** linking to the Gallery and Shop.
@@ -76,6 +77,10 @@ snippet, not anything in the repo) — see [`roadmap.md`](./roadmap.md).
   hydration, `onMount` calls `GET /products`, the skeletons swap for real
   cards, and product photos lazy-load from Sanity's CDN (capped at 640 px
   wide, not the original upload resolution).
+- **Materials spec block** directly below the lede — a compact two-row
+  definition list (`Frame`, `Canvas`) describing the shared construction of
+  every piece. Styled as plain labelled facts rather than prose, so it
+  doesn't compete with the product grid for attention.
 - **Product card layout** — name, optional blurb, optional multi-line
   description, price (formatted as ZAR), "Enquire / Order" button. Cards
   are flexbox-columns with `margin-top: auto` on the price row so prices and
