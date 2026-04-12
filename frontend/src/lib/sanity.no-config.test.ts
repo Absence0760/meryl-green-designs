@@ -9,6 +9,8 @@ vi.mock('$env/static/public', () => ({
 	PUBLIC_SANITY_DATASET: 'production'
 }));
 
+vi.mock('$app/paths', () => ({ base: '' }));
+
 const { imageUrl } = await import('./sanity');
 
 describe('imageUrl without PUBLIC_SANITY_PROJECT_ID', () => {

@@ -5,7 +5,9 @@
 	"private": true,
 	"scripts": {
 		"dev": "vite dev --port 7777",
+		"dev:demo": "PUBLIC_DEMO_MODE=true vite dev --port 7777",
 		"build": "vite build",
+		"build:demo": "BASE_PATH=/meryl-green-designs PUBLIC_DEMO_MODE=true vite build",
 		"preview": "vite preview --port 8888",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",

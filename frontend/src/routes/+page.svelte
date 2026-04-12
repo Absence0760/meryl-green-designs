@@ -101,12 +101,12 @@
 <section class="section">
 	<div class="container">
 		<div class="cta-grid">
-			<a class="cta-card" href="/gallery">
+			<a class="cta-card" href={`${base}/gallery`}>
 				<h3>Gallery</h3>
 				<p>Browse photographs of screens and design options.</p>
 				<span class="cta-link">View gallery →</span>
 			</a>
-			<a class="cta-card" href="/shop">
+			<a class="cta-card" href={`${base}/shop`}>
 				<h3>Shop</h3>
 				<p>Finished products available for purchase.</p>
 				<span class="cta-link">Visit shop →</span>

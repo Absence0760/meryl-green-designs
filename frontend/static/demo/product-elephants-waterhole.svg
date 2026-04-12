@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800">
+	<defs>
+		<linearGradient id="sky" x1="0" x2="0" y1="0" y2="1">
+			<stop offset="0" stop-color="#f3c9d4"/>
+			<stop offset=".5" stop-color="#c89cb0"/>
+			<stop offset="1" stop-color="#6b5068"/>
+		</linearGradient>
+		<linearGradient id="water" x1="0" x2="0" y1="0" y2="1">
+			<stop offset="0" stop-color="#8c7890"/>
+			<stop offset="1" stop-color="#3a2a38"/>
+		</linearGradient>
+	</defs>
+	<rect width="800" height="800" fill="url(#sky)"/>
+	<circle cx="180" cy="250" r="40" fill="#ffe8e0" opacity=".75"/>
+	<rect y="560" width="800" height="240" fill="url(#water)"/>
+	<rect y="550" width="800" height="14" fill="#1a1018" opacity=".5"/>
+	<g fill="#1a1018">
+		<ellipse cx="260" cy="530" rx="70" ry="34"/>
+		<rect x="200" y="515" width="12" height="45"/>
+		<rect x="220" y="515" width="12" height="45"/>
+		<rect x="290" y="515" width="12" height="45"/>
+		<rect x="310" y="515" width="12" height="45"/>
+		<path d="M195,520 Q180,505 195,495 Q205,500 210,515 Z"/>
+		<ellipse cx="420" cy="535" rx="55" ry="26"/>
+		<rect x="380" y="520" width="10" height="40"/>
+		<rect x="398" y="520" width="10" height="40"/>
+		<rect x="440" y="520" width="10" height="40"/>
+		<rect x="458" y="520" width="10" height="40"/>
+		<ellipse cx="600" cy="545" rx="48" ry="22"/>
+		<rect x="568" y="532" width="9" height="35"/>
+		<rect x="583" y="532" width="9" height="35"/>
+		<rect x="614" y="532" width="9" height="35"/>
+		<rect x="628" y="532" width="9" height="35"/>
+	</g>
+</svg>

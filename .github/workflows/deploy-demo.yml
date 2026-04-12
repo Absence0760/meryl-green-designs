@@ -1,0 +1,82 @@
+name: Deploy demo (GitHub Pages)
+
+# Builds the frontend in demo mode and publishes it to GitHub Pages whenever
+# the `demo` branch is updated. Completely independent of the production
+# deploy pipeline — no AWS, no OIDC, no secrets. The live site on S3 +
+# CloudFront is unaffected by this workflow.
+#
+# Lives only on the `demo` branch. Push-triggered workflows use the workflow
+# file from the ref that was pushed, so this file does not need to exist on
+# main or dev for the demo deploy to run.
+
+on:
+  push:
+    branches: [demo]
+  workflow_dispatch:
+
+concurrency:
+  group: pages-demo
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build frontend (demo mode)
+        working-directory: frontend
+        env:
+          # adapter-static serves the site from a subpath on GitHub Pages
+          # (https://<user>.github.io/meryl-green-designs/). svelte.config.js
+          # already wires BASE_PATH into kit.paths.base, so every asset URL
+          # resolves correctly under that prefix.
+          BASE_PATH: /meryl-green-designs
+          PUBLIC_DEMO_MODE: 'true'
+          # Values below are inert in demo mode (no backend calls, no Sanity
+          # queries) but the SvelteKit build still needs them to exist for
+          # $env/static/public imports to resolve.
+          PUBLIC_API_URL: https://demo.invalid
+          PUBLIC_SITE_URL: https://absence0760.github.io/meryl-green-designs
+          PUBLIC_SANITY_PROJECT_ID: demo
+          PUBLIC_SANITY_DATASET: production
+        run: pnpm build
+
+      - name: Bypass Jekyll
+        run: touch frontend/build/.nojekyll
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend/build
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -2,14 +2,16 @@
 	import { onMount } from 'svelte';
 	import { PUBLIC_API_URL } from '$env/static/public';
 	import { formatPrice, imageUrl, type Product } from '$lib/sanity';
+	import { isDemoMode, demoProducts } from '$lib/demo';
 
 	const apiUrl = PUBLIC_API_URL;
 
 	// Products are fetched client-side after mount so the page shell can
 	// render instantly. skeletonCount sets how many placeholder cards to
-	// show while the real data is loading.
-	let products: Product[] = [];
-	let productsLoading = true;
+	// show while the real data is loading. In demo mode we skip the fetch
+	// entirely and render the hardcoded demoProducts on first paint.
+	let products: Product[] = isDemoMode ? demoProducts : [];
+	let productsLoading = !isDemoMode;
 	let productsError: string | null = null;
 	const skeletonCount = 6;
 
@@ -48,6 +50,15 @@
 		submitting = true;
 		error = null;
 
+		// Demo mode: skip the backend fetch and show a fake success so the
+		// client can see the full post-submit UI without a live Lambda.
+		if (isDemoMode) {
+			await new Promise((resolve) => setTimeout(resolve, 400));
+			success = { ref: 'MG-DEMO-0000' };
+			submitting = false;
+			return;
+		}
+
 		try {
 			const res = await fetch(`${apiUrl}/orders`, {
 				method: 'POST',
@@ -72,6 +83,9 @@
 	}
 
 	onMount(async () => {
+		// Demo builds seed `products` synchronously above — nothing to fetch.
+		if (isDemoMode) return;
+
 		try {
 			const res = await fetch(`${apiUrl}/products`);
 			if (!res.ok) {
@@ -198,6 +212,11 @@
 					Your reference is <strong>{success.ref}</strong>. A confirmation email with banking
 					details is on its way.
 				</p>
+				{#if isDemoMode}
+					<p class="demo-note">
+						(Preview mode — no order was submitted and no email has been sent.)
+					</p>
+				{/if}
 			</div>
 		{:else}
 			{#if error}
@@ -655,6 +674,12 @@
 
 	.alert--success p {
 		margin: 0.35rem 0 0;
+	}
+
+	.alert--success .demo-note {
+		font-size: 0.85rem;
+		font-style: italic;
+		opacity: 0.8;
 	}
 
 	.alert--error {

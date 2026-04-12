@@ -2,15 +2,18 @@
 	import { onMount } from 'svelte';
 	import { PUBLIC_API_URL } from '$env/static/public';
 	import { imageUrl, type GalleryPhoto } from '$lib/sanity';
+	import { isDemoMode, demoGalleryPhotos } from '$lib/demo';
 
 	const apiUrl = PUBLIC_API_URL;
 
-	let photos: GalleryPhoto[] = [];
-	let photosLoading = true;
+	// Demo builds skip the network fetch and seed the hardcoded gallery.
+	let photos: GalleryPhoto[] = isDemoMode ? demoGalleryPhotos : [];
+	let photosLoading = !isDemoMode;
 	let photosError: string | null = null;
 	const skeletonCount = 8;
 
 	onMount(async () => {
+		if (isDemoMode) return;
 		try {
 			const res = await fetch(`${apiUrl}/gallery`);
 			if (!res.ok) {

@@ -5,6 +5,8 @@ vi.mock('$env/static/public', () => ({
 	PUBLIC_SANITY_DATASET: 'production'
 }));
 
+vi.mock('$app/paths', () => ({ base: '' }));
+
 const { formatPrice, imageUrl } = await import('./sanity');
 
 describe('formatPrice', () => {
@@ -55,5 +57,24 @@ describe('imageUrl', () => {
 	it('omits the w= parameter when no width is provided', () => {
 		const url = imageUrl(source);
 		expect(url).not.toContain('w=');
+	});
+
+	it('returns a local /demo/ path for refs using the demo: prefix', () => {
+		const demoSource = {
+			_type: 'image' as const,
+			asset: { _ref: 'demo:product-acacia-dusk.svg', _type: 'reference' as const }
+		};
+		// `base` is mocked to '' at the top of this file, so the demo path
+		// is unprefixed; the GitHub Pages build sets BASE_PATH to produce
+		// /meryl-green-designs/demo/... at runtime.
+		expect(imageUrl(demoSource)).toBe('/demo/product-acacia-dusk.svg');
+	});
+
+	it('ignores the width parameter for demo refs (placeholder, no CDN)', () => {
+		const demoSource = {
+			_type: 'image' as const,
+			asset: { _ref: 'demo:gallery-baobab-twilight.svg', _type: 'reference' as const }
+		};
+		expect(imageUrl(demoSource, 640)).toBe('/demo/gallery-baobab-twilight.svg');
 	});
 });

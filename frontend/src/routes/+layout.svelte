@@ -1,13 +1,19 @@
 <script lang="ts">
 	import '../app.css';
 	import { page } from '$app/state';
+	import { base } from '$app/paths';
 	import { PUBLIC_SITE_URL } from '$env/static/public';
+	import { isDemoMode } from '$lib/demo';
 
+	// Paths are stored without the SvelteKit `base` here and prefixed at
+	// render time. Keeps the definitions terse and makes the active-link
+	// comparison against `page.url.pathname` straightforward (which *does*
+	// include the base when one is configured).
 	const nav = [
-		{ href: '/', label: 'Home' },
-		{ href: '/gallery', label: 'Gallery' },
-		{ href: '/shop', label: 'Shop' },
-		{ href: '/contact', label: 'Contact' }
+		{ path: '/', label: 'Home' },
+		{ path: '/gallery', label: 'Gallery' },
+		{ path: '/shop', label: 'Shop' },
+		{ path: '/contact', label: 'Contact' }
 	];
 
 	const siteUrl = PUBLIC_SITE_URL?.replace(/\/$/, '') ?? '';
@@ -31,17 +37,28 @@
 	<meta name="twitter:image" content={ogImage} />
 </svelte:head>
 
+{#if isDemoMode}
+	<div class="demo-banner" role="note">
+		<div class="container">
+			<strong>Preview site</strong> — products are illustrative examples and
+			the order form is not connected to a live backend. Submitted orders are
+			not saved and no emails are sent.
+		</div>
+	</div>
+{/if}
+
 <header class="site-header">
 	<div class="container header-inner">
-		<a class="brand" href="/">Meryl Green Designs</a>
+		<a class="brand" href={`${base}/`}>Meryl Green Designs</a>
 		<nav>
 			<ul>
 				{#each nav as item}
+					{@const href = item.path === '/' ? `${base}/` : `${base}${item.path}`}
 					<li>
 						<a
-							href={item.href}
-							class:active={page.url.pathname === item.href ||
-								(item.href !== '/' && page.url.pathname.startsWith(item.href))}
+							{href}
+							class:active={page.url.pathname === href ||
+								(item.path !== '/' && page.url.pathname.startsWith(href))}
 						>
 							{item.label}
 						</a>
@@ -64,6 +81,20 @@
 </footer>
 
 <style>
+	.demo-banner {
+		background: #fbe8b0;
+		color: #5a4514;
+		border-bottom: 1px solid #d4b65a;
+		padding: 0.6rem 0;
+		font-size: 0.85rem;
+		line-height: 1.45;
+		text-align: center;
+	}
+
+	.demo-banner strong {
+		color: #3a2c0a;
+	}
+
 	.site-header {
 		background: var(--color-bg);
 		border-bottom: 1px solid var(--color-rule);

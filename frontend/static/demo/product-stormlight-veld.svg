@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800">
+	<defs>
+		<linearGradient id="sky" x1="0" x2="0" y1="0" y2="1">
+			<stop offset="0" stop-color="#4a4458"/>
+			<stop offset=".5" stop-color="#2d2838"/>
+			<stop offset="1" stop-color="#151220"/>
+		</linearGradient>
+		<linearGradient id="beam" x1="0" x2="0" y1="0" y2="1">
+			<stop offset="0" stop-color="#f8e890" stop-opacity=".75"/>
+			<stop offset=".6" stop-color="#f8e890" stop-opacity=".35"/>
+			<stop offset="1" stop-color="#f8e890" stop-opacity="0"/>
+		</linearGradient>
+	</defs>
+	<rect width="800" height="800" fill="url(#sky)"/>
+	<g fill="#1a1524" opacity=".8">
+		<ellipse cx="120" cy="160" rx="140" ry="40"/>
+		<ellipse cx="400" cy="120" rx="180" ry="48"/>
+		<ellipse cx="700" cy="170" rx="150" ry="42"/>
+		<ellipse cx="260" cy="220" rx="120" ry="30"/>
+		<ellipse cx="560" cy="230" rx="140" ry="34"/>
+	</g>
+	<path d="M380,150 L260,620 L520,620 L440,150 Z" fill="url(#beam)"/>
+	<ellipse cx="400" cy="600" rx="140" ry="22" fill="#f8e890" opacity=".35"/>
+	<rect y="580" width="800" height="220" fill="#1a1820"/>
+	<path d="M0,580 L120,560 L240,575 L360,555 L480,570 L600,555 L720,575 L800,565 L800,620 L0,620 Z" fill="#2a2838" opacity=".7"/>
+	<g fill="#0a0814">
+		<rect x="100" y="500" width="4" height="80"/>
+		<ellipse cx="102" cy="494" rx="24" ry="5"/>
+		<rect x="660" y="510" width="4" height="70"/>
+		<ellipse cx="662" cy="505" rx="20" ry="5"/>
+	</g>
+</svg>

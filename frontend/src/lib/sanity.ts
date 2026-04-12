@@ -1,5 +1,6 @@
 import { createImageUrlBuilder, type SanityImageSource } from '@sanity/image-url';
 import { PUBLIC_SANITY_PROJECT_ID, PUBLIC_SANITY_DATASET } from '$env/static/public';
+import { base } from '$app/paths';
 
 export type Product = {
 	_id: string;
@@ -38,6 +39,17 @@ const builder = createImageUrlBuilder({
 });
 
 export function imageUrl(source: SanityImageSource, width?: number): string | null {
+	// Demo-mode escape hatch: asset refs prefixed with `demo:` are served
+	// directly from /static/demo/ instead of going through Sanity's CDN.
+	// Used by the `demo` branch GitHub Pages preview build — see lib/demo.ts.
+	if (typeof source === 'object' && source !== null && 'asset' in source) {
+		const asset = (source as { asset?: { _ref?: string } }).asset;
+		const ref = asset?._ref;
+		if (typeof ref === 'string' && ref.startsWith('demo:')) {
+			return `${base}/demo/${ref.slice('demo:'.length)}`;
+		}
+	}
+
 	if (!PUBLIC_SANITY_PROJECT_ID) return null;
 	let img = builder.image(source).auto('format').fit('max');
 	if (width) img = img.width(width);
