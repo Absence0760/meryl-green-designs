@@ -37,9 +37,10 @@ snippet, not anything in the repo) — see [`roadmap.md`](./roadmap.md).
   reads "Inspired by Nature" followed by a short italic tagline. The hero
   image is preloaded via `<link rel="preload" as="image">` so the first
   paint shows the photograph immediately.
-- **Story** section with Meryl's five-paragraph introduction to The Green
-  Collection, covering where the work comes from, the materials (Meranti
-  hardwood frames, 100% cotton canvas), and what she's trying to evoke.
+- **Story** section with Meryl's three-paragraph introduction to The Green
+  Collection, covering where the work comes from and what she's trying to
+  evoke. Materials detail (Meranti hardwood frames, 100% cotton canvas) lives
+  on the Shop page instead, alongside the products it describes.
 - **Poem** section on an alternate background, rendering "Africa" (author
   unknown) as three stanzas with a styled blockquote and leaf-green accent.
 - **Call-to-action cards** linking to the Gallery and Shop.

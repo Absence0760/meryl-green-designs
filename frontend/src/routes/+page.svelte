@@ -6,9 +6,7 @@
 	const storyParagraphs: string[] = [
 		'Bring a snapshot of beauty, peace and tranquility from a place where time stands still to a place where time seems to move too quickly. Let it infuse your everyday environment, be it your home, place of work or any other space of your choice.',
 		'Let the sounds and calls of the African bush envelope your senses and take you on a journey of deep inner reflection, where everything seems right in the world; a meditative state of deep healing, that only nature can provide.',
-		'It all started more than 10 years ago in a very special place in the African bush, where I fell in love with the perfection, simplicity and vibrancy of the natural world. Using my very simple but exceptional camera, I began a journey capturing the \u2018Big 5\u2019, antelope, smaller creatures, beautiful birds, plant life and unforgettable \u2018bush sunsets\u2019.',
-		'I invite you to enter this world with me where I have created works of art in the form of room dividers/screens using Meranti hardwood for the frames. A traditional teak stain has been applied to the wood to enhance the picture.',
-		'My photographs have been digitally printed onto a durable canvas which is 100% cotton. The fabric has an additional coating which allows for colour-fastness and extra durability.'
+		'It all started more than 10 years ago in a very special place in the African bush, where I fell in love with the perfection, simplicity and vibrancy of the natural world. Using my very simple but exceptional camera, I began a journey capturing the \u2018Big 5\u2019, antelope, smaller creatures, beautiful birds, plant life and unforgettable \u2018bush sunsets\u2019.'
 	];
 
 	const poemTitle = 'Africa';

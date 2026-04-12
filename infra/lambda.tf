@@ -66,6 +66,12 @@ resource "aws_lambda_function" "backend" {
   runtime = "nodejs20.x"
   timeout = 10
 
+  # 128 MB (the AWS default) throttles cold-start CPU enough that a Node 20
+  # bundle with @sanity/client takes ~1s to initialise. AWS scales CPU
+  # linearly with memory up to ~1792 MB, so 512 MB roughly halves cold starts
+  # at the same per-ms price.
+  memory_size = 512
+
   environment {
     variables = {
       RESEND_API_KEY        = var.resend_api_key

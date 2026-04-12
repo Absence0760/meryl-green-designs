@@ -110,6 +110,19 @@
 			A selection of finished pieces from Meryl Green Designs, available to order.
 		</p>
 
+		<div class="materials">
+			<p>
+				I have created works of art in the form of room dividers/screens using
+				Meranti hardwood for the frames. A traditional teak stain has been
+				applied to the wood to enhance the picture.
+			</p>
+			<p>
+				My photographs have been digitally printed onto a durable canvas which
+				is 100% cotton. The fabric has an additional coating which allows for
+				colour-fastness and extra durability.
+			</p>
+		</div>
+
 		{#if productsLoading}
 			<div class="product-grid" aria-busy="true" aria-label="Loading products">
 				{#each Array(skeletonCount) as _, i (i)}
@@ -311,7 +324,21 @@
 	.lede {
 		max-width: 60ch;
 		color: var(--color-ink-soft);
+		margin-bottom: var(--space-3);
+	}
+
+	.materials {
+		max-width: 60ch;
 		margin-bottom: var(--space-4);
+		color: var(--color-ink-soft);
+	}
+
+	.materials p {
+		margin: 0 0 var(--space-2);
+	}
+
+	.materials p:last-child {
+		margin-bottom: 0;
 	}
 
 	.narrow {

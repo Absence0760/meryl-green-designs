@@ -1019,9 +1019,13 @@ is separate from AWS).
 
 **Lambda cold start is slow on first request after idle**
 : Expected. Node 20 Lambda cold starts are ~300–800 ms for our 787 KB
-  bundle. Subsequent requests are ~5–20 ms. If this becomes a UX problem,
-  look at Provisioned Concurrency (costs extra) or a scheduled CloudWatch
-  rule that pings `/health` every 5 minutes to keep the function warm.
+  bundle at 512 MB (the `memory_size` set in `infra/lambda.tf`). Subsequent
+  requests are ~5–20 ms. The memory bump was a deliberate trade: AWS scales
+  CPU linearly with memory up to ~1792 MB at the same per-ms price, so 512 MB
+  roughly halves cold-start time vs. the 128 MB default without meaningfully
+  increasing cost. If it still becomes a UX problem, look at Provisioned
+  Concurrency (costs extra) or a scheduled CloudWatch rule that pings
+  `/health` every 5 minutes to keep the function warm.
 
 ## Appendix A: Understanding what `bin/setup.sh` does
 

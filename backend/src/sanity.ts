@@ -106,7 +106,11 @@ function getClient(): SanityClient {
 		projectId,
 		dataset,
 		apiVersion: '2024-10-01',
-		useCdn: false,
+		// Sanity's Fastly-backed query CDN — sub-100ms for cache hits vs
+		// 200–400ms at the origin API. Shop/gallery tolerate the few-second
+		// staleness window, and the Sanity webhook still fires on publish
+		// for anything that needs an immediate rebuild.
+		useCdn: true,
 		token,
 		perspective: 'published'
 	});
