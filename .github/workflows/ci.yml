@@ -37,6 +37,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Seed frontend .env for typecheck
+        # svelte-check imports from $env/static/public, which only exports
+        # PUBLIC_* keys that exist at build time. CI has no real secrets, so
+        # seed from the example to give the generated module a stable shape.
+        run: cp frontend/.env.example frontend/.env
+
       - name: Typecheck all workspaces
         run: pnpm check
 
