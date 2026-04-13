@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { PUBLIC_API_URL } from '$env/static/public';
+	import { base } from '$app/paths';
 	import { imageUrl, type GalleryPhoto } from '$lib/sanity';
 
 	const apiUrl = PUBLIC_API_URL;
@@ -52,7 +53,7 @@
 	</div>
 </section>
 
-<section class="backdrop" style="background-image: url('/landscape.JPG')">
+<section class="backdrop" style="background-image: url('{base}/landscape.JPG')">
 	<div class="container">
 		{#if photosLoading}
 			<div class="gallery-grid" aria-busy="true" aria-label="Loading photographs">

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { PUBLIC_API_URL } from '$env/static/public';
+	import { base } from '$app/paths';
 	import { formatPrice, imageUrl, type Product } from '$lib/sanity';
 
 	const apiUrl = PUBLIC_API_URL;
@@ -123,7 +124,7 @@
 	</div>
 </section>
 
-<section class="backdrop" style="background-image: url('/water_reflection.JPG')">
+<section class="backdrop" style="background-image: url('{base}/water_reflection.JPG')">
 	<div class="container">
 		{#if productsLoading}
 			<div class="product-grid" aria-busy="true" aria-label="Loading products">
