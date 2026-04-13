@@ -120,7 +120,11 @@
 				<dd>100% cotton, digitally printed with a protective colour-fast coating</dd>
 			</div>
 		</dl>
+	</div>
+</section>
 
+<section class="backdrop" style="background-image: url('/water_reflection.JPG')">
+	<div class="container">
 		{#if productsLoading}
 			<div class="product-grid" aria-busy="true" aria-label="Loading products">
 				{#each Array(skeletonCount) as _, i (i)}
@@ -322,7 +326,14 @@
 	.lede {
 		max-width: 60ch;
 		color: var(--color-ink-soft);
-		margin-bottom: var(--space-3);
+		margin-bottom: 0;
+	}
+
+	.backdrop {
+		background-color: #c8d1b9;
+		background-size: cover;
+		background-position: center;
+		padding: var(--space-4) 0 var(--space-6);
 	}
 
 	.specs {
@@ -380,6 +391,7 @@
 		overflow: hidden;
 		display: flex;
 		flex-direction: column;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 	}
 
 	.product-image {

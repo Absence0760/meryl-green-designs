@@ -49,7 +49,11 @@
 			A growing collection of photographs showing the different screens, finishes and bespoke
 			options available. More images are being added — please check back soon.
 		</p>
+	</div>
+</section>
 
+<section class="backdrop" style="background-image: url('/landscape.JPG')">
+	<div class="container">
 		{#if photosLoading}
 			<div class="gallery-grid" aria-busy="true" aria-label="Loading photographs">
 				{#each Array(skeletonCount) as _, i (i)}
@@ -95,7 +99,14 @@
 	.lede {
 		max-width: 60ch;
 		color: var(--color-ink-soft);
-		margin-bottom: var(--space-4);
+		margin-bottom: 0;
+	}
+
+	.backdrop {
+		background-color: #c8d1b9;
+		background-size: cover;
+		background-position: center;
+		padding: var(--space-4) 0 var(--space-6);
 	}
 
 	.gallery-grid {
@@ -112,6 +123,7 @@
 		overflow: hidden;
 		display: flex;
 		flex-direction: column;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 	}
 
 	.tile-image {
