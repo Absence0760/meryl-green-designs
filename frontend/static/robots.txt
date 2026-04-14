@@ -4,3 +4,4 @@ Allow: /
 # /track is a per-order status page keyed by ref + email in the query string.
 # Without those params it's useless to crawlers, so keep it out of indexes.
 Disallow: /track
+Disallow: /payment

@@ -13,7 +13,9 @@ vi.mock('../sanity.js', () => ({
 	createOrder: vi.fn(),
 	getOrderByRef: vi.fn(),
 	getProducts: vi.fn(),
-	getGalleryPhotos: vi.fn()
+	getGalleryPhotos: vi.fn(),
+	getProductsByIds: vi.fn(),
+	updateOrderPayment: vi.fn()
 }));
 
 import { createApp } from '../app.js';
@@ -40,6 +42,9 @@ function makeOrderDoc(overrides: Record<string, unknown> = {}) {
 		_updatedAt: '2026-04-10T12:00:00Z',
 		orderRef: 'MG-260410-ABCD',
 		status: 'payment_received' as const,
+		paymentMethod: 'eft',
+		amountZar: null,
+		paymentId: null,
 		customerName: 'Jane Smith',
 		customerEmail: 'jane@example.com',
 		customerPhone: null,

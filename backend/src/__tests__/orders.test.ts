@@ -12,7 +12,9 @@ vi.mock('../sanity.js', () => ({
 	createOrder: vi.fn(),
 	getOrderByRef: vi.fn(),
 	getProducts: vi.fn(),
-	getGalleryPhotos: vi.fn()
+	getGalleryPhotos: vi.fn(),
+	getProductsByIds: vi.fn(),
+	updateOrderPayment: vi.fn()
 }));
 
 import { createApp } from '../app.js';
@@ -27,6 +29,9 @@ function sanityOrder(overrides: Partial<SanityOrder> = {}): SanityOrder {
 		_updatedAt: '2026-04-10T12:00:00Z',
 		orderRef: 'MG-260410-ABCD',
 		status: 'pending_payment',
+		paymentMethod: 'eft',
+		amountZar: null,
+		paymentId: null,
 		customerName: 'Jane Smith',
 		customerEmail: 'jane@example.com',
 		customerPhone: null,
@@ -40,13 +45,25 @@ function sanityOrder(overrides: Partial<SanityOrder> = {}): SanityOrder {
 	};
 }
 
+const testProduct = {
+	_id: 'prod-1',
+	name: 'Small Screen',
+	slug: 'small-screen',
+	blurb: null,
+	description: null,
+	priceZar: 450,
+	available: true,
+	order: 0,
+	photos: []
+};
+
 const validOrderBody = {
 	name: 'Jane Smith',
 	email: 'jane@example.com',
 	phone: '0123456789',
 	address: '1 Test Street\nCape Town',
-	items: '1 x Small Screen',
-	notes: 'Please gift wrap'
+	notes: 'Please gift wrap',
+	cart: [{ productId: 'prod-1', quantity: 1 }]
 };
 
 function postOrder(body: unknown) {
@@ -60,33 +77,44 @@ function postOrder(body: unknown) {
 
 describe('POST /orders', () => {
 	beforeEach(() => {
+		vi.stubEnv('PAYFAST_MERCHANT_ID', '10004002');
+		vi.stubEnv('PAYFAST_MERCHANT_KEY', 'q1cd2rdny4a53');
+		vi.stubEnv('PAYFAST_PASSPHRASE', 'payfast');
+		vi.stubEnv('PAYFAST_SANDBOX', 'true');
 		vi.mocked(email.sendEmail).mockClear().mockResolvedValue(undefined);
-		vi.mocked(sanity.createOrder).mockClear().mockResolvedValue(sanityOrder());
+		vi.mocked(sanity.createOrder).mockClear().mockResolvedValue(
+			sanityOrder({ paymentMethod: 'payfast', amountZar: 450 })
+		);
+		vi.mocked(sanity.getProductsByIds).mockReset().mockResolvedValue([testProduct]);
 	});
 
-	it('validates and creates a Sanity order on a valid submission', async () => {
+	afterEach(() => vi.unstubAllEnvs());
+
+	it('creates a Sanity order and returns PayFast form data', async () => {
 		const res = await postOrder(validOrderBody);
 		expect(res.status).toBe(200);
 		const data = (await res.json()) as any;
 		expect(data.success).toBe(true);
 		expect(data.ref).toMatch(/^MG-\d{6}-[A-Z0-9]{4}$/);
+		expect(data.payfast).toBeDefined();
+		expect(data.payfast.action).toContain('sandbox.payfast.co.za');
+		expect(data.payfast.fields.amount).toBe('450.00');
+		expect(data.payfast.fields.signature).toMatch(/^[a-f0-9]{32}$/);
 		expect(sanity.createOrder).toHaveBeenCalledOnce();
 
 		const createArg = vi.mocked(sanity.createOrder).mock.calls[0]![0];
 		expect(createArg.customerName).toBe('Jane Smith');
 		expect(createArg.customerEmail).toBe('jane@example.com');
-		expect(createArg.orderRef).toMatch(/^MG-\d{6}-[A-Z0-9]{4}$/);
+		expect(createArg.paymentMethod).toBe('payfast');
+		expect(createArg.amountZar).toBe(450);
 	});
 
-	it('sends two emails on success (owner notification + customer confirmation)', async () => {
+	it('sends only the owner notification email (customer email comes after payment)', async () => {
 		await postOrder(validOrderBody);
-		expect(email.sendEmail).toHaveBeenCalledTimes(2);
-		const sends = vi.mocked(email.sendEmail).mock.calls.map((c) => c[0]);
-		const owner = sends.find((s) => s.to === 'owner@example.com');
-		const customer = sends.find((s) => s.to === 'jane@example.com');
-		expect(owner).toBeDefined();
-		expect(customer).toBeDefined();
-		expect(owner!.replyTo).toBe('jane@example.com');
+		expect(email.sendEmail).toHaveBeenCalledTimes(1);
+		const send = vi.mocked(email.sendEmail).mock.calls[0]![0];
+		expect(send.to).toBe('owner@example.com');
+		expect(send.replyTo).toBe('jane@example.com');
 	});
 
 	it('treats a filled honeypot as a silent skip', async () => {
@@ -118,15 +146,10 @@ describe('POST /orders', () => {
 				message: /valid email/i
 			},
 			{ field: 'address', body: { ...validOrderBody, address: '' }, message: /address/i },
-			{ field: 'items', body: { ...validOrderBody, items: '' }, message: /items|order/i },
+			{ field: 'empty cart', body: { ...validOrderBody, cart: [] }, message: /product/i },
 			{
 				field: 'name length',
 				body: { ...validOrderBody, name: 'x'.repeat(121) },
-				message: /too long/i
-			},
-			{
-				field: 'items length',
-				body: { ...validOrderBody, items: 'x'.repeat(2001) },
 				message: /too long/i
 			},
 			{
@@ -158,6 +181,42 @@ describe('POST /orders', () => {
 		}
 	});
 
+	it('computes total from multiple cart items', async () => {
+		const product2 = { ...testProduct, _id: 'prod-2', name: 'Large Screen', priceZar: 900 };
+		vi.mocked(sanity.getProductsByIds).mockResolvedValueOnce([testProduct, product2]);
+		vi.mocked(sanity.createOrder).mockResolvedValueOnce(
+			sanityOrder({ paymentMethod: 'payfast', amountZar: 1800 })
+		);
+
+		const res = await postOrder({
+			...validOrderBody,
+			cart: [
+				{ productId: 'prod-1', quantity: 2 },
+				{ productId: 'prod-2', quantity: 1 }
+			]
+		});
+		const data = (await res.json()) as any;
+		expect(data.payfast.fields.amount).toBe('1800.00');
+	});
+
+	it('rejects an order when a product is not found in Sanity', async () => {
+		vi.mocked(sanity.getProductsByIds).mockResolvedValueOnce([]);
+		const res = await postOrder(validOrderBody);
+		expect(res.status).toBe(400);
+		const data = (await res.json()) as any;
+		expect(data.error).toContain('not available');
+	});
+
+	it('rejects an order when a product has no price', async () => {
+		vi.mocked(sanity.getProductsByIds).mockResolvedValueOnce([
+			{ ...testProduct, priceZar: null }
+		]);
+		const res = await postOrder(validOrderBody);
+		expect(res.status).toBe(400);
+		const data = (await res.json()) as any;
+		expect(data.error).toContain('does not have a price');
+	});
+
 	it('returns 500 when Sanity create fails (no emails sent)', async () => {
 		vi.mocked(sanity.createOrder).mockRejectedValueOnce(new Error('sanity exploded'));
 		const res = await postOrder(validOrderBody);
@@ -175,18 +234,21 @@ describe('POST /orders', () => {
 		expect(sanity.createOrder).toHaveBeenCalledOnce();
 	});
 
-	describe('without OWNER_EMAIL', () => {
-		afterEach(() => vi.unstubAllEnvs());
+	it('returns 500 when OWNER_EMAIL is not configured', async () => {
+		vi.stubEnv('OWNER_EMAIL', '');
+		const res = await postOrder(validOrderBody);
+		expect(res.status).toBe(500);
+		const data = (await res.json()) as any;
+		expect(data.error).toMatch(/not configured/i);
+		expect(sanity.createOrder).not.toHaveBeenCalled();
+	});
 
-		it('returns 500 and does not create a Sanity order', async () => {
-			vi.stubEnv('OWNER_EMAIL', '');
-			const res = await postOrder(validOrderBody);
-			expect(res.status).toBe(500);
-			const data = (await res.json()) as any;
-			expect(data.error).toMatch(/not configured/i);
-			expect(sanity.createOrder).not.toHaveBeenCalled();
-			expect(email.sendEmail).not.toHaveBeenCalled();
-		});
+	it('returns 500 when PayFast config is missing', async () => {
+		vi.stubEnv('PAYFAST_MERCHANT_ID', '');
+		const res = await postOrder(validOrderBody);
+		expect(res.status).toBe(500);
+		const data = (await res.json()) as any;
+		expect(data.error).toMatch(/not configured/i);
 	});
 });
 

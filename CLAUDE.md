@@ -9,7 +9,7 @@ Meryl Green Designs — website for a small South African studio selling handcra
 ## Stack
 
 - **frontend/** — SvelteKit 5 static site (adapter-static), Vite, TypeScript, vitest. Dev port `7777`.
-- **backend/** — Hono on AWS Lambda (Function URL). TypeScript, esbuild, tsx for local dev, vitest. Sends order emails via Resend (raw `fetch`, no SDK). Dev port `3001` (`PORT` env override).
+- **backend/** — Hono on AWS Lambda (Function URL). TypeScript, esbuild, tsx for local dev, vitest. Sends order emails via Resend (raw `fetch`, no SDK). Accepts card payments via PayFast (redirect + ITN webhook). Dev port `3001` (`PORT` env override).
 - **studio/** — Sanity Studio (`sanity ^5.x`, React 19). No tests. Dev port `3333`.
 - **infra/** — Terraform: S3 + CloudFront + Lambda + Route 53 + ACM + GitHub OIDC. No package.json.
 
@@ -84,4 +84,4 @@ Treat "code changed, docs and tests unchanged" as an incomplete task. Call it ou
 - Don't replace pnpm with npm/yarn — workspace filters assume pnpm.
 - Don't add SSR adapters to the frontend; it must stay static for the S3 + CloudFront deploy.
 - Don't call Resend (or other secret-bearing services) directly from the frontend — go through the backend.
-- Don't introduce Stripe or other card processors without discussing first. Current shop is EFT-only by design.
+- Don't replace PayFast with another card processor without discussing first. PayFast is the sole payment gateway.

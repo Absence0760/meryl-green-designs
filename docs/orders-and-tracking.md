@@ -514,12 +514,53 @@ pending-payment email`) that fails if strings like `account number` or
 `branch code` start appearing in the automated customer email. See
 [`docs/security.md`](./security.md) for the full impersonation threat model.
 
+## PayFast payment integration
+
+PayFast is integrated via the **redirect model** (hosted checkout). The
+customer chooses "Pay now" or "Pay by EFT" on the order form.
+
+### Payment flow
+
+1. Customer fills the order form, adds products to cart, clicks "Pay now".
+2. Frontend sends `POST /orders` with a `cart` array of `{ productId, quantity }`.
+3. Backend looks up product prices in Sanity, computes the total server-side
+   (prevents client-side amount tampering).
+4. Backend creates a Sanity order document with `paymentMethod: 'payfast'`
+   and `amountZar` set to the computed total.
+5. Backend generates signed PayFast form data and returns it to the frontend.
+6. Frontend auto-submits a hidden form to PayFast's URL — customer lands on
+   PayFast's hosted payment page.
+7. Customer pays with card, Apple Pay, SnapScan, or any supported method.
+8. PayFast redirects customer back to `/payment/complete?ref=…`.
+9. **Independently**, PayFast sends an ITN (Instant Transaction Notification)
+   to `POST /webhooks/payfast-itn`. The backend validates the signature and
+   amount, then updates the Sanity order to `payment_received`.
+10. The existing Sanity webhook fires and sends the "payment received" email.
+
+### New env vars for PayFast
+
+| Var | Sensitive | Purpose |
+|---|---|---|
+| `PAYFAST_MERCHANT_ID` | no | PayFast merchant ID |
+| `PAYFAST_MERCHANT_KEY` | **yes** | PayFast merchant key |
+| `PAYFAST_PASSPHRASE` | **yes** | Passphrase for signature generation/verification |
+| `PAYFAST_SANDBOX` | no | `'true'` to use sandbox environment |
+| `API_URL` | no | Backend URL for constructing the ITN `notify_url` |
+
+### New Sanity fields on the order schema
+
+| Field | Type | Purpose |
+|---|---|---|
+| `paymentMethod` | `'eft' \| 'payfast'` | Which payment path the customer chose |
+| `amountZar` | number | Server-computed total in ZAR |
+| `paymentId` | string | PayFast transaction ID (set by ITN handler) |
+
 ## What's NOT in this plan
 
-- **Structured order line items** — still using the free-form `items` textarea.
-  Moving to structured line items (productId + quantity per row) is a separate
-  piece of work and can come later.
-- **Payment integration** — still EFT only. No Stripe/Yoco/PayFast.
+- **Structured order line items** — PayFast orders now use a cart with
+  product references and quantities, but EFT orders still accept free-form
+  text in the `items` field. A unified structured cart for both paths is
+  a future improvement.
 - **Stock tracking / inventory** — still just the `available` boolean on products.
 - **Customer accounts / login** — deliberately omitted. Email + ref is the
   "key" to an order. Much simpler than building auth.

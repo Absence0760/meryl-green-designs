@@ -43,6 +43,9 @@ function makeOrder(overrides: Partial<SanityOrder> = {}): SanityOrder {
 		_updatedAt: '2026-04-10T12:00:00Z',
 		orderRef: 'MG-260410-ABCD',
 		status: 'pending_payment',
+		paymentMethod: 'eft',
+		amountZar: null,
+		paymentId: null,
 		customerName: 'Jane Smith',
 		customerEmail: 'jane@example.com',
 		customerPhone: null,
@@ -118,10 +121,7 @@ describe('ownerNotification', () => {
 		expect(mail.html).toContain('&lt;script&gt;');
 	});
 
-	it('prompts the owner to reply manually with banking details', () => {
-		// The customer gets only an acknowledgement — the owner is the gate
-		// that sends banking details, so the notification must make that
-		// action explicit.
+	it('tells the owner that PayFast will handle payment', () => {
 		const mail = ownerNotification({
 			orderRef: 'MG-1',
 			name: 'Jane',
@@ -129,10 +129,12 @@ describe('ownerNotification', () => {
 			phone: '',
 			address: 'a',
 			items: 'b',
-			notes: ''
+			notes: '',
+			paymentMethod: 'payfast',
+			amountZar: 450
 		});
-		expect(mail.html.toLowerCase()).toMatch(/banking details/);
-		expect(mail.html.toLowerCase()).toMatch(/reply/);
+		expect(mail.html.toLowerCase()).toMatch(/payfast/);
+		expect(mail.html.toLowerCase()).toMatch(/payment received/);
 	});
 });
 
@@ -142,10 +144,8 @@ describe('customerEmailForStatus', () => {
 		expect(mail).not.toBeNull();
 		expect(mail!.subject).toContain('MG-260410-ABCD');
 		expect(mail!.html).toContain('MG-260410-ABCD');
-		// Acknowledgement tone, not "here's how to pay".
 		expect(mail!.html.toLowerCase()).toMatch(/received|thank/);
-		// Customer is told to expect a manual reply with banking details.
-		expect(mail!.html.toLowerCase()).toMatch(/reply|follow up|get back|separate/);
+		expect(mail!.html.toLowerCase()).toMatch(/payment/);
 	});
 
 	it('never leaks banking details in the pending-payment email', () => {

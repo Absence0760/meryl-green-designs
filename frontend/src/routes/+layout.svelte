@@ -4,6 +4,8 @@
 	import { base } from '$app/paths';
 	import { PUBLIC_SITE_URL } from '$env/static/public';
 	import { isDemoMode } from '$lib/demo';
+	import Cart from '$lib/Cart.svelte';
+	import { cart } from '$lib/cartStore.svelte';
 
 	// Paths are stored without the SvelteKit `base` here and prefixed at
 	// render time. Keeps the definitions terse and makes the active-link
@@ -19,6 +21,8 @@
 	const siteUrl = PUBLIC_SITE_URL?.replace(/\/$/, '') ?? '';
 	const ogImage = `${siteUrl}/two_trees.JPG`;
 	$: canonicalUrl = `${siteUrl}${page.url.pathname}`;
+
+	let cartOpen = false;
 </script>
 
 <svelte:head>
@@ -50,28 +54,42 @@
 <header class="site-header">
 	<div class="container header-inner">
 		<a class="brand" href={`${base}/`}>Meryl Green Designs</a>
-		<nav>
-			<ul>
-				{#each nav as item}
-					{@const href = item.path === '/' ? `${base}/` : `${base}${item.path}`}
-					<li>
-						<a
-							{href}
-							class:active={page.url.pathname === href ||
-								(item.path !== '/' && page.url.pathname.startsWith(href))}
-						>
-							{item.label}
-						</a>
-					</li>
-				{/each}
-			</ul>
-		</nav>
+		<div class="header-right">
+			<nav>
+				<ul>
+					{#each nav as item}
+						{@const href = item.path === '/' ? `${base}/` : `${base}${item.path}`}
+						<li>
+							<a
+								{href}
+								class:active={page.url.pathname === href ||
+									(item.path !== '/' && page.url.pathname.startsWith(href))}
+							>
+								{item.label}
+							</a>
+						</li>
+					{/each}
+				</ul>
+			</nav>
+			<button class="cart-btn" on:click={() => (cartOpen = true)} aria-label="Open cart">
+				<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<circle cx="9" cy="21" r="1"></circle>
+					<circle cx="20" cy="21" r="1"></circle>
+					<path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+				</svg>
+				{#if cart.count > 0}
+					<span class="cart-badge">{cart.count}</span>
+				{/if}
+			</button>
+		</div>
 	</div>
 </header>
 
 <main>
 	<slot />
 </main>
+
+<Cart open={cartOpen} onclose={() => (cartOpen = false)} />
 
 <footer class="site-footer">
 	<div class="container">
@@ -120,6 +138,12 @@
 		border-bottom: none;
 	}
 
+	.header-right {
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
+	}
+
 	nav ul {
 		display: flex;
 		gap: var(--space-3);
@@ -138,6 +162,37 @@
 	nav a.active {
 		color: var(--color-leaf-dark);
 		border-bottom-color: var(--color-leaf);
+	}
+
+	.cart-btn {
+		position: relative;
+		background: none;
+		border: none;
+		color: var(--color-leaf-dark);
+		cursor: pointer;
+		padding: 4px;
+		transition: color 0.15s;
+	}
+
+	.cart-btn:hover {
+		color: var(--color-leaf);
+	}
+
+	.cart-badge {
+		position: absolute;
+		top: -4px;
+		right: -6px;
+		background: var(--color-leaf-dark);
+		color: #f6f4ee;
+		font-size: 0.65rem;
+		font-weight: 700;
+		min-width: 16px;
+		height: 16px;
+		border-radius: 8px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0 4px;
 	}
 
 	main {

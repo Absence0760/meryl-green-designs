@@ -7,6 +7,8 @@ export type OrderStatus =
 	| 'delivered'
 	| 'cancelled';
 
+export type PaymentMethod = 'eft' | 'payfast';
+
 export type SanityOrder = {
 	_id: string;
 	_type: 'order';
@@ -14,6 +16,9 @@ export type SanityOrder = {
 	_updatedAt: string;
 	orderRef: string;
 	status: OrderStatus;
+	paymentMethod: PaymentMethod;
+	amountZar: number | null;
+	paymentId: string | null;
 	customerName: string;
 	customerEmail: string;
 	customerPhone: string | null;
@@ -33,6 +38,8 @@ export type NewOrderInput = {
 	shippingAddress: string;
 	items: string;
 	customerNotes: string;
+	paymentMethod?: PaymentMethod;
+	amountZar?: number;
 };
 
 export type SanityProduct = {
@@ -123,6 +130,8 @@ export async function createOrder(input: NewOrderInput): Promise<SanityOrder> {
 		_type: 'order',
 		orderRef: input.orderRef,
 		status: 'pending_payment',
+		paymentMethod: input.paymentMethod ?? 'eft',
+		amountZar: input.amountZar ?? null,
 		customerName: input.customerName,
 		customerEmail: input.customerEmail,
 		customerPhone: input.customerPhone || null,
@@ -131,6 +140,46 @@ export async function createOrder(input: NewOrderInput): Promise<SanityOrder> {
 		customerNotes: input.customerNotes || null
 	});
 	return created as unknown as SanityOrder;
+}
+
+export async function updateOrderPayment(
+	orderRef: string,
+	updates: { status: OrderStatus; paymentId?: string }
+): Promise<SanityOrder> {
+	const client = getClient();
+	const query = `*[_type == "order" && orderRef == $ref][0]._id`;
+	const docId = await client.fetch<string | null>(query, { ref: orderRef });
+	if (!docId) {
+		throw new Error(`Order ${orderRef} not found`);
+	}
+	const patched = await client
+		.patch(docId)
+		.set({
+			status: updates.status,
+			...(updates.paymentId ? { paymentId: updates.paymentId } : {})
+		})
+		.commit();
+	return patched as unknown as SanityOrder;
+}
+
+export async function getProductsByIds(ids: string[]): Promise<SanityProduct[]> {
+	const client = getClient();
+	const query = `*[_type == "product" && _id in $ids && available == true] {
+		_id,
+		name,
+		"slug": slug.current,
+		blurb,
+		description,
+		priceZar,
+		available,
+		order,
+		photos[] {
+			_key,
+			alt,
+			asset
+		}
+	}`;
+	return client.fetch<SanityProduct[]>(query, { ids });
 }
 
 export async function getOrderByRef(orderRef: string): Promise<SanityOrder | null> {

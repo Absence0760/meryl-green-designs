@@ -6,7 +6,8 @@ protecting against?". Pair it with `docs/orders-and-tracking.md`, which has
 the detailed design of the order flow.
 
 **Threat model in one sentence:** a small-volume e-commerce site with one
-owner, no card processor, and no customer accounts. The worst plausible
+owner, PayFast as a payment processor (redirect model, no card data on our
+server), and no customer accounts. The worst plausible
 outcomes are (1) fraudsters impersonating the business, (2) PII leakage
 from order documents, and (3) automated spam of the order form or webhook
 endpoints. We are **not** trying to defend against targeted nation-state
@@ -342,6 +343,43 @@ client, Resend SDK, esbuild, vitest, etc.) ships a CVE. We pick it up via
 
 ---
 
+### 10. PayFast payment integrity
+
+| | |
+|---|---|
+| **Likelihood** | low |
+| **Impact** | medium |
+
+**What could happen:** An attacker submits a tampered order with a lower
+amount, or forges an ITN callback to mark an unpaid order as paid.
+
+**Current mitigations:**
+- **Server-side amount computation**: the backend looks up product prices
+  in Sanity and computes the total — the client never submits the amount.
+  Prevents price-tampering attacks.
+- **ITN signature verification**: the PayFast ITN callback is validated
+  against `PAYFAST_PASSPHRASE` using the standard PayFast MD5 signature
+  scheme. Forged callbacks fail validation.
+- **Amount cross-check**: the ITN handler compares `amount_gross` against
+  the `amountZar` stored on the Sanity order document. Mismatches are
+  rejected.
+- **Idempotency guard**: the ITN handler checks the order's current status.
+  If it's already past `pending_payment`, the ITN is silently ignored —
+  preventing double-processing.
+- **No card data on our server**: the PayFast redirect model means card
+  numbers never touch our infrastructure. PCI compliance scope is SAQ A
+  (the lowest tier).
+
+**Residual risk:**
+- If `PAYFAST_PASSPHRASE` leaks, an attacker can forge ITN callbacks.
+  Rotate by updating the passphrase in both PayFast's dashboard and
+  `infra/terraform.tfvars.sops`, then `terraform apply`.
+- PayFast's MD5 signature scheme is weaker than HMAC-SHA256 (used for
+  Sanity webhooks). This is PayFast's standard protocol — not something
+  we can change.
+
+---
+
 ## What this site explicitly does not protect against
 
 Documenting the non-goals so they're not mistaken for gaps:
@@ -351,7 +389,9 @@ Documenting the non-goals so they're not mistaken for gaps:
   meaningful resources will get through.
 - **Account takeover of customer accounts.** There are no customer
   accounts.
-- **Card fraud.** There is no card processor. Payments are EFT.
+- **Card fraud beyond PayFast's protections.** PayFast handles fraud
+  detection and chargebacks for card payments. We rely on their
+  PCI DSS Level 1 certified infrastructure.
 - **DDoS.** Lambda + CloudFront absorb a surprising amount, but we haven't
   sized for an actual attack. WAF is out of scope.
 - **Insider threat from Meryl.** She has full Sanity access and can

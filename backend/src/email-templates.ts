@@ -1,5 +1,5 @@
 import { escapeHtml } from './email.js';
-import type { OrderStatus, SanityOrder } from './sanity.js';
+import type { OrderStatus, PaymentMethod, SanityOrder } from './sanity.js';
 
 export type OwnerNotificationInput = {
 	orderRef: string;
@@ -9,6 +9,8 @@ export type OwnerNotificationInput = {
 	address: string;
 	items: string;
 	notes: string;
+	paymentMethod?: PaymentMethod;
+	amountZar?: number;
 };
 
 function siteUrl(): string {
@@ -29,10 +31,15 @@ function trackingLink(order: { orderRef: string; customerEmail: string }): strin
 // and should fail code review.
 
 export function ownerNotification(input: OwnerNotificationInput): { subject: string; html: string } {
+	const amountLine = input.amountZar != null
+		? `<p><strong>Total:</strong> R ${input.amountZar.toFixed(2)}</p>`
+		: '';
+
 	return {
 		subject: `New order ${input.orderRef} — ${input.name}`,
 		html: `
 			<h2>New order — ${escapeHtml(input.orderRef)}</h2>
+			${amountLine}
 			<p><strong>Name:</strong> ${escapeHtml(input.name)}</p>
 			<p><strong>Email:</strong> ${escapeHtml(input.email)}</p>
 			<p><strong>Phone:</strong> ${escapeHtml(input.phone) || '(not provided)'}</p>
@@ -41,28 +48,28 @@ export function ownerNotification(input: OwnerNotificationInput): { subject: str
 			<pre style="font-family: inherit; white-space: pre-wrap;">${escapeHtml(input.items)}</pre>
 			${input.notes ? `<h3>Notes</h3><p>${escapeHtml(input.notes).replace(/\n/g, '<br>')}</p>` : ''}
 			<h3>Next step</h3>
-			<p><strong>Reply to this email with your banking details</strong> so the
-			customer can pay. The order has also been saved to the Studio — update
-			its status once payment reflects to trigger the "payment received"
-			email automatically.</p>
+			<p>The customer has been redirected to PayFast to pay. Once payment
+			completes, the order status will update to "Payment received"
+			automatically — no action needed from you unless the payment is
+			cancelled.</p>
 		`
 	};
 }
 
 function pendingPaymentTemplate(order: SanityOrder): { subject: string; html: string } {
+	// This template fires if the Sanity webhook sees a status change to
+	// pending_payment (unlikely in normal flow, but possible if Meryl
+	// manually resets an order).
 	return {
 		subject: `Order received ${order.orderRef} — Meryl Green Designs`,
 		html: `
-			<h2>Thank you — your order request has been received</h2>
+			<h2>Thank you — your order has been received</h2>
 			<p>Hi ${escapeHtml(order.customerName)},</p>
-			<p>We've received your order request. Your reference number is:</p>
+			<p>We've received your order. Your reference number is:</p>
 			<p style="font-size: 1.25rem;"><strong>${escapeHtml(order.orderRef)}</strong></p>
-			<p>Meryl will reply to this email shortly with our banking details so you
-			can complete payment by Electronic Funds Transfer. Please use
-			<strong>${escapeHtml(order.orderRef)}</strong> as your payment reference
-			when you pay.</p>
-			<p>Your order will be shipped once payment reflects in the account. You can
-			check the status of your order at any time here:</p>
+			<p>We're waiting for your payment to be confirmed. Once it's confirmed,
+			we'll start preparing your order for shipping.</p>
+			<p>You can check the status of your order at any time here:</p>
 			<p><a href="${trackingLink(order)}">${trackingLink(order)}</a></p>
 			<p>— Meryl Green Designs</p>
 		`

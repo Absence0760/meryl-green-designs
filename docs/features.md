@@ -102,15 +102,19 @@ snippet, not anything in the repo) — see [`roadmap.md`](./roadmap.md).
   endpoint. On success, the form is replaced by a confirmation showing the
   unique order reference (`MG-YYMMDD-XXXX`). On failure, an error alert is
   shown and the form remains editable.
-- **"How to pay" section** explaining the manual-reply EFT flow as a 5-step
-  ordered list: place the order → receive an automatic acknowledgement →
-  Meryl personally replies with banking details → pay by EFT → order ships
-  once payment reflects. Banking details are deliberately **not** shown on
-  the public site and **not** included in the automated acknowledgement
-  email — they're sent only as a direct manual reply from Meryl after she
-  has reviewed the order. See
-  [`docs/security.md`](./security.md) for the impersonation-scam threat
-  model behind this choice.
+- **Cart with quantity controls** — clicking "Add to order" on a product
+  adds it to a cart summary above the order form. Quantities are adjustable
+  with +/- buttons. The cart total is computed and displayed. The backend
+  verifies prices against Sanity to prevent tampering.
+- **PayFast payment** — clicking "Pay now" redirects the customer to
+  PayFast's hosted payment page. After payment, they land on
+  `/payment/complete`. PayFast sends an ITN (server-to-server callback)
+  to the backend, which auto-updates the order status to "Payment received"
+  in Sanity — triggering the existing automated status email. No card data
+  ever touches our server. Supports credit/debit cards, Apple Pay, Google
+  Pay, SnapScan, and 18+ other South African payment methods.
+- **"How to pay" section** explaining the payment flow: add products,
+  fill in details, click "Pay now", complete payment on PayFast.
 
 ## Contact (`/contact`)
 
@@ -207,7 +211,7 @@ snippet, not anything in the repo) — see [`roadmap.md`](./roadmap.md).
 
 See [roadmap.md](./roadmap.md) for the full list. Notable absences:
 
-- No card payments — EFT only.
+- ~~No card payments — EFT only.~~ Payments are now via PayFast (cards, Apple Pay, etc.).
 - No stock tracking or inventory counts. Availability is a simple on/off toggle.
 - No CMS for home page text, poem, or gallery photos — only products and
   orders are currently managed in Sanity. (Easy to extend; see the roadmap.)
