@@ -138,7 +138,7 @@
 	</div>
 </section>
 
-<section class="backdrop" style="background-image: url('{base}/water_reflection.JPG')">
+<section class="backdrop" style="background-image: url('{base}/water2.JPG')">
 	<div class="container">
 		{#if productsLoading}
 			<div class="product-grid" aria-busy="true" aria-label="Loading products">

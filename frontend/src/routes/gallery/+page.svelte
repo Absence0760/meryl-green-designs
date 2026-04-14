@@ -56,7 +56,7 @@
 	</div>
 </section>
 
-<section class="backdrop" style="background-image: url('{base}/landscape.JPG')">
+<section class="backdrop" style="background-image: url('{base}/water1.JPG')">
 	<div class="container">
 		{#if photosLoading}
 			<div class="gallery-grid" aria-busy="true" aria-label="Loading photographs">
