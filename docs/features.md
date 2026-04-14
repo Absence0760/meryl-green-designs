@@ -11,8 +11,15 @@ snippet, not anything in the repo) — see [`roadmap.md`](./roadmap.md).
 
 - **Sticky header** with brand ("Meryl Green Designs") and navigation. The
   active route is highlighted.
-- **Nature-inspired theme**: muted greens, bark accents, cream background,
-  serif display type (`Georgia`/`Cormorant Garamond`) with a sans-serif body.
+- **Sticky footer** — the layout is a flex column (`body { min-height:
+  100vh; display: flex }` + `main { flex: 1 }`) so on short pages the
+  footer is pushed to the bottom of the viewport instead of floating
+  mid-page.
+- **Nature-inspired theme**: muted greens, warm bark/ochre accents
+  (prices, hover states, CTA arrows), cream background, editorial serif
+  display type (`Fraunces`, variable, loaded from Google Fonts with
+  `preconnect` + `display=swap`; falls back to Georgia / Cormorant
+  Garamond) paired with a sans-serif body.
 - **Responsive layout**: grids collapse to single column on narrow viewports.
 - **Footer** with copyright and brand tagline.
 - **Favicon** — brand-colored SVG "M" monogram in `static/favicon.svg`, referenced
@@ -34,14 +41,22 @@ snippet, not anything in the repo) — see [`roadmap.md`](./roadmap.md).
 
 - **Hero** rendered across a full-bleed photograph of the African bush
   (`static/two_trees.JPG`, compressed to 643 KB at 1920 px wide). The H1
-  reads "Inspired by Nature" followed by a short italic tagline. The hero
-  image is preloaded via `<link rel="preload" as="image">` so the first
-  paint shows the photograph immediately.
+  reads "Inspired by Nature" followed by a short italic tagline and two
+  CTA buttons: a primary cream-filled "Shop the collection" and a ghost
+  "View gallery" outlined in cream. The hero image is preloaded via
+  `<link rel="preload" as="image">` so the first paint shows the
+  photograph immediately.
 - **Story** section with Meryl's three-paragraph introduction to The Green
   Collection, covering where the work comes from and what she's trying to
   evoke. Materials detail (Meranti hardwood frames, 100% cotton canvas)
   lives on the Shop page as a compact spec block rather than here, so the
   story stays narrative.
+- **Featured photographs band** — a full-bleed four-across grid (two-up on
+  narrow viewports) of the first four gallery photos, fetched at runtime
+  from `GET /gallery`. Each tile links through to the gallery page and
+  has a subtle hover zoom. The band only renders if the fetch returns
+  photos, so it silently no-ops when the backend is unreachable. Breaks
+  up the text-heavy middle of the home page and previews the gallery.
 - **Poem** section on an alternate background, rendering "Africa" (author
   unknown) as three stanzas with a styled blockquote and leaf-green accent.
 - **Call-to-action cards** linking to the Gallery and Shop.
@@ -52,9 +67,19 @@ snippet, not anything in the repo) — see [`roadmap.md`](./roadmap.md).
   sets display order, and toggles visibility from the same studio she uses
   for products and orders. No dev involvement needed to add or remove gallery
   photos.
-- **Responsive tile grid** (minimum 240 px per tile). Each tile shows a photo
-  cropped to a consistent 4:3 aspect ratio via `object-fit: cover`, with an
-  optional caption below.
+- **Justified flex-wrap layout**, centred. Each tile's `flex-basis`
+  scales with its aspect ratio (parsed from the Sanity asset `_ref`,
+  which embeds `{width}x{height}`), so landscape photos take more
+  row-width than portraits. Tiles don't flex-grow, so with few photos
+  they sit at their natural size and cluster in the middle instead of
+  stretching oversized to fill the row. Each tile has a soft cream
+  background and light drop shadow so it reads as a framed print — this
+  also hides the uneven cutout edges on product uploads saved as
+  transparent PNGs. Optional italic caption renders centred below.
+- **Click-to-enlarge lightbox** — clicking a tile opens a full-screen
+  modal with the image at up to 1800 px, caption, and prev/next controls.
+  Keyboard support: `Escape` closes, `←`/`→` navigate. Clicking the
+  backdrop also closes.
 - **Runtime fetch from the backend**: the page prerenders a static shell with
   the heading, lede, and 8 shimmering skeleton tiles. After hydration,
   `onMount` calls `GET /gallery` on the backend, the skeletons swap for real
@@ -81,11 +106,24 @@ snippet, not anything in the repo) — see [`roadmap.md`](./roadmap.md).
   definition list (`Frame`, `Canvas`) describing the shared construction of
   every piece. Styled as plain labelled facts rather than prose, so it
   doesn't compete with the product grid for attention.
-- **Product card layout** — name, optional blurb, optional multi-line
-  description, price (formatted as ZAR), "Enquire / Order" button. Cards
-  are flexbox-columns with `margin-top: auto` on the price row so prices and
-  buttons stay on the same baseline across cards regardless of how much
-  text is above them.
+- **Minimal tile layout** — each tile is a square photograph with only
+  the product name (body font, small caps) and price (display font,
+  bark/ochre accent) beneath; the "Add to order" button is a small
+  outlined pill in the leaf-dark colour. No card chrome (no border, no
+  panel, no drop shadow) and no page backdrop behind the grid — products
+  sit on the page's plain cream surface so the photograph is the entire
+  visual. Blurb and description are intentionally omitted from the tile —
+  they're intended to live on a future per-product detail page once the
+  catalogue grows. A subtle cream `background-color` is applied to the
+  image itself so product uploads with transparent PNG backgrounds
+  render consistently; real lifestyle photography hides the cream
+  entirely.
+- **Hover-reveal second image** — if a product has two or more photos
+  in Sanity, the first shows by default and the second cross-fades in
+  on hover (or keyboard focus). Typical pattern: upload a wide
+  establishing shot as `photos[0]` and a tighter detail crop as
+  `photos[1]`. Gracefully no-ops for touch devices (`@media (hover:
+  none)`) and for products with only one photo.
 - **Empty state** when no products have been published. **Error state**
   when the backend is unreachable.
 - **"Enquire / Order" button** pre-fills the order form's items field with
@@ -113,16 +151,32 @@ snippet, not anything in the repo) — see [`roadmap.md`](./roadmap.md).
   in Sanity — triggering the existing automated status email. No card data
   ever touches our server. Supports credit/debit cards, Apple Pay, Google
   Pay, SnapScan, and 18+ other South African payment methods.
-- **"How to pay" section** explaining the payment flow: add products,
-  fill in details, click "Pay now", complete payment on PayFast.
+- **"Secure checkout" panel** — single reassurance sentence noting
+  PayFast handles payment and the site never sees card details, plus
+  a row of accepted-method chips (cards, Apple Pay, SnapScan, Instant
+  EFT). Replaces the earlier procedural 5-step list.
 
 ## Contact (`/contact`)
 
-- Minimal stub with an email link. A real contact form can be added later or the
-  shop order form can be repurposed for general enquiries.
+- Quiet standard-section header (eyebrow + H1) with a warm invitation
+  lede — no decorative hero, since a contact page is a destination for
+  existing intent, not an editorial surface.
+- **Contact details list** — structured key/value rows (Email, Phone,
+  Studio, Response time) in a two-column layout that stacks on narrow
+  viewports. Top and bottom rules give it visual weight without a
+  card.
+- **Commissions block** — calls out that Meryl takes bespoke
+  commissions, with instructions on how to enquire.
+- **Existing orders block** — links to `/track` for customers who just
+  want to check a placed order.
+- A real contact form can be added later or the shop order form can be
+  repurposed for general enquiries.
 
 ## Track order (`/track`)
 
+- **Water page-header** — short 30vh decorative strip using `water2.JPG`
+  with the same overlay treatment as the contact page, framing the
+  lookup form.
 - **Customer-facing order status page.** The customer enters their order
   reference + email and sees the current status, a progress indicator
   (Pending payment → Payment received → Shipped → Delivered), and the

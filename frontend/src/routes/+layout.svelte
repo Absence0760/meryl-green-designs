@@ -165,7 +165,7 @@
 	}
 
 	main {
-		min-height: 60vh;
+		flex: 1;
 	}
 
 	.site-footer {

@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { PUBLIC_API_URL } from '$env/static/public';
-	import { base } from '$app/paths';
 	import { formatPrice, imageUrl, type Product } from '$lib/sanity';
 	import { cart } from '$lib/cartStore.svelte';
 
@@ -15,6 +14,14 @@
 	function productMainImage(product: Product): string | null {
 		const first = product.photos?.[0];
 		return first ? imageUrl(first, 640) : null;
+	}
+
+	// Second photo (if uploaded) is revealed on hover. Classic e-commerce
+	// pattern — primary photo shows the product, secondary shows a detail
+	// crop or alternate angle.
+	function productHoverImage(product: Product): string | null {
+		const second = product.photos?.[1];
+		return second ? imageUrl(second, 640) : null;
 	}
 
 	function addToCart(product: Product) {
@@ -73,7 +80,7 @@
 	</div>
 </section>
 
-<section class="backdrop" style="background-image: url('{base}/water2.JPG')">
+<section class="section section--products">
 	<div class="container">
 		{#if productsLoading}
 			<div class="product-grid" aria-busy="true" aria-label="Loading products">
@@ -82,7 +89,6 @@
 						<div class="product-image skeleton-shimmer"></div>
 						<div class="product-body">
 							<div class="skeleton-line skeleton-line--title"></div>
-							<div class="skeleton-line skeleton-line--sm"></div>
 							<div class="skeleton-line skeleton-line--price"></div>
 						</div>
 					</article>
@@ -101,25 +107,35 @@
 			<div class="product-grid">
 				{#each products as product (product._id)}
 					{@const photo = productMainImage(product)}
+					{@const hover = productHoverImage(product)}
 					<article class="product">
 						{#if photo}
-							<img
-								class="product-image product-image--photo"
-								src={photo}
-								alt={product.photos?.[0]?.alt ?? product.name}
-								loading="lazy"
-							/>
+							<div class="product-image-stack">
+								<img
+									class="product-image product-image--photo product-image--primary"
+									src={photo}
+									alt={product.photos?.[0]?.alt ?? product.name}
+									loading="lazy"
+								/>
+								{#if hover}
+									<!-- Not lazy-loaded — the secondary is stacked behind the
+									     primary with opacity: 0, and some browsers treat that
+									     as non-visible and defer loading, which causes a flash
+									     of empty cream on first hover. Loading eagerly costs
+									     one extra request per product but eliminates the flash. -->
+									<img
+										class="product-image product-image--photo product-image--secondary"
+										src={hover}
+										alt={product.photos?.[1]?.alt ?? product.name}
+										aria-hidden="true"
+									/>
+								{/if}
+							</div>
 						{:else}
 							<div class="product-image">Product photo</div>
 						{/if}
 						<div class="product-body">
 							<h3>{product.name}</h3>
-							{#if product.blurb}
-								<p class="blurb">{product.blurb}</p>
-							{/if}
-							{#if product.description?.trim()}
-								<p class="description">{product.description}</p>
-							{/if}
 							<p class="price">{formatPrice(product.priceZar)}</p>
 							<button
 								class="btn"
@@ -137,24 +153,18 @@
 </section>
 
 <section class="section">
-	<div class="container narrow">
-		<p class="eyebrow">Payment</p>
-		<h2>How to pay</h2>
-		<ol class="payment-steps">
-			<li>Add items to your order using the "Add to order" buttons above.</li>
-			<li>Open your cart using the cart icon in the header.</li>
-			<li>Fill in your details and click "Pay now".</li>
-			<li>
-				You'll be securely redirected to PayFast to complete your payment
-				with a credit or debit card, Apple Pay, SnapScan, or other
-				supported methods.
-			</li>
-			<li>Once payment is confirmed, we ship your order.</li>
-		</ol>
-		<p class="note">
-			All payments are processed securely by PayFast. We never see your
-			card details.
+	<div class="container narrow payment-panel">
+		<p class="eyebrow">Secure checkout</p>
+		<p class="payment-lede">
+			Checkout is handled by <strong>PayFast</strong> — we never see your
+			card details. Once payment clears, we ship your order.
 		</p>
+		<ul class="payment-methods" aria-label="Accepted payment methods">
+			<li>Credit &amp; debit cards</li>
+			<li>Apple Pay</li>
+			<li>SnapScan</li>
+			<li>Instant EFT</li>
+		</ul>
 	</div>
 </section>
 
@@ -165,11 +175,8 @@
 		margin-bottom: 0;
 	}
 
-	.backdrop {
-		background-color: #c8d1b9;
-		background-size: cover;
-		background-position: center;
-		padding: var(--space-4) 0 var(--space-6);
+	.section--products {
+		padding-top: 0;
 	}
 
 	.specs {
@@ -216,18 +223,20 @@
 
 	.product-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-		gap: var(--space-3);
+		grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+		gap: var(--space-4) var(--space-3);
 	}
 
+	/* Edge-to-edge INKE-style tile: no card chrome, no border, no shadow.
+	   The image IS the tile visual. Text sits directly on the backdrop. */
 	.product {
-		background: var(--color-surface);
-		border: 1px solid var(--color-rule);
-		border-radius: 4px;
-		overflow: hidden;
 		display: flex;
 		flex-direction: column;
-		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+		background: none;
+		border: none;
+		border-radius: 0;
+		overflow: visible;
+		box-shadow: none;
 	}
 
 	.product-image {
@@ -245,11 +254,59 @@
 		font-style: italic;
 	}
 
+	/* Stack container so the primary and secondary (hover-reveal) photos
+	   occupy the same box. The product's `aspect-ratio: 1 / 1` is moved
+	   onto the stack wrapper itself. */
+	.product-image-stack {
+		position: relative;
+		aspect-ratio: 1 / 1;
+		overflow: hidden;
+	}
+
+	/* Subtle cream under the photo. Serves two jobs:
+	   1. When a product PNG has transparency (current uploads), the
+	      cream reads as a white-backed studio shot instead of letting
+	      the page background show through.
+	   2. When Meryl uploads real lifestyle photography with its own
+	      background, the cream is fully hidden anyway — invisible. */
 	.product-image--photo {
 		object-fit: cover;
 		width: 100%;
-		height: auto;
-		background: none;
+		height: 100%;
+		background: var(--color-surface);
+	}
+
+	.product-image--primary,
+	.product-image--secondary {
+		position: absolute;
+		inset: 0;
+		transition: opacity 280ms ease;
+	}
+
+	.product-image--secondary {
+		opacity: 0;
+	}
+
+	/* Reveal the secondary on hover of the stack. No need to guard on a
+	   `has-hover` class because the secondary only exists in the DOM
+	   when a second photo is uploaded. For products with one photo, the
+	   selectors simply match nothing. `:has(...)` guards the primary
+	   fade-out so single-photo tiles don't flash on hover. */
+	.product-image-stack:hover .product-image--secondary,
+	.product-image-stack:focus-within .product-image--secondary {
+		opacity: 1;
+	}
+
+	.product-image-stack:hover:has(.product-image--secondary) .product-image--primary,
+	.product-image-stack:focus-within:has(.product-image--secondary) .product-image--primary {
+		opacity: 0;
+	}
+
+	/* Touch devices get no hover reveal — show only the primary. */
+	@media (hover: none) {
+		.product-image--secondary {
+			display: none;
+		}
 	}
 
 	.empty {
@@ -317,65 +374,60 @@
 	}
 
 	.product-body {
-		padding: var(--space-2);
+		padding: var(--space-2) 0 0;
 		display: flex;
 		flex-direction: column;
 		gap: 0.35rem;
 		flex: 1;
 		min-height: 0;
+		text-align: center;
 	}
 
 	.product-body h3 {
 		margin: 0;
-		font-size: 1.15rem;
-	}
-
-	.blurb {
-		margin: 0;
-		color: var(--color-ink-soft);
-		font-size: 0.9rem;
-		font-style: italic;
-	}
-
-	.description {
-		margin: 0;
-		color: var(--color-ink-soft);
-		font-size: 0.85rem;
-		line-height: 1.55;
-		white-space: pre-line;
+		font-size: 1rem;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		color: var(--color-ink);
+		font-family: var(--font-body);
+		font-weight: 500;
 	}
 
 	.price {
 		margin: 0;
-		margin-top: auto;
-		padding-top: var(--space-2);
-		font-weight: 600;
-		color: var(--color-leaf-dark);
+		font-family: var(--font-display);
+		font-size: 1.05rem;
+		font-weight: 500;
+		color: var(--color-bark);
+		letter-spacing: 0.02em;
 	}
 
 	.btn {
-		margin-top: var(--space-1);
+		margin-top: 0.25rem;
+		align-self: center;
 		display: inline-block;
-		background: var(--color-leaf-dark);
-		color: #f6f4ee;
-		border: none;
-		padding: 0.65rem var(--space-2);
+		background: none;
+		color: var(--color-leaf-dark);
+		border: 1px solid var(--color-leaf-dark);
+		padding: 0.5rem 1.2rem;
 		font: inherit;
-		font-size: 0.85rem;
-		letter-spacing: 0.06em;
+		font-size: 0.75rem;
+		letter-spacing: 0.12em;
 		text-transform: uppercase;
 		text-align: center;
 		cursor: pointer;
 		text-decoration: none;
-		border-bottom: none;
+		border-bottom: 1px solid var(--color-leaf-dark);
+		transition: background-color 150ms ease, color 150ms ease;
 	}
 
 	.btn:hover {
-		background: #244019;
+		background: var(--color-leaf-dark);
+		color: #f6f4ee;
 	}
 
 	button[disabled] {
-		background: #a8afa0;
+		opacity: 0.4;
 		cursor: not-allowed;
 	}
 
@@ -387,22 +439,35 @@
 		border-radius: 2px;
 	}
 
-	.payment-steps {
-		margin: var(--space-2) 0 var(--space-2);
-		padding-left: 1.2rem;
-		display: grid;
-		gap: 0.5rem;
+	.payment-panel {
+		text-align: center;
+	}
+
+	.payment-lede {
+		margin: 0 auto var(--space-2);
+		font-size: 1.05rem;
+		line-height: 1.6;
 		color: var(--color-ink);
+		max-width: 48ch;
 	}
 
-	.payment-steps li {
-		line-height: 1.5;
-	}
-
-	.note {
-		font-size: 0.9rem;
-		color: var(--color-ink-soft);
+	.payment-methods {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		gap: 0.5rem;
+		list-style: none;
+		padding: 0;
 		margin: 0;
-		font-style: italic;
+	}
+
+	.payment-methods li {
+		padding: 0.35rem 0.85rem;
+		background: var(--color-surface);
+		border: 1px solid var(--color-rule);
+		border-radius: 999px;
+		font-size: 0.8rem;
+		letter-spacing: 0.04em;
+		color: var(--color-ink-soft);
 	}
 </style>

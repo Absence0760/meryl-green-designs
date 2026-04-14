@@ -1,7 +1,25 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { base } from '$app/paths';
+	import { PUBLIC_API_URL } from '$env/static/public';
+	import { imageUrl, type GalleryPhoto } from '$lib/sanity';
 
 	const heroImage = `${base}/two_trees.JPG`;
+	const apiUrl = PUBLIC_API_URL;
+
+	let featured: GalleryPhoto[] = [];
+
+	onMount(async () => {
+		try {
+			const res = await fetch(`${apiUrl}/gallery`);
+			if (!res.ok) return;
+			const body = (await res.json()) as { photos?: GalleryPhoto[] };
+			featured = (body.photos ?? []).slice(0, 4);
+		} catch {
+			// Silent failure — the featured band just won't render.
+			// The home page is already complete without it.
+		}
+	});
 
 	const storyParagraphs: string[] = [
 		'Bring a snapshot of beauty, peace and tranquility from a place where time stands still to a place where time seems to move too quickly. Let it infuse your everyday environment, be it your home, place of work or any other space of your choice.',
@@ -53,7 +71,14 @@
 	<div class="hero-overlay">
 		<div class="container">
 			<h1>Inspired by Nature</h1>
-			<p class="tagline">Handcrafted screens &amp; designs drawn from the living world.</p>
+			<p class="tagline">
+				Photographs of the African bush — printed on cotton canvas,
+				framed in Meranti hardwood.
+			</p>
+			<div class="hero-cta">
+				<a class="hero-btn hero-btn--primary" href="/shop">Shop the collection</a>
+				<a class="hero-btn hero-btn--ghost" href="/gallery">View gallery</a>
+			</div>
 		</div>
 	</div>
 </section>
@@ -81,6 +106,24 @@
 		{/each}
 	</div>
 </section>
+
+{#if featured.length > 0}
+	<section class="featured-band" aria-label="Featured photographs">
+		<div class="featured-band__grid">
+			{#each featured as photo (photo._id)}
+				{@const src = imageUrl(photo.image, 700)}
+				{#if src}
+					<a class="featured-band__tile" href="/gallery" aria-label={photo.caption ?? photo.image.alt ?? 'View gallery'}>
+						<img src={src} alt={photo.image.alt ?? photo.caption ?? ''} loading="lazy" />
+					</a>
+				{/if}
+			{/each}
+		</div>
+		<div class="container featured-band__footer">
+			<a class="featured-band__link" href="/gallery">View the full gallery →</a>
+		</div>
+	</section>
+{/if}
 
 <section class="section section--alt">
 	<div class="container narrow">
@@ -158,7 +201,48 @@
 		font-style: italic;
 		font-size: 1.25rem;
 		max-width: 40ch;
-		margin: 0;
+		margin: 0 0 var(--space-3);
+	}
+
+	.hero-cta {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-2);
+	}
+
+	.hero-btn {
+		display: inline-block;
+		padding: 0.75rem 1.4rem;
+		font-family: var(--font-body);
+		font-size: 0.85rem;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
+		text-decoration: none;
+		border: 1px solid #f6f4ee;
+		color: #f6f4ee;
+		border-bottom: 1px solid #f6f4ee;
+		transition:
+			background-color 160ms ease,
+			color 160ms ease,
+			border-color 160ms ease;
+	}
+
+	.hero-btn--primary {
+		background: #f6f4ee;
+		color: var(--color-leaf-dark);
+		border-color: #f6f4ee;
+	}
+
+	.hero-btn--primary:hover {
+		background: var(--color-bark);
+		color: #f6f4ee;
+		border-color: var(--color-bark);
+	}
+
+	.hero-btn--ghost:hover {
+		background: rgba(246, 244, 238, 0.12);
+		color: #f6f4ee;
+		border-color: #f6f4ee;
 	}
 
 	.narrow {
@@ -220,6 +304,61 @@
 		font-style: italic;
 	}
 
+	/* Full-bleed four-across photo band between the story and the poem.
+	   Breaks up text-heavy home page, previews the gallery, and gives
+	   the page visual rhythm between the two narrative sections. */
+	.featured-band {
+		padding: 0 0 var(--space-5);
+	}
+
+	.featured-band__grid {
+		display: grid;
+		grid-template-columns: repeat(4, 1fr);
+		gap: 2px;
+	}
+
+	@media (max-width: 720px) {
+		.featured-band__grid {
+			grid-template-columns: repeat(2, 1fr);
+		}
+	}
+
+	.featured-band__tile {
+		display: block;
+		overflow: hidden;
+		aspect-ratio: 1 / 1;
+		border-bottom: none;
+	}
+
+	.featured-band__tile:hover {
+		border-bottom: none;
+	}
+
+	.featured-band__tile img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		display: block;
+		transition: transform 500ms ease;
+	}
+
+	.featured-band__tile:hover img {
+		transform: scale(1.04);
+	}
+
+	.featured-band__footer {
+		text-align: center;
+		padding-top: var(--space-3);
+	}
+
+	.featured-band__link {
+		font-size: 0.9rem;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: var(--color-bark);
+		font-weight: 500;
+	}
+
 	.cta-grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -258,6 +397,7 @@
 		font-size: 0.9rem;
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
-		color: var(--color-leaf-dark);
+		color: var(--color-bark);
+		font-weight: 500;
 	}
 </style>

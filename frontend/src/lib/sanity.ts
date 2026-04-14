@@ -1,6 +1,9 @@
 import { createImageUrlBuilder, type SanityImageSource } from '@sanity/image-url';
 import { PUBLIC_SANITY_PROJECT_ID, PUBLIC_SANITY_DATASET } from '$env/static/public';
 
+type SanityHotspot = { x: number; y: number; height: number; width: number };
+type SanityCrop = { top: number; bottom: number; left: number; right: number };
+
 export type Product = {
 	_id: string;
 	name: string;
@@ -14,6 +17,8 @@ export type Product = {
 		_key: string;
 		alt: string | null;
 		asset: { _ref: string };
+		hotspot?: SanityHotspot;
+		crop?: SanityCrop;
 	}>;
 };
 
@@ -22,6 +27,8 @@ export type GalleryPhoto = {
 	image: {
 		alt: string | null;
 		asset: { _ref: string };
+		hotspot?: SanityHotspot;
+		crop?: SanityCrop;
 	};
 	caption: string | null;
 	visible: boolean;

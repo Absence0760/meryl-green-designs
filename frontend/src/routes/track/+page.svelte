@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { PUBLIC_API_URL } from '$env/static/public';
+	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
 
 	type Shipping = {
@@ -124,10 +125,17 @@
 	<meta name="robots" content="noindex" />
 </svelte:head>
 
+<section class="page-header" style="background-image: url('{base}/water2.JPG')">
+	<div class="page-header__overlay">
+		<div class="container">
+			<p class="eyebrow page-header__eyebrow">Track your order</p>
+			<h1>Order status</h1>
+		</div>
+	</div>
+</section>
+
 <section class="section">
 	<div class="container narrow">
-		<p class="eyebrow">Track your order</p>
-		<h1>Order status</h1>
 		<p class="lede">
 			Enter the order reference we emailed you and the email address you used when
 			placing the order.
@@ -224,6 +232,32 @@
 		max-width: 60ch;
 		color: var(--color-ink-soft);
 		margin-bottom: var(--space-3);
+	}
+
+	.page-header {
+		min-height: 30vh;
+		background-color: #c8d1b9;
+		background-size: cover;
+		background-position: center;
+		display: flex;
+		align-items: flex-end;
+		color: #f6f4ee;
+	}
+
+	.page-header__overlay {
+		width: 100%;
+		padding: var(--space-4) 0 var(--space-3);
+		background: linear-gradient(to top, rgba(20, 30, 15, 0.72), rgba(20, 30, 15, 0));
+	}
+
+	.page-header :global(h1) {
+		color: #f6f4ee;
+		margin: 0;
+	}
+
+	.page-header__eyebrow {
+		color: #e8ece1;
+		margin-bottom: 0.35rem;
 	}
 
 	.track-form {

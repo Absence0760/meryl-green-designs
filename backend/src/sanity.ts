@@ -55,6 +55,13 @@ export type SanityProduct = {
 		_key: string;
 		alt: string | null;
 		asset: { _ref: string };
+		// Sanity stores per-placement crop/hotspot metadata on the image
+		// object itself (not the underlying asset). Carrying these through
+		// lets the frontend image-url builder apply the correct crop —
+		// without them, two photos that share an asset but have different
+		// crops render identically.
+		hotspot?: { x: number; y: number; height: number; width: number };
+		crop?: { top: number; bottom: number; left: number; right: number };
 	}>;
 };
 
@@ -63,6 +70,8 @@ export type SanityGalleryPhoto = {
 	image: {
 		alt: string | null;
 		asset: { _ref: string };
+		hotspot?: { x: number; y: number; height: number; width: number };
+		crop?: { top: number; bottom: number; left: number; right: number };
 	};
 	caption: string | null;
 	visible: boolean;
@@ -81,13 +90,15 @@ const PRODUCTS_QUERY = `*[_type == "product" && available == true] | order(order
 	photos[] {
 		_key,
 		alt,
-		asset
+		asset,
+		hotspot,
+		crop
 	}
 }`;
 
 const GALLERY_QUERY = `*[_type == "galleryPhoto" && visible == true] | order(order asc, _createdAt desc) {
 	_id,
-	image { alt, asset },
+	image { alt, asset, hotspot, crop },
 	caption,
 	visible,
 	order
