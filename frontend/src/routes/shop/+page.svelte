@@ -3,145 +3,22 @@
 	import { PUBLIC_API_URL } from '$env/static/public';
 	import { base } from '$app/paths';
 	import { formatPrice, imageUrl, type Product } from '$lib/sanity';
+	import { cart } from '$lib/cartStore.svelte';
 
 	const apiUrl = PUBLIC_API_URL;
 
-	// Products are fetched client-side after mount so the page shell can
-	// render instantly. skeletonCount sets how many placeholder cards to
-	// show while the real data is loading.
 	let products: Product[] = [];
 	let productsLoading = true;
 	let productsError: string | null = null;
 	const skeletonCount = 6;
-
-	// --- Cart state ---
-	type CartItem = {
-		productId: string;
-		name: string;
-		price: number;
-		quantity: number;
-	};
-	let cart: CartItem[] = [];
-
-	$: cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-
-	function addToCart(product: Product) {
-		const existing = cart.find((item) => item.productId === product._id);
-		if (existing) {
-			existing.quantity += 1;
-			cart = [...cart];
-		} else {
-			cart = [
-				...cart,
-				{
-					productId: product._id,
-					name: product.name,
-					price: product.priceZar ?? 0,
-					quantity: 1
-				}
-			];
-		}
-		document.getElementById('order')?.scrollIntoView({ behavior: 'smooth' });
-	}
-
-	function updateQuantity(productId: string, delta: number) {
-		const item = cart.find((i) => i.productId === productId);
-		if (!item) return;
-		item.quantity += delta;
-		if (item.quantity <= 0) {
-			cart = cart.filter((i) => i.productId !== productId);
-		} else {
-			cart = [...cart];
-		}
-	}
-
-	function removeFromCart(productId: string) {
-		cart = cart.filter((i) => i.productId !== productId);
-	}
-
-	let submitting = false;
-	let error: string | null = null;
-	let success: { ref: string } | null = null;
-
-	let values = {
-		name: '',
-		email: '',
-		phone: '',
-		address: '',
-		notes: '',
-		website: ''
-	};
 
 	function productMainImage(product: Product): string | null {
 		const first = product.photos?.[0];
 		return first ? imageUrl(first, 640) : null;
 	}
 
-	async function handleSubmit(event: SubmitEvent) {
-		event.preventDefault();
-		submitting = true;
-		error = null;
-
-		const body: Record<string, unknown> = {
-			name: values.name,
-			email: values.email,
-			phone: values.phone,
-			address: values.address,
-			notes: values.notes,
-			website: values.website,
-			paymentMethod: 'payfast',
-			cart: cart.map((item) => ({
-				productId: item.productId,
-				quantity: item.quantity
-			}))
-		};
-
-		try {
-			const res = await fetch(`${apiUrl}/orders`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(body)
-			});
-
-			const data = (await res.json()) as {
-				success?: true;
-				ref?: string;
-				error?: string;
-				payfast?: { action: string; fields: Record<string, string> };
-			};
-
-			if (!res.ok || data.error) {
-				error = data.error ?? 'Something went wrong. Please try again.';
-				return;
-			}
-
-			if (data.payfast) {
-				redirectToPayFast(data.payfast);
-				return;
-			}
-
-			success = { ref: data.ref ?? '' };
-		} catch (e) {
-			console.error(e);
-			error = 'Could not reach the order service. Please try again.';
-		} finally {
-			submitting = false;
-		}
-	}
-
-	function redirectToPayFast(payfast: { action: string; fields: Record<string, string> }) {
-		const form = document.createElement('form');
-		form.method = 'POST';
-		form.action = payfast.action;
-		for (const [name, value] of Object.entries(payfast.fields)) {
-			const input = document.createElement('input');
-			input.type = 'hidden';
-			input.name = name;
-			input.value = value;
-			form.appendChild(input);
-		}
-		document.body.appendChild(form);
-		form.submit();
+	function addToCart(product: Product) {
+		cart.add(product);
 	}
 
 	onMount(async () => {
@@ -259,160 +136,13 @@
 	</div>
 </section>
 
-<section class="section section--alt" id="order">
-	<div class="container narrow">
-		<p class="eyebrow">Place an order</p>
-		<h2>Order form</h2>
-
-		{#if cart.length > 0}
-			<div class="cart-summary">
-				<h3>Your order</h3>
-				<ul class="cart-items">
-					{#each cart as item (item.productId)}
-						<li class="cart-item">
-							<span class="cart-item__name">{item.name}</span>
-							<span class="cart-item__controls">
-								<button
-									class="cart-btn"
-									on:click={() => updateQuantity(item.productId, -1)}
-									aria-label="Decrease quantity"
-								>&minus;</button>
-								<span class="cart-item__qty">{item.quantity}</span>
-								<button
-									class="cart-btn"
-									on:click={() => updateQuantity(item.productId, 1)}
-									aria-label="Increase quantity"
-								>&plus;</button>
-							</span>
-							<span class="cart-item__line-total">
-								{formatPrice(item.price * item.quantity)}
-							</span>
-							<button
-								class="cart-remove"
-								on:click={() => removeFromCart(item.productId)}
-								aria-label="Remove {item.name}"
-							>&times;</button>
-						</li>
-					{/each}
-				</ul>
-				<p class="cart-total">
-					<strong>Total: {formatPrice(cartTotal)}</strong>
-				</p>
-			</div>
-		{/if}
-
-		{#if success}
-			<div class="alert alert--success">
-				<strong>Thank you — your order has been received.</strong>
-				<p>
-					Your reference is <strong>{success.ref}</strong>. A confirmation email
-					is on its way.
-				</p>
-			</div>
-		{:else}
-			{#if error}
-				<div class="alert alert--error">{error}</div>
-			{/if}
-
-			<form class="order-form" on:submit={handleSubmit} novalidate>
-				<input
-					type="text"
-					name="website"
-					tabindex="-1"
-					autocomplete="off"
-					class="hp"
-					aria-hidden="true"
-					bind:value={values.website}
-				/>
-
-				<p class="required-hint"><span aria-hidden="true">*</span> Required fields</p>
-
-				<label for="order-name">
-					<span>Name <span class="req" aria-hidden="true">*</span></span>
-					<input
-						id="order-name"
-						name="name"
-						type="text"
-						autocomplete="name"
-						required
-						bind:value={values.name}
-					/>
-				</label>
-				<label for="order-email">
-					<span>Email <span class="req" aria-hidden="true">*</span></span>
-					<input
-						id="order-email"
-						name="email"
-						type="email"
-						autocomplete="email"
-						inputmode="email"
-						required
-						bind:value={values.email}
-					/>
-				</label>
-				<label for="order-phone">
-					<span>Phone <small>(optional)</small></span>
-					<input
-						id="order-phone"
-						name="phone"
-						type="tel"
-						autocomplete="tel"
-						inputmode="tel"
-						bind:value={values.phone}
-					/>
-				</label>
-				<label for="order-address">
-					<span>Shipping address <span class="req" aria-hidden="true">*</span></span>
-					<textarea
-						id="order-address"
-						name="address"
-						rows="3"
-						autocomplete="street-address"
-						required
-						bind:value={values.address}
-					></textarea>
-				</label>
-
-				<label for="order-notes">
-					<span>Notes <small>(optional)</small></span>
-					<textarea
-						id="order-notes"
-						name="notes"
-						rows="2"
-						bind:value={values.notes}
-					></textarea>
-				</label>
-
-				{#if cart.length === 0}
-					<p class="payment-hint">
-						Add products to your order using the "Add to order" buttons above.
-					</p>
-				{/if}
-
-				<button
-					type="submit"
-					class="submit-order"
-					disabled={submitting || cart.length === 0}
-				>
-					{#if submitting}
-						Processing…
-					{:else if cartTotal > 0}
-						Pay now — {formatPrice(cartTotal)}
-					{:else}
-						Pay now
-					{/if}
-				</button>
-			</form>
-		{/if}
-	</div>
-</section>
-
 <section class="section">
 	<div class="container narrow">
 		<p class="eyebrow">Payment</p>
 		<h2>How to pay</h2>
 		<ol class="payment-steps">
 			<li>Add items to your order using the "Add to order" buttons above.</li>
+			<li>Open your cart using the cart icon in the header.</li>
 			<li>Fill in your details and click "Pay now".</li>
 			<li>
 				You'll be securely redirected to PayFast to complete your payment
@@ -623,7 +353,6 @@
 		color: var(--color-leaf-dark);
 	}
 
-	button,
 	.btn {
 		margin-top: var(--space-1);
 		display: inline-block;
@@ -650,229 +379,12 @@
 		cursor: not-allowed;
 	}
 
-	/* --- Cart summary --- */
-	.cart-summary {
-		background: var(--color-bg);
-		border: 1px solid var(--color-rule);
-		padding: var(--space-2) var(--space-3);
-		margin-bottom: var(--space-3);
-	}
-
-	.cart-summary h3 {
-		margin: 0 0 var(--space-1);
-		font-size: 1rem;
-	}
-
-	.cart-items {
-		list-style: none;
-		padding: 0;
-		margin: 0;
-		display: grid;
-		gap: 0.5rem;
-	}
-
-	.cart-item {
-		display: flex;
-		align-items: center;
-		gap: var(--space-1);
-		font-size: 0.9rem;
-	}
-
-	.cart-item__name {
-		flex: 1;
-		min-width: 0;
-	}
-
-	.cart-item__controls {
-		display: flex;
-		align-items: center;
-		gap: 0.3rem;
-	}
-
-	.cart-btn {
-		width: 1.6rem;
-		height: 1.6rem;
-		padding: 0;
-		margin: 0;
-		font-size: 1rem;
-		line-height: 1;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		background: var(--color-rule);
-		color: var(--color-ink);
-		border-radius: 2px;
-		text-transform: none;
-		letter-spacing: 0;
-	}
-
-	.cart-btn:hover {
-		background: var(--color-ink-soft);
-		color: #fff;
-	}
-
-	.cart-item__qty {
-		min-width: 1.4rem;
-		text-align: center;
-		font-weight: 600;
-	}
-
-	.cart-item__line-total {
-		min-width: 5rem;
-		text-align: right;
-		font-weight: 600;
-		color: var(--color-leaf-dark);
-	}
-
-	.cart-remove {
-		width: 1.6rem;
-		height: 1.6rem;
-		padding: 0;
-		margin: 0;
-		font-size: 1.1rem;
-		line-height: 1;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		background: transparent;
-		color: var(--color-ink-soft);
-		text-transform: none;
-		letter-spacing: 0;
-	}
-
-	.cart-remove:hover {
-		color: #a2432f;
-		background: transparent;
-	}
-
-	.cart-total {
-		margin: var(--space-1) 0 0;
-		text-align: right;
-		font-size: 1rem;
-		color: var(--color-leaf-dark);
-	}
-
-	.payment-hint {
-		margin: 0;
-		font-size: 0.85rem;
-		color: var(--color-ink-soft);
-		font-style: italic;
-	}
-
-	.order-form {
-		display: grid;
-		gap: var(--space-2);
-		background: var(--color-bg);
-		border: 1px solid var(--color-rule);
-		padding: var(--space-3);
-		margin-top: var(--space-3);
-	}
-
-	.required-hint {
-		margin: 0;
-		font-size: 0.8rem;
-		color: var(--color-ink-soft);
-	}
-
-	.required-hint span {
-		color: #a2432f;
-		font-weight: 700;
-	}
-
-	.order-form label {
-		display: grid;
-		gap: 0.25rem;
-	}
-
-	.order-form label > span {
-		font-size: 0.8rem;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		color: var(--color-ink-soft);
-		display: flex;
-		align-items: center;
-		gap: 0.35rem;
-	}
-
-	.order-form label small {
-		font-size: 0.75rem;
-		font-weight: 400;
-		text-transform: none;
-		letter-spacing: 0;
-		color: var(--color-ink-soft);
-		font-style: italic;
-	}
-
-	.req {
-		color: #a2432f;
-		font-weight: 700;
-	}
-
-	.order-form input,
-	.order-form textarea {
-		font: inherit;
-		padding: 0.6rem 0.7rem;
-		border: 1px solid var(--color-rule);
-		background: var(--color-surface);
-		color: var(--color-ink);
-		border-radius: 2px;
-		width: 100%;
-		box-sizing: border-box;
-	}
-
-	.order-form input:focus,
-	.order-form textarea:focus {
-		outline: 2px solid var(--color-leaf);
-		outline-offset: 1px;
-	}
-
-	.order-form input:invalid:not(:placeholder-shown),
-	.order-form textarea:invalid:not(:placeholder-shown) {
-		border-color: #a2432f;
-	}
-
-	.order-form textarea {
-		resize: vertical;
-		font-family: inherit;
-		min-height: 2.5rem;
-	}
-
-	.submit-order {
-		margin-top: var(--space-1);
-		width: 100%;
-		padding: 0.9rem var(--space-2);
-		font-size: 0.9rem;
-	}
-
-	.hp {
-		position: absolute;
-		left: -9999px;
-		width: 1px;
-		height: 1px;
-		opacity: 0;
-	}
-
-	.alert {
-		padding: var(--space-2) var(--space-3);
-		border-radius: 2px;
-		margin: var(--space-3) 0;
-	}
-
-	.alert--success {
-		background: #e4eddb;
-		border-left: 4px solid var(--color-leaf);
-		color: var(--color-leaf-dark);
-	}
-
-	.alert--success p {
-		margin: 0.35rem 0 0;
-	}
-
 	.alert--error {
 		background: #f5e3e0;
 		border-left: 4px solid #a2432f;
 		color: #6b2a1b;
+		padding: var(--space-2) var(--space-3);
+		border-radius: 2px;
 	}
 
 	.payment-steps {
