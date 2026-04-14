@@ -52,6 +52,23 @@ Actions workflows in `.github/workflows/` deploy code on top of that
 infrastructure. The two are decoupled: Terraform creates the resources,
 workflows update them.
 
+### SPA fallback for dynamic routes
+
+The frontend uses `@sveltejs/adapter-static` with `fallback: '404.html'`
+configured in `frontend/svelte.config.js`. The build produces a `404.html`
+page that contains the SPA shell — when a user visits a client-only
+dynamic route like `/shop/[slug]` directly, it boots, reads the URL, and
+renders the correct product page.
+
+For this to work in production, CloudFront's custom error responses in
+`infra/s3_cloudfront.tf` must route 404s (and 403s, since S3 returns 403
+for missing objects when listing is disabled) to `/404.html` with HTTP
+status **200**. Returning 404 at the HTTP layer for a valid product URL
+would hurt SEO, trip 4xx alarms, and confuse crawlers. Terraform
+currently configures this correctly — if you change the error-response
+block, make sure `response_code` stays 200 and `response_page_path`
+stays `/404.html`, or the product detail pages break.
+
 ## Fastest path: `bin/setup.sh`
 
 If you have the [prerequisites](#prerequisites) installed and authenticated,

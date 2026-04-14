@@ -54,13 +54,17 @@ meryl-green-designs/
 │           │   └── +page.svelte     Photo grid + skeleton loader + empty state (client-side fetch)
 │           ├── shop/
 │           │   ├── +page.ts         export const prerender = true (SSR'd shell with skeletons)
-│           │   └── +page.svelte     Product grid + cart + order form + payment selector
+│           │   ├── +page.svelte     Product grid + order form + payment + per-tile hover reveal
+│           │   └── [slug]/
+│           │       ├── +page.ts     prerender=false, ssr=false (SPA fallback)
+│           │       └── +page.svelte Product detail page: gallery + info + add-to-cart
 │           ├── payment/
 │           │   ├── complete/        PayFast return page after successful payment
 │           │   └── cancelled/       PayFast return page after cancelled payment
 │           ├── track/
 │           │   ├── +page.ts         prerender=true, ssr=false (client-only)
 │           │   └── +page.svelte     Order lookup form + status card
+│           ├── privacy/+page.svelte  POPIA-first privacy policy
 │           └── contact/+page.svelte
 ├── backend/
 │   ├── package.json          Build script runs esbuild → dist/lambda.mjs
@@ -110,7 +114,7 @@ meryl-green-designs/
 
 ## Frontend
 
-SvelteKit with `adapter-static`. Every route has `prerender = true` (set in
+SvelteKit with `adapter-static`. Most routes have `prerender = true` (set in
 `+layout.ts`), so the build emits one real `.html` file per route:
 
 ```
@@ -119,11 +123,22 @@ build/
 ├── index.html
 ├── gallery.html
 ├── shop.html
-└── contact.html
+├── contact.html
+├── privacy.html
+└── 404.html        SPA fallback — see below
 ```
 
 This is the directory that uploads to S3. CloudFront sits in front for caching and
 TLS termination. No server-side rendering, no runtime, no Node process.
+
+**SPA fallback for dynamic routes.** The product detail route `/shop/[slug]`
+can't be enumerated at build time (slugs come from Sanity), so its
+`+page.ts` sets `prerender = false; ssr = false;` and the static adapter
+is configured with `fallback: '404.html'`. The emitted `404.html` is an
+SPA shell that boots, reads the URL, and renders the matching product
+page. CloudFront's `custom_error_response` in `infra/s3_cloudfront.tf`
+rewrites 404 and 403 responses to `/404.html` with HTTP 200, so direct
+visits to dynamic routes resolve correctly without leaking a 4xx status.
 
 The shop page includes client-side JavaScript that submits the order form to the
 backend via `fetch`. The backend URL is baked into the bundle at build time from

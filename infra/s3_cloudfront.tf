@@ -135,12 +135,31 @@ resource "aws_cloudfront_distribution" "frontend" {
     cache_policy_id = "658327ea-f89d-4fab-a63d-7e88639e58f6" # Managed-CachingOptimized
   }
 
-  # Route 404s to the prerendered 404 page if SvelteKit emits one; otherwise fall
-  # through to index.html so client-side routing can take over.
+  # SvelteKit's static adapter emits a `/404.html` that is the SPA fallback
+  # shell — it boots the client runtime, reads the real URL from the browser,
+  # and renders the matching page. We serve it with HTTP 200 so direct
+  # visits to dynamic routes (e.g. `/shop/[slug]`) are treated as valid
+  # content rather than errors (which would hurt SEO and trip 4xx monitors).
+  #
+  # If the SPA determines that the URL really has no matching route, it
+  # renders its own in-page "not found" state — still returned as 200 at the
+  # HTTP layer, which is the standard SPA convention. Genuinely missing
+  # assets (e.g. a deleted image) still surface as 404s from S3 directly
+  # because CloudFront only overrides the HTML path.
   custom_error_response {
     error_code            = 404
-    response_code         = 404
-    response_page_path    = "/index.html"
+    response_code         = 200
+    response_page_path    = "/404.html"
+    error_caching_min_ttl = 10
+  }
+
+  # 403s from S3 (private object or nonexistent prefix) behave the same way
+  # — route them through the SPA fallback so the client runtime gets a
+  # chance to resolve the URL.
+  custom_error_response {
+    error_code            = 403
+    response_code         = 200
+    response_page_path    = "/404.html"
     error_caching_min_ttl = 10
   }
 
