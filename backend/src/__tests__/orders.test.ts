@@ -12,7 +12,9 @@ vi.mock('../sanity.js', () => ({
 	createOrder: vi.fn(),
 	getOrderByRef: vi.fn(),
 	getProducts: vi.fn(),
-	getGalleryPhotos: vi.fn()
+	getGalleryPhotos: vi.fn(),
+	getProductsByIds: vi.fn(),
+	updateOrderPayment: vi.fn()
 }));
 
 import { createApp } from '../app.js';
@@ -27,6 +29,9 @@ function sanityOrder(overrides: Partial<SanityOrder> = {}): SanityOrder {
 		_updatedAt: '2026-04-10T12:00:00Z',
 		orderRef: 'MG-260410-ABCD',
 		status: 'pending_payment',
+		paymentMethod: 'eft',
+		amountZar: null,
+		paymentId: null,
 		customerName: 'Jane Smith',
 		customerEmail: 'jane@example.com',
 		customerPhone: null,
@@ -186,6 +191,126 @@ describe('POST /orders', () => {
 			expect(data.error).toMatch(/not configured/i);
 			expect(sanity.createOrder).not.toHaveBeenCalled();
 			expect(email.sendEmail).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('PayFast payment method', () => {
+		const testProduct = {
+			_id: 'prod-1',
+			name: 'Small Screen',
+			slug: 'small-screen',
+			blurb: null,
+			description: null,
+			priceZar: 450,
+			available: true,
+			order: 0,
+			photos: []
+		};
+
+		const payfastOrderBody = {
+			name: 'Jane Smith',
+			email: 'jane@example.com',
+			phone: '0123456789',
+			address: '1 Test Street\nCape Town',
+			notes: '',
+			paymentMethod: 'payfast' as const,
+			cart: [{ productId: 'prod-1', quantity: 1 }]
+		};
+
+		beforeEach(() => {
+			vi.stubEnv('PAYFAST_MERCHANT_ID', '10004002');
+			vi.stubEnv('PAYFAST_MERCHANT_KEY', 'q1cd2rdny4a53');
+			vi.stubEnv('PAYFAST_PASSPHRASE', 'payfast');
+			vi.stubEnv('PAYFAST_SANDBOX', 'true');
+			vi.mocked(sanity.getProductsByIds).mockReset().mockResolvedValue([testProduct]);
+		});
+
+		afterEach(() => vi.unstubAllEnvs());
+
+		it('returns payfast form data for a valid PayFast order', async () => {
+			vi.mocked(sanity.createOrder).mockResolvedValueOnce(
+				sanityOrder({ paymentMethod: 'payfast', amountZar: 450 })
+			);
+			const res = await postOrder(payfastOrderBody);
+			expect(res.status).toBe(200);
+			const data = (await res.json()) as any;
+			expect(data.success).toBe(true);
+			expect(data.ref).toMatch(/^MG-\d{6}-[A-Z0-9]{4}$/);
+			expect(data.payfast).toBeDefined();
+			expect(data.payfast.action).toContain('sandbox.payfast.co.za');
+			expect(data.payfast.fields.amount).toBe('450.00');
+			expect(data.payfast.fields.signature).toMatch(/^[a-f0-9]{32}$/);
+		});
+
+		it('passes paymentMethod and amountZar to createOrder', async () => {
+			vi.mocked(sanity.createOrder).mockResolvedValueOnce(
+				sanityOrder({ paymentMethod: 'payfast', amountZar: 450 })
+			);
+			await postOrder(payfastOrderBody);
+			const createArg = vi.mocked(sanity.createOrder).mock.calls[0]![0];
+			expect(createArg.paymentMethod).toBe('payfast');
+			expect(createArg.amountZar).toBe(450);
+		});
+
+		it('sends only the owner email (not customer confirmation) for PayFast orders', async () => {
+			vi.mocked(sanity.createOrder).mockResolvedValueOnce(
+				sanityOrder({ paymentMethod: 'payfast', amountZar: 450 })
+			);
+			await postOrder(payfastOrderBody);
+			expect(email.sendEmail).toHaveBeenCalledTimes(1);
+			const send = vi.mocked(email.sendEmail).mock.calls[0]![0];
+			expect(send.to).toBe('owner@example.com');
+		});
+
+		it('computes total from multiple cart items', async () => {
+			const product2 = { ...testProduct, _id: 'prod-2', name: 'Large Screen', priceZar: 900 };
+			vi.mocked(sanity.getProductsByIds).mockResolvedValueOnce([testProduct, product2]);
+			vi.mocked(sanity.createOrder).mockResolvedValueOnce(
+				sanityOrder({ paymentMethod: 'payfast', amountZar: 1800 })
+			);
+
+			const res = await postOrder({
+				...payfastOrderBody,
+				cart: [
+					{ productId: 'prod-1', quantity: 2 },
+					{ productId: 'prod-2', quantity: 1 }
+				]
+			});
+			const data = (await res.json()) as any;
+			// 2 * 450 + 1 * 900 = 1800
+			expect(data.payfast.fields.amount).toBe('1800.00');
+		});
+
+		it('rejects a PayFast order with an empty cart', async () => {
+			const res = await postOrder({ ...payfastOrderBody, cart: [] });
+			expect(res.status).toBe(400);
+			expect(sanity.createOrder).not.toHaveBeenCalled();
+		});
+
+		it('rejects a PayFast order when a product is not found', async () => {
+			vi.mocked(sanity.getProductsByIds).mockResolvedValueOnce([]);
+			const res = await postOrder(payfastOrderBody);
+			expect(res.status).toBe(400);
+			const data = (await res.json()) as any;
+			expect(data.error).toContain('not available');
+		});
+
+		it('rejects a PayFast order when a product has no price', async () => {
+			vi.mocked(sanity.getProductsByIds).mockResolvedValueOnce([
+				{ ...testProduct, priceZar: null }
+			]);
+			const res = await postOrder(payfastOrderBody);
+			expect(res.status).toBe(400);
+			const data = (await res.json()) as any;
+			expect(data.error).toContain('does not have a price');
+		});
+
+		it('returns 500 when PayFast config is missing', async () => {
+			vi.stubEnv('PAYFAST_MERCHANT_ID', '');
+			const res = await postOrder(payfastOrderBody);
+			expect(res.status).toBe(500);
+			const data = (await res.json()) as any;
+			expect(data.error).toMatch(/not configured/i);
 		});
 	});
 });

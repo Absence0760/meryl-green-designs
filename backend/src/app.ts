@@ -4,6 +4,7 @@ import { gallery } from './routes/gallery.js';
 import { orders } from './routes/orders.js';
 import { orderLookup } from './routes/order-lookup.js';
 import { products } from './routes/products.js';
+import { payfastItn } from './routes/payfast-itn.js';
 import { sanityWebhook } from './routes/sanity-webhook.js';
 
 export function createApp() {
@@ -31,6 +32,7 @@ export function createApp() {
 	app.route('/orders', orders);
 	app.route('/orders', orderLookup);
 	app.route('/webhooks', sanityWebhook);
+	app.route('/webhooks/payfast-itn', payfastItn);
 
 	app.onError((err, c) => {
 		console.error('Unhandled error', err);

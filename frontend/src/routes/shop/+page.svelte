@@ -14,9 +14,60 @@
 	let productsError: string | null = null;
 	const skeletonCount = 6;
 
+	// --- Cart state ---
+	type CartItem = {
+		productId: string;
+		name: string;
+		price: number;
+		quantity: number;
+	};
+	let cart: CartItem[] = [];
+	let paymentMethod: 'payfast' | 'eft' = 'payfast';
+
+	$: cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+	$: cartItemsText = cart
+		.map((item) => `${item.quantity} x ${item.name} — ${formatPrice(item.price)}`)
+		.join('\n');
+
+	function addToCart(product: Product) {
+		const existing = cart.find((item) => item.productId === product._id);
+		if (existing) {
+			existing.quantity += 1;
+			cart = [...cart];
+		} else {
+			cart = [
+				...cart,
+				{
+					productId: product._id,
+					name: product.name,
+					price: product.priceZar ?? 0,
+					quantity: 1
+				}
+			];
+		}
+		document.getElementById('order')?.scrollIntoView({ behavior: 'smooth' });
+	}
+
+	function updateQuantity(productId: string, delta: number) {
+		const item = cart.find((i) => i.productId === productId);
+		if (!item) return;
+		item.quantity += delta;
+		if (item.quantity <= 0) {
+			cart = cart.filter((i) => i.productId !== productId);
+		} else {
+			cart = [...cart];
+		}
+	}
+
+	function removeFromCart(productId: string) {
+		cart = cart.filter((i) => i.productId !== productId);
+	}
+
 	let submitting = false;
 	let error: string | null = null;
 	let success: { ref: string } | null = null;
+
+	// EFT-only fields (kept for backwards compat when paying by EFT without cart)
 	let values = {
 		name: '',
 		email: '',
@@ -29,19 +80,7 @@
 
 	function productMainImage(product: Product): string | null {
 		const first = product.photos?.[0];
-		// 640px is enough for a ~320px card on a 2x retina display.
-		// Without this, Sanity serves the original upload resolution — which
-		// for photos straight from a camera can be multiple megabytes each.
 		return first ? imageUrl(first, 640) : null;
-	}
-
-	function orderProduct(event: MouseEvent, product: Product) {
-		event.preventDefault();
-		const line = product.priceZar != null
-			? `1 x ${product.name} — ${formatPrice(product.priceZar)}`
-			: `1 x ${product.name}`;
-		values.items = values.items ? `${values.items}\n${line}` : line;
-		document.getElementById('order')?.scrollIntoView({ behavior: 'smooth' });
 	}
 
 	async function handleSubmit(event: SubmitEvent) {
@@ -49,20 +88,55 @@
 		submitting = true;
 		error = null;
 
+		const isPayFast = paymentMethod === 'payfast';
+		const body: Record<string, unknown> = {
+			name: values.name,
+			email: values.email,
+			phone: values.phone,
+			address: values.address,
+			notes: values.notes,
+			website: values.website,
+			paymentMethod
+		};
+
+		if (isPayFast) {
+			body.cart = cart.map((item) => ({
+				productId: item.productId,
+				quantity: item.quantity
+			}));
+		} else {
+			// EFT: use cart-generated text if cart has items, otherwise fall back
+			// to the free-text textarea for manual entry.
+			body.items = cart.length > 0 ? cartItemsText : values.items;
+		}
+
 		try {
 			const res = await fetch(`${apiUrl}/orders`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(values)
+				body: JSON.stringify(body)
 			});
 
-			const data = (await res.json()) as { success?: true; ref?: string; error?: string };
+			const data = (await res.json()) as {
+				success?: true;
+				ref?: string;
+				error?: string;
+				payfast?: { action: string; fields: Record<string, string> };
+			};
 
 			if (!res.ok || data.error) {
 				error = data.error ?? 'Something went wrong. Please try again.';
 				return;
 			}
 
+			// PayFast: redirect to their hosted payment page by auto-submitting
+			// a hidden form.
+			if (isPayFast && data.payfast) {
+				redirectToPayFast(data.payfast);
+				return;
+			}
+
+			// EFT: show the confirmation inline (current behaviour).
 			success = { ref: data.ref ?? '' };
 		} catch (e) {
 			console.error(e);
@@ -70,6 +144,21 @@
 		} finally {
 			submitting = false;
 		}
+	}
+
+	function redirectToPayFast(payfast: { action: string; fields: Record<string, string> }) {
+		const form = document.createElement('form');
+		form.method = 'POST';
+		form.action = payfast.action;
+		for (const [name, value] of Object.entries(payfast.fields)) {
+			const input = document.createElement('input');
+			input.type = 'hidden';
+			input.name = name;
+			input.value = value;
+			form.appendChild(input);
+		}
+		document.body.appendChild(form);
+		form.submit();
 	}
 
 	onMount(async () => {
@@ -94,12 +183,12 @@
 	<title>Shop — Meryl Green Designs</title>
 	<meta
 		name="description"
-		content="Finished pieces from Meryl Green Designs — printed on durable cotton canvas, framed in stained Meranti hardwood. Order by Electronic Funds Transfer."
+		content="Finished pieces from Meryl Green Designs — printed on durable cotton canvas, framed in stained Meranti hardwood. Pay securely with card, Apple Pay, or EFT."
 	/>
 	<meta property="og:title" content="Shop — Meryl Green Designs" />
 	<meta
 		property="og:description"
-		content="Finished pieces from Meryl Green Designs — printed on durable cotton canvas, framed in stained Meranti hardwood. Order by Electronic Funds Transfer."
+		content="Finished pieces from Meryl Green Designs — printed on durable cotton canvas, framed in stained Meranti hardwood. Pay securely with card, Apple Pay, or EFT."
 	/>
 </svelte:head>
 
@@ -172,13 +261,13 @@
 								<p class="description">{product.description}</p>
 							{/if}
 							<p class="price">{formatPrice(product.priceZar)}</p>
-							<a
+							<button
 								class="btn"
-								href="#order"
-								on:click={(e) => orderProduct(e, product)}
+								on:click={() => addToCart(product)}
+								disabled={product.priceZar == null}
 							>
-								Enquire / Order
-							</a>
+								Add to order
+							</button>
 						</div>
 					</article>
 				{/each}
@@ -191,17 +280,50 @@
 	<div class="container narrow">
 		<p class="eyebrow">Place an order</p>
 		<h2>Order form</h2>
-		<p>
-			Fill in the form below and we'll email you a confirmation with banking details and a unique
-			order reference. Payment is by EFT.
-		</p>
+
+		{#if cart.length > 0}
+			<div class="cart-summary">
+				<h3>Your order</h3>
+				<ul class="cart-items">
+					{#each cart as item (item.productId)}
+						<li class="cart-item">
+							<span class="cart-item__name">{item.name}</span>
+							<span class="cart-item__controls">
+								<button
+									class="cart-btn"
+									on:click={() => updateQuantity(item.productId, -1)}
+									aria-label="Decrease quantity"
+								>&minus;</button>
+								<span class="cart-item__qty">{item.quantity}</span>
+								<button
+									class="cart-btn"
+									on:click={() => updateQuantity(item.productId, 1)}
+									aria-label="Increase quantity"
+								>&plus;</button>
+							</span>
+							<span class="cart-item__line-total">
+								{formatPrice(item.price * item.quantity)}
+							</span>
+							<button
+								class="cart-remove"
+								on:click={() => removeFromCart(item.productId)}
+								aria-label="Remove {item.name}"
+							>&times;</button>
+						</li>
+					{/each}
+				</ul>
+				<p class="cart-total">
+					<strong>Total: {formatPrice(cartTotal)}</strong>
+				</p>
+			</div>
+		{/if}
 
 		{#if success}
 			<div class="alert alert--success">
 				<strong>Thank you — your order has been received.</strong>
 				<p>
-					Your reference is <strong>{success.ref}</strong>. A confirmation email with banking
-					details is on its way.
+					Your reference is <strong>{success.ref}</strong>. A confirmation email
+					is on its way.
 				</p>
 			</div>
 		{:else}
@@ -267,17 +389,21 @@
 						bind:value={values.address}
 					></textarea>
 				</label>
-				<label for="order-items">
-					<span>Items <span class="req" aria-hidden="true">*</span></span>
-					<textarea
-						id="order-items"
-						name="items"
-						rows="4"
-						placeholder="List the items you would like to order"
-						required
-						bind:value={values.items}
-					></textarea>
-				</label>
+
+				{#if paymentMethod === 'eft' && cart.length === 0}
+					<label for="order-items">
+						<span>Items <span class="req" aria-hidden="true">*</span></span>
+						<textarea
+							id="order-items"
+							name="items"
+							rows="4"
+							placeholder="List the items you would like to order"
+							required
+							bind:value={values.items}
+						></textarea>
+					</label>
+				{/if}
+
 				<label for="order-notes">
 					<span>Notes <small>(optional)</small></span>
 					<textarea
@@ -288,8 +414,51 @@
 					></textarea>
 				</label>
 
-				<button type="submit" class="submit-order" disabled={submitting}>
-					{submitting ? 'Sending…' : 'Submit order'}
+				<fieldset class="payment-method-fieldset">
+					<legend>Payment method</legend>
+					<label class="payment-option">
+						<input
+							type="radio"
+							name="paymentMethod"
+							value="payfast"
+							bind:group={paymentMethod}
+						/>
+						<span>
+							<strong>Pay now</strong> — card, Apple Pay, SnapScan &amp; more
+						</span>
+					</label>
+					<label class="payment-option">
+						<input
+							type="radio"
+							name="paymentMethod"
+							value="eft"
+							bind:group={paymentMethod}
+						/>
+						<span>
+							<strong>Pay by EFT</strong> — Electronic Funds Transfer
+						</span>
+					</label>
+				</fieldset>
+
+				{#if paymentMethod === 'payfast' && cart.length === 0}
+					<p class="payment-hint">
+						Add products to your order using the "Add to order" buttons above
+						before paying online.
+					</p>
+				{/if}
+
+				<button
+					type="submit"
+					class="submit-order"
+					disabled={submitting || (paymentMethod === 'payfast' && cart.length === 0)}
+				>
+					{#if submitting}
+						Processing…
+					{:else if paymentMethod === 'payfast' && cartTotal > 0}
+						Pay now — {formatPrice(cartTotal)}
+					{:else}
+						Submit order
+					{/if}
 				</button>
 			</form>
 		{/if}
@@ -299,9 +468,18 @@
 <section class="section">
 	<div class="container narrow">
 		<p class="eyebrow">Payment</p>
-		<h2>How to pay — Electronic Funds Transfer</h2>
+		<h2>How to pay</h2>
+
+		<h3 class="payment-heading">Pay now (recommended)</h3>
+		<p>
+			Select "Pay now" and you'll be securely redirected to PayFast to complete
+			your payment with a credit or debit card, Apple Pay, SnapScan, or other
+			supported methods. Your order ships as soon as payment is confirmed.
+		</p>
+
+		<h3 class="payment-heading">Pay by EFT</h3>
 		<ol class="payment-steps">
-			<li>Place an order using the form above.</li>
+			<li>Place an order using the form above and select "Pay by EFT".</li>
 			<li>
 				You'll immediately receive an email confirming your order request and
 				a unique order reference.
@@ -486,9 +664,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0.35rem;
-		/* Fill the remaining card height so margin-top:auto below can push
-		   the price and button to the bottom regardless of how much text
-		   the name/blurb/description occupy. */
 		flex: 1;
 		min-height: 0;
 	}
@@ -496,8 +671,6 @@
 	.product-body h3 {
 		margin: 0;
 		font-size: 1.15rem;
-		/* Reserve exactly two lines for the name so long names wrap but
-		   don't shift the blurb/description below them out of alignment. */
 	}
 
 	.blurb {
@@ -512,17 +685,11 @@
 		color: var(--color-ink-soft);
 		font-size: 0.85rem;
 		line-height: 1.55;
-		/* Preserve newlines the shop owner types into the Sanity textarea,
-		   without collapsing adjacent spaces. */
 		white-space: pre-line;
 	}
 
 	.price {
 		margin: 0;
-		/* Push the price (and the button that follows) to the bottom of
-		   the card. Combined with align-items: stretch on the grid, this
-		   keeps every card's price + button on the same baseline regardless
-		   of how long the name/blurb/description are above them. */
 		margin-top: auto;
 		padding-top: var(--space-2);
 		font-weight: 600;
@@ -554,6 +721,146 @@
 	button[disabled] {
 		background: #a8afa0;
 		cursor: not-allowed;
+	}
+
+	/* --- Cart summary --- */
+	.cart-summary {
+		background: var(--color-bg);
+		border: 1px solid var(--color-rule);
+		padding: var(--space-2) var(--space-3);
+		margin-bottom: var(--space-3);
+	}
+
+	.cart-summary h3 {
+		margin: 0 0 var(--space-1);
+		font-size: 1rem;
+	}
+
+	.cart-items {
+		list-style: none;
+		padding: 0;
+		margin: 0;
+		display: grid;
+		gap: 0.5rem;
+	}
+
+	.cart-item {
+		display: flex;
+		align-items: center;
+		gap: var(--space-1);
+		font-size: 0.9rem;
+	}
+
+	.cart-item__name {
+		flex: 1;
+		min-width: 0;
+	}
+
+	.cart-item__controls {
+		display: flex;
+		align-items: center;
+		gap: 0.3rem;
+	}
+
+	.cart-btn {
+		width: 1.6rem;
+		height: 1.6rem;
+		padding: 0;
+		margin: 0;
+		font-size: 1rem;
+		line-height: 1;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: var(--color-rule);
+		color: var(--color-ink);
+		border-radius: 2px;
+		text-transform: none;
+		letter-spacing: 0;
+	}
+
+	.cart-btn:hover {
+		background: var(--color-ink-soft);
+		color: #fff;
+	}
+
+	.cart-item__qty {
+		min-width: 1.4rem;
+		text-align: center;
+		font-weight: 600;
+	}
+
+	.cart-item__line-total {
+		min-width: 5rem;
+		text-align: right;
+		font-weight: 600;
+		color: var(--color-leaf-dark);
+	}
+
+	.cart-remove {
+		width: 1.6rem;
+		height: 1.6rem;
+		padding: 0;
+		margin: 0;
+		font-size: 1.1rem;
+		line-height: 1;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: transparent;
+		color: var(--color-ink-soft);
+		text-transform: none;
+		letter-spacing: 0;
+	}
+
+	.cart-remove:hover {
+		color: #a2432f;
+		background: transparent;
+	}
+
+	.cart-total {
+		margin: var(--space-1) 0 0;
+		text-align: right;
+		font-size: 1rem;
+		color: var(--color-leaf-dark);
+	}
+
+	/* --- Payment method fieldset --- */
+	.payment-method-fieldset {
+		border: 1px solid var(--color-rule);
+		padding: var(--space-2);
+		margin: 0;
+		display: grid;
+		gap: 0.5rem;
+	}
+
+	.payment-method-fieldset legend {
+		font-size: 0.8rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: var(--color-ink-soft);
+		padding: 0 0.3rem;
+	}
+
+	.payment-option {
+		display: flex;
+		align-items: flex-start;
+		gap: 0.5rem;
+		cursor: pointer;
+		font-size: 0.9rem;
+	}
+
+	.payment-option input[type='radio'] {
+		margin-top: 0.25rem;
+		width: auto;
+	}
+
+	.payment-hint {
+		margin: 0;
+		font-size: 0.85rem;
+		color: var(--color-ink-soft);
+		font-style: italic;
 	}
 
 	.order-form {
@@ -635,10 +942,6 @@
 		min-height: 2.5rem;
 	}
 
-	/* The submit button inside the form overrides the shared button/.btn
-	   styles: no stacked margin (the grid gap already spaces it from the
-	   field above), full width of the form, and a bit more vertical weight
-	   so it reads as the form's primary action. */
 	.submit-order {
 		margin-top: var(--space-1);
 		width: 100%;
@@ -676,8 +979,13 @@
 		color: #6b2a1b;
 	}
 
+	.payment-heading {
+		font-size: 1rem;
+		margin: var(--space-3) 0 var(--space-1);
+	}
+
 	.payment-steps {
-		margin: var(--space-3) 0 var(--space-2);
+		margin: var(--space-2) 0 var(--space-2);
 		padding-left: 1.2rem;
 		display: grid;
 		gap: 0.5rem;

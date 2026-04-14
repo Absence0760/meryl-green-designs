@@ -1,5 +1,5 @@
 import { escapeHtml } from './email.js';
-import type { OrderStatus, SanityOrder } from './sanity.js';
+import type { OrderStatus, PaymentMethod, SanityOrder } from './sanity.js';
 
 export type OwnerNotificationInput = {
 	orderRef: string;
@@ -9,6 +9,8 @@ export type OwnerNotificationInput = {
 	address: string;
 	items: string;
 	notes: string;
+	paymentMethod?: PaymentMethod;
+	amountZar?: number;
 };
 
 function siteUrl(): string {
@@ -29,10 +31,28 @@ function trackingLink(order: { orderRef: string; customerEmail: string }): strin
 // and should fail code review.
 
 export function ownerNotification(input: OwnerNotificationInput): { subject: string; html: string } {
+	const method = input.paymentMethod ?? 'eft';
+	const methodLabel = method === 'payfast' ? 'PayFast (card / online)' : 'EFT';
+	const amountLine = input.amountZar != null
+		? `<p><strong>Total:</strong> R ${input.amountZar.toFixed(2)}</p>`
+		: '';
+
+	const nextStep = method === 'payfast'
+		? `<p>The customer has been redirected to PayFast to pay. Once payment
+		   completes, the order status will update to "Payment received"
+		   automatically — no action needed from you unless the payment is
+		   cancelled.</p>`
+		: `<p><strong>Reply to this email with your banking details</strong> so the
+		   customer can pay. The order has also been saved to the Studio — update
+		   its status once payment reflects to trigger the "payment received"
+		   email automatically.</p>`;
+
 	return {
 		subject: `New order ${input.orderRef} — ${input.name}`,
 		html: `
 			<h2>New order — ${escapeHtml(input.orderRef)}</h2>
+			<p><strong>Payment method:</strong> ${methodLabel}</p>
+			${amountLine}
 			<p><strong>Name:</strong> ${escapeHtml(input.name)}</p>
 			<p><strong>Email:</strong> ${escapeHtml(input.email)}</p>
 			<p><strong>Phone:</strong> ${escapeHtml(input.phone) || '(not provided)'}</p>
@@ -41,15 +61,15 @@ export function ownerNotification(input: OwnerNotificationInput): { subject: str
 			<pre style="font-family: inherit; white-space: pre-wrap;">${escapeHtml(input.items)}</pre>
 			${input.notes ? `<h3>Notes</h3><p>${escapeHtml(input.notes).replace(/\n/g, '<br>')}</p>` : ''}
 			<h3>Next step</h3>
-			<p><strong>Reply to this email with your banking details</strong> so the
-			customer can pay. The order has also been saved to the Studio — update
-			its status once payment reflects to trigger the "payment received"
-			email automatically.</p>
+			${nextStep}
 		`
 	};
 }
 
 function pendingPaymentTemplate(order: SanityOrder): { subject: string; html: string } {
+	// PayFast orders don't get this email at submission time — the customer is
+	// redirected to pay immediately, and they get a "payment received" email
+	// after the ITN confirms. This template is only sent for EFT orders.
 	return {
 		subject: `Order received ${order.orderRef} — Meryl Green Designs`,
 		html: `

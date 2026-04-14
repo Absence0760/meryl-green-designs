@@ -54,7 +54,10 @@ meryl-green-designs/
 │           │   └── +page.svelte     Photo grid + skeleton loader + empty state (client-side fetch)
 │           ├── shop/
 │           │   ├── +page.ts         export const prerender = true (SSR'd shell with skeletons)
-│           │   └── +page.svelte     Product grid + order form + EFT details (client-side fetch)
+│           │   └── +page.svelte     Product grid + cart + order form + payment selector
+│           ├── payment/
+│           │   ├── complete/        PayFast return page after successful payment
+│           │   └── cancelled/       PayFast return page after cancelled payment
 │           ├── track/
 │           │   ├── +page.ts         prerender=true, ssr=false (client-only)
 │           │   └── +page.svelte     Order lookup form + status card
@@ -69,12 +72,14 @@ meryl-green-designs/
 │       ├── lambda.ts         AWS Lambda entry (wraps app with hono/aws-lambda)
 │       ├── email.ts          Resend API wrapper + HTML escaping
 │       ├── email-templates.ts Status-keyed customer email templates
-│       ├── sanity.ts         @sanity/client wrapper: createOrder, getOrderByRef, getProducts, getGalleryPhotos
+│       ├── payfast.ts        PayFast signature generation, ITN validation, form-data builder
+│       ├── sanity.ts         @sanity/client wrapper: createOrder, getOrderByRef, getProducts, etc.
 │       └── routes/
 │           ├── products.ts         GET /products — list available products from Sanity
 │           ├── gallery.ts          GET /gallery — list visible gallery photos from Sanity
-│           ├── orders.ts           POST /orders — validate + create Sanity doc + send emails
+│           ├── orders.ts           POST /orders — validate + create Sanity doc + PayFast/email
 │           ├── order-lookup.ts     GET /orders/:ref?email= — track page lookup
+│           ├── payfast-itn.ts      POST /webhooks/payfast-itn — PayFast payment confirmation
 │           └── sanity-webhook.ts   POST /webhooks/sanity-order — verify sig + dispatch email
 ├── studio/
 │   ├── package.json
@@ -179,8 +184,9 @@ difference is how requests reach the app.
   runtime, same pattern as `/products`.
 - `POST /orders` — accepts an order JSON body, validates it, generates a reference
   `MG-YYMMDD-XXXX`, **creates a Sanity `order` document via an authenticated
-  client**, sends two emails via Resend (owner + customer confirmation with a
-  tracking link), returns `{ success: true, ref }` or `{ error }`
+  client**. For EFT orders, sends two emails (owner + customer confirmation).
+  For PayFast orders, sends the owner notification and returns signed PayFast
+  form data for redirect: `{ success, ref, payfast: { action, fields } }`
 - `GET /orders/:ref?email=…` — customer-facing order lookup. Queries Sanity
   by `orderRef`, verifies the provided email matches the stored email, and
   returns a sanitised subset (no internal notes, no phone, no shipping
@@ -191,6 +197,12 @@ difference is how requests reach the app.
   **raw** request body (before JSON parsing) against
   `SANITY_WEBHOOK_SECRET`, then dispatches the appropriate status-change
   email to the customer via Resend.
+- `POST /webhooks/payfast-itn` — receives PayFast Instant Transaction
+  Notifications after a customer pays. Validates the MD5 signature and
+  confirms the amount matches the stored order. On a valid COMPLETE
+  payment, updates the Sanity order status to `payment_received` — which
+  triggers the Sanity webhook above and sends the customer their
+  confirmation email.
 
 ### CORS
 
@@ -288,22 +300,58 @@ in [`deployment.md`](./deployment.md) section 9.
 
 ## Order creation flow
 
+### EFT orders (manual payment)
+
 ```
 Browser (shop.html + JS)
     │
-    │ POST /orders  { name, email, address, items, ... }
+    │ POST /orders  { paymentMethod: 'eft', name, email, items, ... }
     ▼
 Backend Hono app
     │
     │ validate → generate ref
     ▼
-Sanity (create order document, status: pending_payment)
+Sanity (create order document, status: pending_payment, paymentMethod: eft)
     │
     ▼
 Resend API
     │
-    ├──▶ owner@example.com    (new order notification)
-    └──▶ customer              (confirmation + banking + tracking link)
+    ├──▶ owner@example.com    (new order notification — reply with banking details)
+    └──▶ customer              (confirmation + tracking link)
+```
+
+### PayFast orders (card / Apple Pay / etc.)
+
+```
+Browser (shop.html + JS)
+    │
+    │ POST /orders  { paymentMethod: 'payfast', cart: [...], ... }
+    ▼
+Backend Hono app
+    │
+    │ validate → look up product prices in Sanity → compute total
+    │ generate ref → create Sanity order (pending_payment, paymentMethod: payfast)
+    │ send owner notification email
+    │ generate signed PayFast form data
+    ▼
+Returns { success, ref, payfast: { action, fields } }
+    │
+    ▼
+Browser auto-submits hidden form → customer lands on PayFast
+    │
+    ▼
+Customer pays on PayFast's hosted page
+    │
+    ├──▶ Redirect → /payment/complete?ref=…
+    │
+    └──▶ ITN (server-to-server POST) → /webhooks/payfast-itn
+              │
+              │ validate signature + amount
+              ▼
+         Update Sanity order: status → payment_received
+              │
+              ▼
+         Existing Sanity webhook fires → "payment received" email
 ```
 
 ## Order status-update flow
@@ -343,9 +391,9 @@ Orders live as structured documents in Sanity. Meryl manages their lifecycle
 in Studio; the backend creates documents, reads documents for lookups, and
 receives status-change webhooks. Customer PII is stored on the order
 document and must not live on a public Sanity dataset in production — see
-`orders-and-tracking.md` for the fix before launch. Payment is still
-out-of-band via EFT; reconciliation (matching bank deposits to orders) is
-still manual on Meryl's side.
+`orders-and-tracking.md` for the fix before launch. Payment is via PayFast
+(card, Apple Pay, etc.) with automatic confirmation via ITN, or via EFT
+where reconciliation is still manual on Meryl's side.
 
 ## Deployment targets
 

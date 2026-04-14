@@ -4,7 +4,9 @@ vi.mock('../sanity.js', () => ({
 	createOrder: vi.fn(),
 	getOrderByRef: vi.fn(),
 	getProducts: vi.fn().mockResolvedValue([]),
-	getGalleryPhotos: vi.fn().mockResolvedValue([])
+	getGalleryPhotos: vi.fn().mockResolvedValue([]),
+	getProductsByIds: vi.fn(),
+	updateOrderPayment: vi.fn()
 }));
 vi.mock('../email.js', async () => {
 	const actual = await vi.importActual<typeof import('../email.js')>('../email.js');

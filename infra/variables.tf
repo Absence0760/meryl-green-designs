@@ -67,3 +67,31 @@ variable "site_url" {
   type        = string
   default     = ""
 }
+
+# --- PayFast payment gateway ---
+
+variable "payfast_merchant_id" {
+  description = "PayFast merchant ID. Get this from your PayFast dashboard after registration."
+  type        = string
+  default     = ""
+}
+
+variable "payfast_merchant_key" {
+  description = "PayFast merchant key."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "payfast_passphrase" {
+  description = "PayFast passphrase for signature generation and ITN verification."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "payfast_sandbox" {
+  description = "Set to 'true' to use PayFast's sandbox environment for testing."
+  type        = string
+  default     = "false"
+}

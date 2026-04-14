@@ -30,6 +30,36 @@ export const order = defineType({
 			validation: (rule) => rule.required()
 		}),
 
+		// --- Payment ---
+		defineField({
+			name: 'paymentMethod',
+			title: 'Payment method',
+			type: 'string',
+			options: {
+				list: [
+					{ title: 'EFT', value: 'eft' },
+					{ title: 'PayFast', value: 'payfast' }
+				]
+			},
+			initialValue: 'eft',
+			readOnly: true
+		}),
+		defineField({
+			name: 'amountZar',
+			title: 'Amount (ZAR)',
+			type: 'number',
+			description: 'Total order amount in Rands.',
+			readOnly: true
+		}),
+		defineField({
+			name: 'paymentId',
+			title: 'Payment ID',
+			type: 'string',
+			description: 'PayFast transaction ID (set automatically on payment).',
+			readOnly: true
+		}),
+
+		// --- Customer ---
 		defineField({
 			name: 'customerName',
 			title: 'Customer name',

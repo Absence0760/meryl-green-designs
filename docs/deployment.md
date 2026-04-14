@@ -586,6 +586,11 @@ environment block. Update by editing tfvars and re-running `terraform apply`.
 | `SANITY_DATASET` | tfvars `sanity_dataset` (default `production`) | Which dataset |
 | `SANITY_API_TOKEN` | tfvars `sanity_api_token` | Runtime Sanity client auth (Editor scope) |
 | `SANITY_WEBHOOK_SECRET` | tfvars `sanity_webhook_secret` | Shared HMAC secret for verifying Sanity webhook signatures |
+| `PAYFAST_MERCHANT_ID` | tfvars `payfast_merchant_id` | PayFast merchant ID |
+| `PAYFAST_MERCHANT_KEY` | tfvars `payfast_merchant_key` | PayFast merchant key (sensitive) |
+| `PAYFAST_PASSPHRASE` | tfvars `payfast_passphrase` | PayFast signature passphrase (sensitive) |
+| `PAYFAST_SANDBOX` | tfvars `payfast_sandbox` | `'true'` for sandbox, `'false'` for production |
+| `API_URL` | derived from Lambda Function URL | Backend URL for PayFast ITN notify_url |
 
 ### Frontend build-time env
 

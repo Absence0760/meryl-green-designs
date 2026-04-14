@@ -38,3 +38,11 @@ sanity_webhook_secret = ""
 # Optional: override the base URL used in tracking links embedded in order
 # emails. Defaults to https://<domain_name> when empty.
 site_url = ""
+
+# PayFast payment gateway. Register free at https://payfast.co.za.
+# For sandbox testing: merchant_id = "10004002", merchant_key = "q1cd2rdny4a53",
+# passphrase = "payfast", sandbox = "true".
+payfast_merchant_id  = ""
+payfast_merchant_key = ""
+payfast_passphrase   = ""
+payfast_sandbox      = "false"
