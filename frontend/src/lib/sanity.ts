@@ -11,6 +11,7 @@ export type Product = {
 	blurb: string | null;
 	description: string | null;
 	priceZar: number | null;
+	dimensions: string | null;
 	available: boolean;
 	order: number;
 	photos: Array<{
@@ -20,6 +21,15 @@ export type Product = {
 		hotspot?: SanityHotspot;
 		crop?: SanityCrop;
 	}>;
+};
+
+export type Testimonial = {
+	_id: string;
+	quote: string;
+	author: string;
+	location: string | null;
+	visible: boolean;
+	order: number;
 };
 
 export type GalleryPhoto = {

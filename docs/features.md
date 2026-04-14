@@ -9,12 +9,34 @@ snippet, not anything in the repo) — see [`roadmap.md`](./roadmap.md).
 
 ## Site-wide
 
+- **Announcement bar** — thin leaf-dark strip above the header with
+  "Free shipping across South Africa · Secure checkout via PayFast".
+  First thing any visitor sees; addresses the two biggest trust
+  questions before the header even appears.
 - **Sticky header** with brand ("Meryl Green Designs") and navigation. The
-  active route is highlighted.
+  active route is highlighted. On narrow viewports (< 620px) the inline
+  nav is replaced with a hamburger (|||) button that opens a **small
+  popup dropdown** anchored below the header on the left — a floating
+  cream card with a soft shadow, not a full-screen takeover. A
+  transparent backdrop captures taps outside to close. Escape and
+  link-click also close. The popup lives inside the `<header>`
+  element so its absolute positioning stays correctly pinned as the
+  sticky header scrolls.
+- **Shared `<Button>` component** in `frontend/src/lib/Button.svelte`
+  with four variants (primary, outlined, ghost, ghost-primary) and
+  two sizes. Renders either a `<button>` or an `<a>` depending on
+  whether `href` is supplied, so the same styles serve both form
+  submits and nav links. Hero, shop, track, and detail pages all use
+  it — visual drift between buttons is now impossible without
+  editing the shared component.
 - **Sticky footer** — the layout is a flex column (`body { min-height:
   100vh; display: flex }` + `main { flex: 1 }`) so on short pages the
   footer is pushed to the bottom of the viewport instead of floating
   mid-page.
+- **Footer trust strip** — three pill-chips above the copyright line:
+  shipping reassurance, PayFast reassurance, and the accepted payment
+  methods. Same pattern as established-retailer footers, reduces
+  abandonment for first-time buyers.
 - **Nature-inspired theme**: muted greens, warm bark/ochre accents
   (prices, hover states, CTA arrows), cream background, editorial serif
   display type (`Fraunces`, variable, loaded from Google Fonts with
@@ -51,6 +73,12 @@ snippet, not anything in the repo) — see [`roadmap.md`](./roadmap.md).
   evoke. Materials detail (Meranti hardwood frames, 100% cotton canvas)
   lives on the Shop page as a compact spec block rather than here, so the
   story stays narrative.
+- **Testimonials band** — if one or more testimonials are published in
+  Sanity (`testimonial` document type: quote, author, optional
+  location, visibility toggle, display order), they render above the
+  featured-photographs band as a grid of blockquotes with a bark
+  quote-mark ornament. The section only renders when there are
+  published testimonials — no placeholder, no fake content.
 - **Featured photographs band** — a full-bleed four-across grid (two-up on
   narrow viewports) of the first four gallery photos, fetched at runtime
   from `GET /gallery`. Each tile links through to the gallery page and
@@ -118,12 +146,42 @@ snippet, not anything in the repo) — see [`roadmap.md`](./roadmap.md).
   image itself so product uploads with transparent PNG backgrounds
   render consistently; real lifestyle photography hides the cream
   entirely.
+- **Dimensions** — optional free-form string field on each product
+  (`dimensions` in Sanity), rendered as a small italic subtitle between
+  the product name and price. Kept free-form rather than structured
+  (width/height/depth) so Meryl can write what makes sense per piece —
+  e.g. "150 × 180 cm · 3 panels" or "1.5m tall, folding".
 - **Hover-reveal second image** — if a product has two or more photos
   in Sanity, the first shows by default and the second cross-fades in
   on hover (or keyboard focus). Typical pattern: upload a wide
   establishing shot as `photos[0]` and a tighter detail crop as
   `photos[1]`. Gracefully no-ops for touch devices (`@media (hover:
   none)`) and for products with only one photo.
+- **Clicking a tile opens the product detail page** at
+  `/shop/[slug]`. The tile wraps the image and text block in an
+  anchor; the "Add to order" button stays outside the anchor so it
+  performs its own action.
+
+### Product detail (`/shop/[slug]`)
+
+- **Full-information page** for each product. Breadcrumb (Shop /
+  Product name) at the top, a two-column layout with the photo
+  gallery on the left and product info on the right that stacks on
+  narrow viewports.
+- **Photo gallery** — main photo at the top with click-to-switch
+  thumbnails below. Gracefully handles 1, 2, or many photos.
+- **Product info block** — name, blurb, price (bark accent), optional
+  dimensions in a labelled key/value block, "Add to order" button +
+  "← Back to shop" link, full description (respects newlines), and a
+  compact materials spec (Frame, Canvas) mirroring the shop page
+  block.
+- **Slug-routed** — fetches `GET /products/:slug` on mount and
+  renders the first matching available product. Unknown or
+  unpublished slugs render a "Product not found" state linking back
+  to the shop.
+- **Not prerendered** — static adapter can't enumerate Sanity-driven
+  slugs at build time. The page ships a minimal shell with a skeleton
+  that swaps for real content after hydration.
 - **Empty state** when no products have been published. **Error state**
   when the backend is unreachable.
 - **"Enquire / Order" button** pre-fills the order form's items field with
@@ -172,6 +230,24 @@ snippet, not anything in the repo) — see [`roadmap.md`](./roadmap.md).
 - A real contact form can be added later or the shop order form can be
   repurposed for general enquiries.
 
+## Privacy policy (`/privacy`)
+
+- **POPIA-first policy** describing the actual data flows of the site
+  (Sanity, PayFast, Resend, AWS, Google Fonts), the purposes for which
+  personal information is collected, retention, user rights under POPIA
+  (access, correction, deletion, objection, complaint), and additional
+  GDPR rights for EU/UK visitors.
+- **`noindex` meta** so the policy doesn't compete with the main pages
+  in search results.
+- Linked from the site footer alongside Contact.
+- **Maintenance note:** the source file carries a comment reminding
+  whoever edits it that a privacy policy is a legal document and
+  should be reviewed by a South African legal professional before
+  going live under the business name, especially for POPIA
+  responsible-party language and cross-border transfer disclosures.
+  The "Last updated" date must be bumped whenever data flows or
+  wording change.
+
 ## Track order (`/track`)
 
 - **Water page-header** — short 30vh decorative strip using `water2.JPG`
@@ -213,6 +289,11 @@ snippet, not anything in the repo) — see [`roadmap.md`](./roadmap.md).
 - **Gallery photo schema** with fields: image (with alt text and hotspot
   cropping), caption, visible toggle, and display order. Meryl uploads
   photos here to populate the `/gallery` page.
+- **Testimonial schema** with fields: quote, author, optional location,
+  visible toggle, and display order. The home page only shows
+  testimonials if at least one is published — the section silently
+  disappears when there are none, so the default empty state on a
+  brand-new install is clean.
 - **Availability toggle** lets the owner hide a product from the site without
   deleting it — useful for sold-out items they may restock.
 - **Display order** controls the order products appear in the grid. Using 0,

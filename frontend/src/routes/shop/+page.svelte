@@ -3,6 +3,7 @@
 	import { PUBLIC_API_URL } from '$env/static/public';
 	import { formatPrice, imageUrl, type Product } from '$lib/sanity';
 	import { cart } from '$lib/cartStore.svelte';
+	import Button from '$lib/Button.svelte';
 
 	const apiUrl = PUBLIC_API_URL;
 
@@ -109,41 +110,49 @@
 					{@const photo = productMainImage(product)}
 					{@const hover = productHoverImage(product)}
 					<article class="product">
-						{#if photo}
-							<div class="product-image-stack">
-								<img
-									class="product-image product-image--photo product-image--primary"
-									src={photo}
-									alt={product.photos?.[0]?.alt ?? product.name}
-									loading="lazy"
-								/>
-								{#if hover}
-									<!-- Not lazy-loaded — the secondary is stacked behind the
-									     primary with opacity: 0, and some browsers treat that
-									     as non-visible and defer loading, which causes a flash
-									     of empty cream on first hover. Loading eagerly costs
-									     one extra request per product but eliminates the flash. -->
+						<a class="product-link" href="/shop/{product.slug}" aria-label="View {product.name}">
+							{#if photo}
+								<div class="product-image-stack">
 									<img
-										class="product-image product-image--photo product-image--secondary"
-										src={hover}
-										alt={product.photos?.[1]?.alt ?? product.name}
-										aria-hidden="true"
+										class="product-image product-image--photo product-image--primary"
+										src={photo}
+										alt={product.photos?.[0]?.alt ?? product.name}
+										loading="lazy"
 									/>
+									{#if hover}
+										<!-- Not lazy-loaded — the secondary is stacked behind the
+										     primary with opacity: 0, and some browsers treat that
+										     as non-visible and defer loading, which causes a flash
+										     of empty cream on first hover. Loading eagerly costs
+										     one extra request per product but eliminates the flash. -->
+										<img
+											class="product-image product-image--photo product-image--secondary"
+											src={hover}
+											alt={product.photos?.[1]?.alt ?? product.name}
+											aria-hidden="true"
+										/>
+									{/if}
+								</div>
+							{:else}
+								<div class="product-image">Product photo</div>
+							{/if}
+							<div class="product-body">
+								<h3>{product.name}</h3>
+								{#if product.dimensions}
+									<p class="dimensions">{product.dimensions}</p>
 								{/if}
+								<p class="price">{formatPrice(product.priceZar)}</p>
 							</div>
-						{:else}
-							<div class="product-image">Product photo</div>
-						{/if}
-						<div class="product-body">
-							<h3>{product.name}</h3>
-							<p class="price">{formatPrice(product.priceZar)}</p>
-							<button
-								class="btn"
+						</a>
+						<div class="product-cta">
+							<Button
+								variant="outlined"
+								size="sm"
 								on:click={() => addToCart(product)}
 								disabled={product.priceZar == null}
 							>
 								Add to order
-							</button>
+							</Button>
 						</div>
 					</article>
 				{/each}
@@ -237,6 +246,19 @@
 		border-radius: 0;
 		overflow: visible;
 		box-shadow: none;
+	}
+
+	.product-link {
+		display: flex;
+		flex-direction: column;
+		text-decoration: none;
+		color: inherit;
+		border-bottom: none;
+	}
+
+	.product-link:hover {
+		color: inherit;
+		border-bottom: none;
 	}
 
 	.product-image {
@@ -393,6 +415,13 @@
 		font-weight: 500;
 	}
 
+	.dimensions {
+		margin: 0;
+		font-size: 0.78rem;
+		letter-spacing: 0.04em;
+		color: var(--color-ink-soft);
+	}
+
 	.price {
 		margin: 0;
 		font-family: var(--font-display);
@@ -402,33 +431,10 @@
 		letter-spacing: 0.02em;
 	}
 
-	.btn {
+	.product-cta {
+		display: flex;
+		justify-content: center;
 		margin-top: 0.25rem;
-		align-self: center;
-		display: inline-block;
-		background: none;
-		color: var(--color-leaf-dark);
-		border: 1px solid var(--color-leaf-dark);
-		padding: 0.5rem 1.2rem;
-		font: inherit;
-		font-size: 0.75rem;
-		letter-spacing: 0.12em;
-		text-transform: uppercase;
-		text-align: center;
-		cursor: pointer;
-		text-decoration: none;
-		border-bottom: 1px solid var(--color-leaf-dark);
-		transition: background-color 150ms ease, color 150ms ease;
-	}
-
-	.btn:hover {
-		background: var(--color-leaf-dark);
-		color: #f6f4ee;
-	}
-
-	button[disabled] {
-		opacity: 0.4;
-		cursor: not-allowed;
 	}
 
 	.alert--error {

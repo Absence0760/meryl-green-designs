@@ -52,6 +52,7 @@ const testProduct = {
 	blurb: null,
 	description: null,
 	priceZar: 450,
+	dimensions: null,
 	available: true,
 	order: 0,
 	photos: []

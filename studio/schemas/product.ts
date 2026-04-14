@@ -41,6 +41,14 @@ export const product = defineType({
 			validation: (rule) => rule.min(0)
 		}),
 		defineField({
+			name: 'dimensions',
+			title: 'Dimensions',
+			description:
+				'Approximate size shown on the shop tile. Free-form text — e.g. "150 × 180 cm · 3 panels" or "1.5m × 1.8m, 3-panel folding screen". Leave blank to hide.',
+			type: 'string',
+			validation: (rule) => rule.max(120)
+		}),
+		defineField({
 			name: 'photos',
 			title: 'Photos',
 			description: 'Product photographs. The first photo is used as the main card image.',

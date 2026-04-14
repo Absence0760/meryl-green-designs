@@ -329,6 +329,15 @@
 		font-size: 3.5rem;
 	}
 
+	@media (max-width: 520px) {
+		.lightbox-nav {
+			font-size: 2.5rem;
+		}
+		.lightbox-close {
+			font-size: 2rem;
+		}
+	}
+
 	.lightbox-nav--prev {
 		left: var(--space-2);
 	}

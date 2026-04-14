@@ -2,6 +2,7 @@
 	import { PUBLIC_API_URL } from '$env/static/public';
 	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
+	import Button from '$lib/Button.svelte';
 
 	type Shipping = {
 		carrier: string | null;
@@ -155,9 +156,11 @@
 				<span>Email</span>
 				<input type="email" bind:value={email} autocomplete="email" />
 			</label>
-			<button type="submit" disabled={loading}>
-				{loading ? 'Looking up…' : 'Look up order'}
-			</button>
+			<div class="track-form__submit">
+				<Button type="submit" variant="primary" disabled={loading}>
+					{loading ? 'Looking up…' : 'Look up order'}
+				</Button>
+			</div>
 		</form>
 
 		{#if error}
@@ -296,22 +299,8 @@
 		outline-offset: 1px;
 	}
 
-	.track-form button {
+	.track-form__submit {
 		margin-top: var(--space-1);
-		background: var(--color-leaf-dark);
-		color: #f6f4ee;
-		border: none;
-		padding: 0.7rem var(--space-2);
-		font: inherit;
-		font-size: 0.85rem;
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
-		cursor: pointer;
-	}
-
-	.track-form button[disabled] {
-		background: #a8afa0;
-		cursor: not-allowed;
 	}
 
 	.alert {

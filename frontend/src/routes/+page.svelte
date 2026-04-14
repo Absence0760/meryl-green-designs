@@ -2,22 +2,41 @@
 	import { onMount } from 'svelte';
 	import { base } from '$app/paths';
 	import { PUBLIC_API_URL } from '$env/static/public';
-	import { imageUrl, type GalleryPhoto } from '$lib/sanity';
+	import { imageUrl, type GalleryPhoto, type Testimonial } from '$lib/sanity';
+	import Button from '$lib/Button.svelte';
 
 	const heroImage = `${base}/two_trees.JPG`;
 	const apiUrl = PUBLIC_API_URL;
 
 	let featured: GalleryPhoto[] = [];
+	let testimonials: Testimonial[] = [];
 
 	onMount(async () => {
-		try {
-			const res = await fetch(`${apiUrl}/gallery`);
-			if (!res.ok) return;
-			const body = (await res.json()) as { photos?: GalleryPhoto[] };
-			featured = (body.photos ?? []).slice(0, 4);
-		} catch {
-			// Silent failure — the featured band just won't render.
-			// The home page is already complete without it.
+		// Fetch gallery + testimonials in parallel. Both are silent no-ops on
+		// failure — the home page is already complete without them.
+		const [galleryRes, testimonialsRes] = await Promise.allSettled([
+			fetch(`${apiUrl}/gallery`),
+			fetch(`${apiUrl}/testimonials`)
+		]);
+
+		if (galleryRes.status === 'fulfilled' && galleryRes.value.ok) {
+			try {
+				const body = (await galleryRes.value.json()) as { photos?: GalleryPhoto[] };
+				featured = (body.photos ?? []).slice(0, 4);
+			} catch {
+				/* ignore */
+			}
+		}
+
+		if (testimonialsRes.status === 'fulfilled' && testimonialsRes.value.ok) {
+			try {
+				const body = (await testimonialsRes.value.json()) as {
+					testimonials?: Testimonial[];
+				};
+				testimonials = (body.testimonials ?? []).slice(0, 3);
+			} catch {
+				/* ignore */
+			}
 		}
 	});
 
@@ -76,8 +95,8 @@
 				framed in Meranti hardwood.
 			</p>
 			<div class="hero-cta">
-				<a class="hero-btn hero-btn--primary" href="/shop">Shop the collection</a>
-				<a class="hero-btn hero-btn--ghost" href="/gallery">View gallery</a>
+				<Button href="/shop" variant="ghost-primary">Shop the collection</Button>
+				<Button href="/gallery" variant="ghost">View gallery</Button>
 			</div>
 		</div>
 	</div>
@@ -106,6 +125,24 @@
 		{/each}
 	</div>
 </section>
+
+{#if testimonials.length > 0}
+	<section class="section testimonials" aria-label="What customers are saying">
+		<div class="container">
+			<p class="eyebrow">In their words</p>
+			<div class="testimonials__grid">
+				{#each testimonials as t (t._id)}
+					<blockquote class="testimonial">
+						<p class="testimonial__quote">{t.quote}</p>
+						<footer class="testimonial__author">
+							— {t.author}{#if t.location}<span class="testimonial__loc">, {t.location}</span>{/if}
+						</footer>
+					</blockquote>
+				{/each}
+			</div>
+		</div>
+	</section>
+{/if}
 
 {#if featured.length > 0}
 	<section class="featured-band" aria-label="Featured photographs">
@@ -210,41 +247,6 @@
 		gap: var(--space-2);
 	}
 
-	.hero-btn {
-		display: inline-block;
-		padding: 0.75rem 1.4rem;
-		font-family: var(--font-body);
-		font-size: 0.85rem;
-		letter-spacing: 0.14em;
-		text-transform: uppercase;
-		text-decoration: none;
-		border: 1px solid #f6f4ee;
-		color: #f6f4ee;
-		border-bottom: 1px solid #f6f4ee;
-		transition:
-			background-color 160ms ease,
-			color 160ms ease,
-			border-color 160ms ease;
-	}
-
-	.hero-btn--primary {
-		background: #f6f4ee;
-		color: var(--color-leaf-dark);
-		border-color: #f6f4ee;
-	}
-
-	.hero-btn--primary:hover {
-		background: var(--color-bark);
-		color: #f6f4ee;
-		border-color: var(--color-bark);
-	}
-
-	.hero-btn--ghost:hover {
-		background: rgba(246, 244, 238, 0.12);
-		color: #f6f4ee;
-		border-color: #f6f4ee;
-	}
-
 	.narrow {
 		max-width: 680px;
 	}
@@ -301,6 +303,54 @@
 		padding-left: var(--space-3);
 		font-size: 0.9rem;
 		color: var(--color-ink-soft);
+		font-style: italic;
+	}
+
+	.testimonials {
+		padding-bottom: var(--space-5);
+		padding-top: var(--space-3);
+	}
+
+	.testimonials__grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+		gap: var(--space-3);
+		margin-top: var(--space-2);
+	}
+
+	.testimonial {
+		margin: 0;
+		padding: var(--space-2) 0 0;
+		border-top: 1px solid var(--color-rule);
+	}
+
+	.testimonial__quote {
+		font-family: var(--font-display);
+		font-size: 1.05rem;
+		line-height: 1.7;
+		color: var(--color-ink);
+		margin: 0 0 var(--space-2);
+		/* Subtle quote mark ornament. */
+		position: relative;
+	}
+
+	.testimonial__quote::before {
+		content: '\201C';
+		font-family: var(--font-display);
+		font-size: 3rem;
+		line-height: 0.5;
+		color: var(--color-bark);
+		margin-right: 0.15rem;
+		vertical-align: -0.6rem;
+	}
+
+	.testimonial__author {
+		font-size: 0.85rem;
+		color: var(--color-ink-soft);
+		letter-spacing: 0.04em;
+	}
+
+	.testimonial__loc {
 		font-style: italic;
 	}
 
