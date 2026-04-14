@@ -104,22 +104,17 @@ snippet, not anything in the repo) — see [`roadmap.md`](./roadmap.md).
   shown and the form remains editable.
 - **Cart with quantity controls** — clicking "Add to order" on a product
   adds it to a cart summary above the order form. Quantities are adjustable
-  with +/- buttons. The cart total is computed and displayed. For PayFast
-  orders, the backend verifies prices against Sanity to prevent tampering.
-- **Payment method selector** — radio toggle: "Pay now (card, Apple Pay &
-  more)" via PayFast, or "Pay by EFT". Default is Pay now.
-- **PayFast redirect** — when paying online, the backend generates a signed
-  PayFast form and the customer is redirected to PayFast's hosted payment
-  page. After payment, they land on `/payment/complete`. PayFast sends an
-  ITN (server-to-server callback) to the backend, which auto-updates the
-  order status to "Payment received" in Sanity — triggering the existing
-  automated status email. No card data ever touches our server.
-- **"How to pay" section** explaining both payment methods: Pay now
-  (PayFast redirect, instant confirmation) and Pay by EFT (the existing
-  manual-reply flow). Banking details for EFT are still sent only as a
-  direct manual reply from Meryl — see
-  [`docs/security.md`](./security.md) for the impersonation-scam threat
-  model behind this choice.
+  with +/- buttons. The cart total is computed and displayed. The backend
+  verifies prices against Sanity to prevent tampering.
+- **PayFast payment** — clicking "Pay now" redirects the customer to
+  PayFast's hosted payment page. After payment, they land on
+  `/payment/complete`. PayFast sends an ITN (server-to-server callback)
+  to the backend, which auto-updates the order status to "Payment received"
+  in Sanity — triggering the existing automated status email. No card data
+  ever touches our server. Supports credit/debit cards, Apple Pay, Google
+  Pay, SnapScan, and 18+ other South African payment methods.
+- **"How to pay" section** explaining the payment flow: add products,
+  fill in details, click "Pay now", complete payment on PayFast.
 
 ## Contact (`/contact`)
 
@@ -216,7 +211,7 @@ snippet, not anything in the repo) — see [`roadmap.md`](./roadmap.md).
 
 See [roadmap.md](./roadmap.md) for the full list. Notable absences:
 
-- ~~No card payments — EFT only.~~ Card payments now supported via PayFast.
+- ~~No card payments — EFT only.~~ Payments are now via PayFast (cards, Apple Pay, etc.).
 - No stock tracking or inventory counts. Availability is a simple on/off toggle.
 - No CMS for home page text, poem, or gallery photos — only products and
   orders are currently managed in Sanity. (Easy to extend; see the roadmap.)

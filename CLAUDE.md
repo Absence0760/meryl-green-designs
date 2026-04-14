@@ -84,4 +84,4 @@ Treat "code changed, docs and tests unchanged" as an incomplete task. Call it ou
 - Don't replace pnpm with npm/yarn — workspace filters assume pnpm.
 - Don't add SSR adapters to the frontend; it must stay static for the S3 + CloudFront deploy.
 - Don't call Resend (or other secret-bearing services) directly from the frontend — go through the backend.
-- Don't replace PayFast with another card processor without discussing first. PayFast is the chosen gateway; EFT is the fallback.
+- Don't replace PayFast with another card processor without discussing first. PayFast is the sole payment gateway.

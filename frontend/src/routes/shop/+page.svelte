@@ -22,12 +22,8 @@
 		quantity: number;
 	};
 	let cart: CartItem[] = [];
-	let paymentMethod: 'payfast' | 'eft' = 'payfast';
 
 	$: cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-	$: cartItemsText = cart
-		.map((item) => `${item.quantity} x ${item.name} — ${formatPrice(item.price)}`)
-		.join('\n');
 
 	function addToCart(product: Product) {
 		const existing = cart.find((item) => item.productId === product._id);
@@ -67,13 +63,11 @@
 	let error: string | null = null;
 	let success: { ref: string } | null = null;
 
-	// EFT-only fields (kept for backwards compat when paying by EFT without cart)
 	let values = {
 		name: '',
 		email: '',
 		phone: '',
 		address: '',
-		items: '',
 		notes: '',
 		website: ''
 	};
@@ -88,7 +82,6 @@
 		submitting = true;
 		error = null;
 
-		const isPayFast = paymentMethod === 'payfast';
 		const body: Record<string, unknown> = {
 			name: values.name,
 			email: values.email,
@@ -96,19 +89,12 @@
 			address: values.address,
 			notes: values.notes,
 			website: values.website,
-			paymentMethod
-		};
-
-		if (isPayFast) {
-			body.cart = cart.map((item) => ({
+			paymentMethod: 'payfast',
+			cart: cart.map((item) => ({
 				productId: item.productId,
 				quantity: item.quantity
-			}));
-		} else {
-			// EFT: use cart-generated text if cart has items, otherwise fall back
-			// to the free-text textarea for manual entry.
-			body.items = cart.length > 0 ? cartItemsText : values.items;
-		}
+			}))
+		};
 
 		try {
 			const res = await fetch(`${apiUrl}/orders`, {
@@ -129,14 +115,11 @@
 				return;
 			}
 
-			// PayFast: redirect to their hosted payment page by auto-submitting
-			// a hidden form.
-			if (isPayFast && data.payfast) {
+			if (data.payfast) {
 				redirectToPayFast(data.payfast);
 				return;
 			}
 
-			// EFT: show the confirmation inline (current behaviour).
 			success = { ref: data.ref ?? '' };
 		} catch (e) {
 			console.error(e);
@@ -390,20 +373,6 @@
 					></textarea>
 				</label>
 
-				{#if paymentMethod === 'eft' && cart.length === 0}
-					<label for="order-items">
-						<span>Items <span class="req" aria-hidden="true">*</span></span>
-						<textarea
-							id="order-items"
-							name="items"
-							rows="4"
-							placeholder="List the items you would like to order"
-							required
-							bind:value={values.items}
-						></textarea>
-					</label>
-				{/if}
-
 				<label for="order-notes">
 					<span>Notes <small>(optional)</small></span>
 					<textarea
@@ -414,50 +383,23 @@
 					></textarea>
 				</label>
 
-				<fieldset class="payment-method-fieldset">
-					<legend>Payment method</legend>
-					<label class="payment-option">
-						<input
-							type="radio"
-							name="paymentMethod"
-							value="payfast"
-							bind:group={paymentMethod}
-						/>
-						<span>
-							<strong>Pay now</strong> — card, Apple Pay, SnapScan &amp; more
-						</span>
-					</label>
-					<label class="payment-option">
-						<input
-							type="radio"
-							name="paymentMethod"
-							value="eft"
-							bind:group={paymentMethod}
-						/>
-						<span>
-							<strong>Pay by EFT</strong> — Electronic Funds Transfer
-						</span>
-					</label>
-				</fieldset>
-
-				{#if paymentMethod === 'payfast' && cart.length === 0}
+				{#if cart.length === 0}
 					<p class="payment-hint">
-						Add products to your order using the "Add to order" buttons above
-						before paying online.
+						Add products to your order using the "Add to order" buttons above.
 					</p>
 				{/if}
 
 				<button
 					type="submit"
 					class="submit-order"
-					disabled={submitting || (paymentMethod === 'payfast' && cart.length === 0)}
+					disabled={submitting || cart.length === 0}
 				>
 					{#if submitting}
 						Processing…
-					{:else if paymentMethod === 'payfast' && cartTotal > 0}
+					{:else if cartTotal > 0}
 						Pay now — {formatPrice(cartTotal)}
 					{:else}
-						Submit order
+						Pay now
 					{/if}
 				</button>
 			</form>
@@ -469,34 +411,19 @@
 	<div class="container narrow">
 		<p class="eyebrow">Payment</p>
 		<h2>How to pay</h2>
-
-		<h3 class="payment-heading">Pay now (recommended)</h3>
-		<p>
-			Select "Pay now" and you'll be securely redirected to PayFast to complete
-			your payment with a credit or debit card, Apple Pay, SnapScan, or other
-			supported methods. Your order ships as soon as payment is confirmed.
-		</p>
-
-		<h3 class="payment-heading">Pay by EFT</h3>
 		<ol class="payment-steps">
-			<li>Place an order using the form above and select "Pay by EFT".</li>
+			<li>Add items to your order using the "Add to order" buttons above.</li>
+			<li>Fill in your details and click "Pay now".</li>
 			<li>
-				You'll immediately receive an email confirming your order request and
-				a unique order reference.
+				You'll be securely redirected to PayFast to complete your payment
+				with a credit or debit card, Apple Pay, SnapScan, or other
+				supported methods.
 			</li>
-			<li>
-				Meryl will then reply to that email personally with our banking
-				details.
-			</li>
-			<li>
-				Pay by Electronic Funds Transfer, using your order reference as the
-				payment reference.
-			</li>
-			<li>Once the payment reflects in our account, we ship your order.</li>
+			<li>Once payment is confirmed, we ship your order.</li>
 		</ol>
 		<p class="note">
-			Banking details are only ever sent by a direct reply from Meryl — we
-			don't publish them on the site, and they aren't in any automated email.
+			All payments are processed securely by PayFast. We never see your
+			card details.
 		</p>
 	</div>
 </section>
@@ -825,37 +752,6 @@
 		color: var(--color-leaf-dark);
 	}
 
-	/* --- Payment method fieldset --- */
-	.payment-method-fieldset {
-		border: 1px solid var(--color-rule);
-		padding: var(--space-2);
-		margin: 0;
-		display: grid;
-		gap: 0.5rem;
-	}
-
-	.payment-method-fieldset legend {
-		font-size: 0.8rem;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		color: var(--color-ink-soft);
-		padding: 0 0.3rem;
-	}
-
-	.payment-option {
-		display: flex;
-		align-items: flex-start;
-		gap: 0.5rem;
-		cursor: pointer;
-		font-size: 0.9rem;
-	}
-
-	.payment-option input[type='radio'] {
-		margin-top: 0.25rem;
-		width: auto;
-	}
-
 	.payment-hint {
 		margin: 0;
 		font-size: 0.85rem;
@@ -977,11 +873,6 @@
 		background: #f5e3e0;
 		border-left: 4px solid #a2432f;
 		color: #6b2a1b;
-	}
-
-	.payment-heading {
-		font-size: 1rem;
-		margin: var(--space-3) 0 var(--space-1);
 	}
 
 	.payment-steps {

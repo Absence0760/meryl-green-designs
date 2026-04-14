@@ -182,11 +182,11 @@ difference is how requests reach the app.
 - `GET /gallery` — returns the list of visible gallery photos from Sanity,
   ordered by the `order` field. Called by the frontend's gallery page at
   runtime, same pattern as `/products`.
-- `POST /orders` — accepts an order JSON body, validates it, generates a reference
-  `MG-YYMMDD-XXXX`, **creates a Sanity `order` document via an authenticated
-  client**. For EFT orders, sends two emails (owner + customer confirmation).
-  For PayFast orders, sends the owner notification and returns signed PayFast
-  form data for redirect: `{ success, ref, payfast: { action, fields } }`
+- `POST /orders` — accepts an order JSON body with a `cart` array, validates
+  it, looks up product prices in Sanity, generates a reference `MG-YYMMDD-XXXX`,
+  **creates a Sanity `order` document**, sends the owner notification email,
+  and returns signed PayFast form data for redirect:
+  `{ success, ref, payfast: { action, fields } }`
 - `GET /orders/:ref?email=…` — customer-facing order lookup. Queries Sanity
   by `orderRef`, verifies the provided email matches the stored email, and
   returns a sanitised subset (no internal notes, no phone, no shipping
@@ -300,27 +300,7 @@ in [`deployment.md`](./deployment.md) section 9.
 
 ## Order creation flow
 
-### EFT orders (manual payment)
-
-```
-Browser (shop.html + JS)
-    │
-    │ POST /orders  { paymentMethod: 'eft', name, email, items, ... }
-    ▼
-Backend Hono app
-    │
-    │ validate → generate ref
-    ▼
-Sanity (create order document, status: pending_payment, paymentMethod: eft)
-    │
-    ▼
-Resend API
-    │
-    ├──▶ owner@example.com    (new order notification — reply with banking details)
-    └──▶ customer              (confirmation + tracking link)
-```
-
-### PayFast orders (card / Apple Pay / etc.)
+### PayFast payment flow
 
 ```
 Browser (shop.html + JS)
@@ -392,8 +372,7 @@ in Studio; the backend creates documents, reads documents for lookups, and
 receives status-change webhooks. Customer PII is stored on the order
 document and must not live on a public Sanity dataset in production — see
 `orders-and-tracking.md` for the fix before launch. Payment is via PayFast
-(card, Apple Pay, etc.) with automatic confirmation via ITN, or via EFT
-where reconciliation is still manual on Meryl's side.
+(card, Apple Pay, etc.) with automatic confirmation via ITN.
 
 ## Deployment targets
 

@@ -214,9 +214,9 @@ Only build these if there's a concrete reason. Each represents a meaningful
 step up in complexity and shouldn't be taken lightly.
 
 - [x] Card payments via PayFast — redirect integration supporting credit
-      cards, Apple Pay, Google Pay, SnapScan, and 18+ other methods. EFT
-      kept as a fallback. No PCI scope for us (redirect model). ITN webhook
-      auto-confirms payments in Sanity.
+      cards, Apple Pay, Google Pay, SnapScan, and 18+ other methods.
+      No PCI scope for us (redirect model). ITN webhook auto-confirms
+      payments in Sanity. EFT removed.
 - [ ] Inventory tracking with real stock counts — requires a database. The
       current `available` boolean works for made-to-order and one-offs.
 - [ ] Multi-language (English + Afrikaans) — adds routing, content

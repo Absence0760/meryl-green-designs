@@ -519,11 +519,10 @@ pending-payment email`) that fails if strings like `account number` or
 PayFast is integrated via the **redirect model** (hosted checkout). The
 customer chooses "Pay now" or "Pay by EFT" on the order form.
 
-### Pay now (PayFast) flow
+### Payment flow
 
-1. Customer fills the order form, adds products to cart, selects "Pay now".
-2. Frontend sends `POST /orders` with `paymentMethod: 'payfast'` and a
-   `cart` array of `{ productId, quantity }`.
+1. Customer fills the order form, adds products to cart, clicks "Pay now".
+2. Frontend sends `POST /orders` with a `cart` array of `{ productId, quantity }`.
 3. Backend looks up product prices in Sanity, computes the total server-side
    (prevents client-side amount tampering).
 4. Backend creates a Sanity order document with `paymentMethod: 'payfast'`
@@ -537,11 +536,6 @@ customer chooses "Pay now" or "Pay by EFT" on the order form.
    to `POST /webhooks/payfast-itn`. The backend validates the signature and
    amount, then updates the Sanity order to `payment_received`.
 10. The existing Sanity webhook fires and sends the "payment received" email.
-
-### Pay by EFT flow (unchanged)
-
-Same as before — order created, customer gets EFT instructions, Meryl
-manually confirms payment in Studio.
 
 ### New env vars for PayFast
 
