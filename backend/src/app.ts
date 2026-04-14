@@ -4,6 +4,7 @@ import { gallery } from './routes/gallery.js';
 import { orders } from './routes/orders.js';
 import { orderLookup } from './routes/order-lookup.js';
 import { products } from './routes/products.js';
+import { testimonials } from './routes/testimonials.js';
 import { payfastItn } from './routes/payfast-itn.js';
 import { sanityWebhook } from './routes/sanity-webhook.js';
 
@@ -29,6 +30,7 @@ export function createApp() {
 
 	app.route('/products', products);
 	app.route('/gallery', gallery);
+	app.route('/testimonials', testimonials);
 	app.route('/orders', orders);
 	app.route('/orders', orderLookup);
 	app.route('/webhooks', sanityWebhook);

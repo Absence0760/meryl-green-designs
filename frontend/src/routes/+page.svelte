@@ -1,7 +1,51 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { base } from '$app/paths';
+	import { PUBLIC_API_URL } from '$env/static/public';
+	import { imageUrl, type GalleryPhoto, type Testimonial } from '$lib/sanity';
+	import { isDemoMode, demoGalleryPhotos, demoTestimonials } from '$lib/demo';
+	import Button from '$lib/Button.svelte';
 
 	const heroImage = `${base}/two_trees.JPG`;
+	const apiUrl = PUBLIC_API_URL;
+
+	// In demo mode seed the featured band and testimonials from hardcoded
+	// data so the home page renders identically to the live site, without
+	// needing a backend reachable from GitHub Pages.
+	let featured: GalleryPhoto[] = isDemoMode ? demoGalleryPhotos.slice(0, 4) : [];
+	let testimonials: Testimonial[] = isDemoMode ? demoTestimonials.slice(0, 3) : [];
+
+	onMount(async () => {
+		// Demo mode: nothing to fetch — data is already seeded above.
+		if (isDemoMode) return;
+
+		// Fetch gallery + testimonials in parallel. Both are silent no-ops on
+		// failure — the home page is already complete without them.
+		const [galleryRes, testimonialsRes] = await Promise.allSettled([
+			fetch(`${apiUrl}/gallery`),
+			fetch(`${apiUrl}/testimonials`)
+		]);
+
+		if (galleryRes.status === 'fulfilled' && galleryRes.value.ok) {
+			try {
+				const body = (await galleryRes.value.json()) as { photos?: GalleryPhoto[] };
+				featured = (body.photos ?? []).slice(0, 4);
+			} catch {
+				/* ignore */
+			}
+		}
+
+		if (testimonialsRes.status === 'fulfilled' && testimonialsRes.value.ok) {
+			try {
+				const body = (await testimonialsRes.value.json()) as {
+					testimonials?: Testimonial[];
+				};
+				testimonials = (body.testimonials ?? []).slice(0, 3);
+			} catch {
+				/* ignore */
+			}
+		}
+	});
 
 	const storyParagraphs: string[] = [
 		'Bring a snapshot of beauty, peace and tranquility from a place where time stands still to a place where time seems to move too quickly. Let it infuse your everyday environment, be it your home, place of work or any other space of your choice.',
@@ -53,7 +97,14 @@
 	<div class="hero-overlay">
 		<div class="container">
 			<h1>Inspired by Nature</h1>
-			<p class="tagline">Handcrafted screens &amp; designs drawn from the living world.</p>
+			<p class="tagline">
+				Photographs of the African bush — printed on cotton canvas,
+				framed in Meranti hardwood.
+			</p>
+			<div class="hero-cta">
+				<Button href={`${base}/shop`} variant="ghost-primary">Shop the collection</Button>
+				<Button href={`${base}/gallery`} variant="ghost">View gallery</Button>
+			</div>
 		</div>
 	</div>
 </section>
@@ -81,6 +132,42 @@
 		{/each}
 	</div>
 </section>
+
+{#if testimonials.length > 0}
+	<section class="section testimonials" aria-label="What customers are saying">
+		<div class="container">
+			<p class="eyebrow">In their words</p>
+			<div class="testimonials__grid">
+				{#each testimonials as t (t._id)}
+					<blockquote class="testimonial">
+						<p class="testimonial__quote">{t.quote}</p>
+						<footer class="testimonial__author">
+							— {t.author}{#if t.location}<span class="testimonial__loc">, {t.location}</span>{/if}
+						</footer>
+					</blockquote>
+				{/each}
+			</div>
+		</div>
+	</section>
+{/if}
+
+{#if featured.length > 0}
+	<section class="featured-band" aria-label="Featured photographs">
+		<div class="featured-band__grid">
+			{#each featured as photo (photo._id)}
+				{@const src = imageUrl(photo.image, 700)}
+				{#if src}
+					<a class="featured-band__tile" href={`${base}/gallery`} aria-label={photo.caption ?? photo.image.alt ?? 'View gallery'}>
+						<img src={src} alt={photo.image.alt ?? photo.caption ?? ''} loading="lazy" />
+					</a>
+				{/if}
+			{/each}
+		</div>
+		<div class="container featured-band__footer">
+			<a class="featured-band__link" href={`${base}/gallery`}>View the full gallery →</a>
+		</div>
+	</section>
+{/if}
 
 <section class="section section--alt">
 	<div class="container narrow">
@@ -158,7 +245,13 @@
 		font-style: italic;
 		font-size: 1.25rem;
 		max-width: 40ch;
-		margin: 0;
+		margin: 0 0 var(--space-3);
+	}
+
+	.hero-cta {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-2);
 	}
 
 	.narrow {
@@ -220,6 +313,109 @@
 		font-style: italic;
 	}
 
+	.testimonials {
+		padding-bottom: var(--space-5);
+		padding-top: var(--space-3);
+	}
+
+	.testimonials__grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+		gap: var(--space-3);
+		margin-top: var(--space-2);
+	}
+
+	.testimonial {
+		margin: 0;
+		padding: var(--space-2) 0 0;
+		border-top: 1px solid var(--color-rule);
+	}
+
+	.testimonial__quote {
+		font-family: var(--font-display);
+		font-size: 1.05rem;
+		line-height: 1.7;
+		color: var(--color-ink);
+		margin: 0 0 var(--space-2);
+		/* Subtle quote mark ornament. */
+		position: relative;
+	}
+
+	.testimonial__quote::before {
+		content: '\201C';
+		font-family: var(--font-display);
+		font-size: 3rem;
+		line-height: 0.5;
+		color: var(--color-bark);
+		margin-right: 0.15rem;
+		vertical-align: -0.6rem;
+	}
+
+	.testimonial__author {
+		font-size: 0.85rem;
+		color: var(--color-ink-soft);
+		letter-spacing: 0.04em;
+	}
+
+	.testimonial__loc {
+		font-style: italic;
+	}
+
+	/* Full-bleed four-across photo band between the story and the poem.
+	   Breaks up text-heavy home page, previews the gallery, and gives
+	   the page visual rhythm between the two narrative sections. */
+	.featured-band {
+		padding: 0 0 var(--space-5);
+	}
+
+	.featured-band__grid {
+		display: grid;
+		grid-template-columns: repeat(4, 1fr);
+		gap: 2px;
+	}
+
+	@media (max-width: 720px) {
+		.featured-band__grid {
+			grid-template-columns: repeat(2, 1fr);
+		}
+	}
+
+	.featured-band__tile {
+		display: block;
+		overflow: hidden;
+		aspect-ratio: 1 / 1;
+		border-bottom: none;
+	}
+
+	.featured-band__tile:hover {
+		border-bottom: none;
+	}
+
+	.featured-band__tile img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		display: block;
+		transition: transform 500ms ease;
+	}
+
+	.featured-band__tile:hover img {
+		transform: scale(1.04);
+	}
+
+	.featured-band__footer {
+		text-align: center;
+		padding-top: var(--space-3);
+	}
+
+	.featured-band__link {
+		font-size: 0.9rem;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: var(--color-bark);
+		font-weight: 500;
+	}
+
 	.cta-grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -258,6 +454,7 @@
 		font-size: 0.9rem;
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
-		color: var(--color-leaf-dark);
+		color: var(--color-bark);
+		font-weight: 500;
 	}
 </style>

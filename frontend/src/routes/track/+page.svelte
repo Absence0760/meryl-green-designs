@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { PUBLIC_API_URL } from '$env/static/public';
+	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
+	import Button from '$lib/Button.svelte';
 
 	type Shipping = {
 		carrier: string | null;
@@ -124,10 +126,17 @@
 	<meta name="robots" content="noindex" />
 </svelte:head>
 
+<section class="page-header" style="background-image: url('{base}/water2.JPG')">
+	<div class="page-header__overlay">
+		<div class="container">
+			<p class="eyebrow page-header__eyebrow">Track your order</p>
+			<h1>Order status</h1>
+		</div>
+	</div>
+</section>
+
 <section class="section">
 	<div class="container narrow">
-		<p class="eyebrow">Track your order</p>
-		<h1>Order status</h1>
 		<p class="lede">
 			Enter the order reference we emailed you and the email address you used when
 			placing the order.
@@ -147,9 +156,11 @@
 				<span>Email</span>
 				<input type="email" bind:value={email} autocomplete="email" />
 			</label>
-			<button type="submit" disabled={loading}>
-				{loading ? 'Looking up…' : 'Look up order'}
-			</button>
+			<div class="track-form__submit">
+				<Button type="submit" variant="primary" disabled={loading}>
+					{loading ? 'Looking up…' : 'Look up order'}
+				</Button>
+			</div>
 		</form>
 
 		{#if error}
@@ -226,6 +237,32 @@
 		margin-bottom: var(--space-3);
 	}
 
+	.page-header {
+		min-height: 30vh;
+		background-color: #c8d1b9;
+		background-size: cover;
+		background-position: center;
+		display: flex;
+		align-items: flex-end;
+		color: #f6f4ee;
+	}
+
+	.page-header__overlay {
+		width: 100%;
+		padding: var(--space-4) 0 var(--space-3);
+		background: linear-gradient(to top, rgba(20, 30, 15, 0.72), rgba(20, 30, 15, 0));
+	}
+
+	.page-header :global(h1) {
+		color: #f6f4ee;
+		margin: 0;
+	}
+
+	.page-header__eyebrow {
+		color: #e8ece1;
+		margin-bottom: 0.35rem;
+	}
+
 	.track-form {
 		display: grid;
 		gap: var(--space-2);
@@ -262,22 +299,8 @@
 		outline-offset: 1px;
 	}
 
-	.track-form button {
+	.track-form__submit {
 		margin-top: var(--space-1);
-		background: var(--color-leaf-dark);
-		color: #f6f4ee;
-		border: none;
-		padding: 0.7rem var(--space-2);
-		font: inherit;
-		font-size: 0.85rem;
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
-		cursor: pointer;
-	}
-
-	.track-form button[disabled] {
-		background: #a8afa0;
-		cursor: not-allowed;
 	}
 
 	.alert {

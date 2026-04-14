@@ -49,13 +49,30 @@ export type SanityProduct = {
 	blurb: string | null;
 	description: string | null;
 	priceZar: number | null;
+	dimensions: string | null;
 	available: boolean;
 	order: number;
 	photos: Array<{
 		_key: string;
 		alt: string | null;
 		asset: { _ref: string };
+		// Sanity stores per-placement crop/hotspot metadata on the image
+		// object itself (not the underlying asset). Carrying these through
+		// lets the frontend image-url builder apply the correct crop —
+		// without them, two photos that share an asset but have different
+		// crops render identically.
+		hotspot?: { x: number; y: number; height: number; width: number };
+		crop?: { top: number; bottom: number; left: number; right: number };
 	}>;
+};
+
+export type SanityTestimonial = {
+	_id: string;
+	quote: string;
+	author: string;
+	location: string | null;
+	visible: boolean;
+	order: number;
 };
 
 export type SanityGalleryPhoto = {
@@ -63,6 +80,8 @@ export type SanityGalleryPhoto = {
 	image: {
 		alt: string | null;
 		asset: { _ref: string };
+		hotspot?: { x: number; y: number; height: number; width: number };
+		crop?: { top: number; bottom: number; left: number; right: number };
 	};
 	caption: string | null;
 	visible: boolean;
@@ -76,19 +95,31 @@ const PRODUCTS_QUERY = `*[_type == "product" && available == true] | order(order
 	blurb,
 	description,
 	priceZar,
+	dimensions,
 	available,
 	order,
 	photos[] {
 		_key,
 		alt,
-		asset
+		asset,
+		hotspot,
+		crop
 	}
 }`;
 
 const GALLERY_QUERY = `*[_type == "galleryPhoto" && visible == true] | order(order asc, _createdAt desc) {
 	_id,
-	image { alt, asset },
+	image { alt, asset, hotspot, crop },
 	caption,
+	visible,
+	order
+}`;
+
+const TESTIMONIALS_QUERY = `*[_type == "testimonial" && visible == true] | order(order asc, _createdAt desc) {
+	_id,
+	quote,
+	author,
+	location,
 	visible,
 	order
 }`;
@@ -171,12 +202,15 @@ export async function getProductsByIds(ids: string[]): Promise<SanityProduct[]> 
 		blurb,
 		description,
 		priceZar,
+		dimensions,
 		available,
 		order,
 		photos[] {
 			_key,
 			alt,
-			asset
+			asset,
+			hotspot,
+			crop
 		}
 	}`;
 	return client.fetch<SanityProduct[]>(query, { ids });
@@ -194,7 +228,39 @@ export async function getProducts(): Promise<SanityProduct[]> {
 	return client.fetch<SanityProduct[]>(PRODUCTS_QUERY);
 }
 
+export async function getProductBySlug(slug: string): Promise<SanityProduct | null> {
+	const client = getClient();
+	// Same projection as PRODUCTS_QUERY — a single product filtered by slug.
+	// Limited to available products so unpublished/hidden items don't leak
+	// through a direct URL.
+	const query = `*[_type == "product" && slug.current == $slug && available == true][0] {
+		_id,
+		name,
+		"slug": slug.current,
+		blurb,
+		description,
+		priceZar,
+		dimensions,
+		available,
+		order,
+		photos[] {
+			_key,
+			alt,
+			asset,
+			hotspot,
+			crop
+		}
+	}`;
+	const result = await client.fetch<SanityProduct | null>(query, { slug });
+	return result ?? null;
+}
+
 export async function getGalleryPhotos(): Promise<SanityGalleryPhoto[]> {
 	const client = getClient();
 	return client.fetch<SanityGalleryPhoto[]>(GALLERY_QUERY);
+}
+
+export async function getTestimonials(): Promise<SanityTestimonial[]> {
+	const client = getClient();
+	return client.fetch<SanityTestimonial[]>(TESTIMONIALS_QUERY);
 }
