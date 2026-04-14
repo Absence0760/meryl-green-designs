@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { cart } from './cartStore.svelte';
 	import { formatPrice } from './sanity';
+	import { isDemoMode } from './demo';
 	import { PUBLIC_API_URL } from '$env/static/public';
 
 	export let open = false;
@@ -14,6 +15,7 @@
 	let website = '';
 	let submitting = false;
 	let error: string | null = null;
+	let demoSuccess: { ref: string } | null = null;
 
 	function handleBackdropClick(e: MouseEvent) {
 		if (e.target === e.currentTarget) onclose();
@@ -51,6 +53,13 @@
 
 		submitting = true;
 		error = null;
+
+		if (isDemoMode) {
+			await new Promise((resolve) => setTimeout(resolve, 400));
+			demoSuccess = { ref: 'MG-DEMO-0000' };
+			submitting = false;
+			return;
+		}
 
 		const body = {
 			name: name.trim(),
@@ -184,16 +193,30 @@
 					<textarea id="cart-notes" rows="2" placeholder="Any special requests…" bind:value={notes}></textarea>
 				</div>
 
-				<button class="checkout-btn" on:click={handleCheckout} disabled={submitting}>
-					{#if submitting}
-						Processing…
-					{:else}
-						Pay now — {formatPrice(cart.total)}
-					{/if}
-				</button>
-				<p class="hint">
-					You'll be redirected to PayFast to complete payment securely.
-				</p>
+				{#if demoSuccess}
+					<div class="demo-success">
+						<strong>Thank you — your order has been received.</strong>
+						<p>Your reference is <strong>{demoSuccess.ref}</strong>.</p>
+						<p class="demo-note">
+							(Preview mode — no order was submitted and no email has been sent.)
+						</p>
+					</div>
+				{:else}
+					<button class="checkout-btn" on:click={handleCheckout} disabled={submitting}>
+						{#if submitting}
+							Processing…
+						{:else}
+							Pay now — {formatPrice(cart.total)}
+						{/if}
+					</button>
+					<p class="hint">
+						{#if isDemoMode}
+							Preview mode — no real payment will be processed.
+						{:else}
+							You'll be redirected to PayFast to complete payment securely.
+						{/if}
+					</p>
+				{/if}
 			{/if}
 		</aside>
 	</div>
@@ -461,6 +484,22 @@
 	.checkout-btn:disabled {
 		background: #a8afa0;
 		cursor: not-allowed;
+	}
+
+	.demo-success {
+		margin: 16px 20px;
+		padding: 12px 16px;
+		background: #e4eddb;
+		border-left: 4px solid var(--color-leaf);
+		color: var(--color-leaf-dark);
+		font-size: 0.85rem;
+	}
+
+	.demo-success p { margin: 6px 0 0; }
+
+	.demo-note {
+		font-style: italic;
+		opacity: 0.8;
 	}
 
 	.hint {
