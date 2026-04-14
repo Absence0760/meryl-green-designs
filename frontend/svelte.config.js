@@ -14,7 +14,14 @@ function defineConfig() {
 
 		kit: {
 			// See https://kit.svelte.dev/docs/adapters for more information about adapters.
-			adapter: adapter(),
+			// `fallback: '404.html'` makes adapter-static generate an SPA shell
+			// for dynamic routes like `/shop/[slug]`, which can't be
+			// enumerated at build time. GitHub Pages natively serves
+			// `404.html` for any unknown path, so the SPA shell boots and
+			// client-side routing renders the correct page. S3 + CloudFront
+			// in production should be configured to map 4xx responses to
+			// `404.html` with a 200 status for the same effect.
+			adapter: adapter({ fallback: '404.html' }),
 			paths: {
 				base: process.env.BASE_PATH || '',
 			},
