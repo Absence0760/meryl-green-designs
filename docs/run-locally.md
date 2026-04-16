@@ -16,6 +16,11 @@ For deploying to AWS, see [`deployment.md`](./deployment.md) instead.
 - A **Sanity project** — free at [sanity.io](https://www.sanity.io/manage).
   Optional for running the site locally (the shop will show an empty state
   without it), but required for managing products.
+- **AWS CLI auth** — only required if you decrypt local secrets from
+  `backend/.env.sops` rather than typing them into `backend/.env` by hand.
+  If you do, configure a profile per
+  [`deployment.md § AWS profiles`](./deployment.md#aws-profiles-multi-project-setup)
+  so credentials don't bleed across projects.
 
 ## One-time setup
 

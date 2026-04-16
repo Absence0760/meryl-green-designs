@@ -180,8 +180,9 @@ to understand what the script is doing under the hood, see
 
 ### External accounts
 
-- **AWS** — a root or IAM-user account with permission to create S3, IAM,
-  Lambda, CloudFront, Route 53, ACM, and DynamoDB resources
+- **AWS** — an account with admin access. Don't use root for routine work;
+  see [§ IAM Identity Center bootstrap](#iam-identity-center-bootstrap) below
+  for the recommended way to set up your admin identity.
 - **Sanity** — free account at [sanity.io/manage](https://www.sanity.io/manage),
   with a project created (the project ID will be your
   `PUBLIC_SANITY_PROJECT_ID`). Leave the dataset public for now — the script
@@ -200,6 +201,85 @@ to understand what the script is doing under the hood, see
   Account → AWS Regions → Enable *Africa (Cape Town)*. Takes ~5 minutes for
   the region to become available.
 
+### IAM Identity Center bootstrap
+
+**Don't use root for routine work.** AWS root credentials should be used once
+to bootstrap an admin identity, then locked away with MFA. Everything in this
+project (`bin/sops-init.sh`, `bin/setup.sh`, `terraform apply`, `sops`,
+deploys) runs under that admin identity, not root. Losing root access while
+keeping admin access is recoverable; losing the project's KMS key (which root
+controls) is not — see `docs/security.md § Risk 8`.
+
+The recommended setup is **IAM Identity Center** (formerly AWS SSO) with one
+user — yourself — granted `AdministratorAccess` on the account. You only do
+this once per AWS account.
+
+#### 1. Enable Identity Center
+
+1. **Log into AWS as the root user.** This is the only step that requires root.
+2. **Console → search "IAM Identity Center" → Enable.** It will prompt you to
+   create an AWS Organization first if you don't have one (free, single-account
+   is fine — accept the defaults; your existing account becomes the management
+   account of a one-account org).
+3. **Pick a home region.** Use `af-south-1` if it appears in the dropdown;
+   otherwise `eu-west-1` (Ireland — closest low-latency region to South
+   Africa). **The home region is hard to change later** (requires deleting
+   and recreating Identity Center, losing all users, groups, and permission
+   sets), so pick deliberately. The home region only affects where Identity
+   Center stores its own metadata — it doesn't restrict which regions your
+   users can access.
+4. **Note the SSO portal URL** that appears on the dashboard — looks like
+   `https://<directory-id>.awsapps.com/start`. You'll need it for
+   `aws configure sso` later.
+
+#### 2. Create your admin user
+
+5. **Identity Center → Users → Add user.**
+   - **Username**: your personal handle, e.g. `jaredhoward`. Name the user
+     after the person, not the project — the same user gets permission sets
+     for any other AWS account they need access to.
+   - **Email**: a real address that can receive setup + MFA prompts.
+   - **Send email with password setup instructions** (default).
+6. **Skip the "Add user to groups" step.** Groups are for organising multiple
+   users with shared permissions; for a solo setup you assign the permission
+   set directly to the user in step 9 below.
+7. **Submit.** The user receives a setup email. Open it, set a strong
+   password, and **enrol an MFA device** (TOTP app, hardware key, or both)
+   when prompted. Identity Center can be configured to require MFA before
+   first access — keep that enabled.
+
+#### 3. Grant the user admin access
+
+The "AWS accounts" page lists *accounts*, not users — users appear inside the
+per-account assignment flow.
+
+8. **Identity Center → AWS accounts** → tick the checkbox next to your account
+   → **Assign users or groups** (button appears at the top).
+9. **Users tab** → pick the user from step 5 → **Next**.
+10. **Permission sets** → if none exist, click **Create permission set** →
+    **Predefined permission set** → `AdministratorAccess` → name it (e.g.
+    `AdminAccess`) → defaults are fine → create. Then come back and tick it.
+11. **Submit.** Behind the scenes, Identity Center creates an IAM role on
+    your account named `AWSReservedSSO_AdministratorAccess_<id>` — your user
+    assumes that role at login. The root user is untouched.
+
+#### 4. Lock down root
+
+12. **Enable MFA on the root user**: Console as root → IAM → Security
+    credentials → Multi-factor authentication.
+13. **Sign out of root** and don't use it for routine work. Configure a
+    recovery email and store backup MFA codes physically (printed, in a
+    safe). Losing root access is catastrophic for the project; treat root
+    credentials with the same care as a passport.
+
+#### 5. Connect your local CLI
+
+14. Configure an SSO profile per [§ AWS profiles](#aws-profiles-multi-project-setup)
+    below, using the SSO portal URL from step 4. When prompted, pick the
+    account and the `AdministratorAccess` role.
+15. Verify with `aws sts get-caller-identity` — should show an assumed-role
+    ARN containing `AWSReservedSSO_AdministratorAccess`, not the root account.
+
 ### Tools on your machine
 
 - [Terraform](https://developer.hashicorp.com/terraform/downloads) ≥ 1.6
@@ -211,6 +291,47 @@ to understand what the script is doing under the hood, see
 
 The setup script fails fast with clear messages if any of these are missing
 or not authenticated, so you'll know quickly.
+
+### AWS profiles (multi-project setup)
+
+If this is the only AWS-using project on your machine, the default profile is
+fine — run `aws configure` and skip the rest of this subsection. If you work
+across multiple AWS accounts or projects, use a dedicated profile so
+credentials don't bleed between them.
+
+```bash
+aws configure --profile meryl-green-designs
+# or, for SSO:
+aws configure sso --profile meryl-green-designs
+```
+
+Set the region to `af-south-1` when prompted so you don't need to export
+`AWS_REGION` separately.
+
+Then, in your shell when working on this project:
+
+```bash
+export AWS_PROFILE=meryl-green-designs
+aws sts get-caller-identity   # verify
+```
+
+All three tools the project uses — `aws`, `sops`, and `terraform` — read the
+standard AWS credential chain, so a single `AWS_PROFILE` export covers
+everything: `bin/sops-init.sh`, `bin/setup.sh`, `sops infra/terraform.tfvars.sops`,
+and `cd infra && terraform plan`. No tool-specific configuration is required.
+
+**Auto-switch per directory with direnv** (recommended if you have several AWS
+projects). Install [direnv](https://direnv.net/), hook it into your shell,
+then in the repo root:
+
+```bash
+echo 'export AWS_PROFILE=meryl-green-designs' > .envrc
+echo '.envrc' >> .gitignore   # if not already
+direnv allow
+```
+
+`cd`-ing into the project sets the profile; leaving unsets it. The `.envrc`
+holds your local profile name, so it stays gitignored rather than committed.
 
 ## Step-by-step first-time setup
 
