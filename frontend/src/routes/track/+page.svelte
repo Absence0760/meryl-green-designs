@@ -147,7 +147,7 @@
 				<span>Order reference</span>
 				<input
 					type="text"
-					placeholder="MG-YYMMDD-XXXX"
+					placeholder="MG-YYMMDD-XXXXXX"
 					bind:value={ref}
 					autocomplete="off"
 				/>

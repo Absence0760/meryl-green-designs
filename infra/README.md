@@ -12,6 +12,8 @@ Terraform configuration for the Meryl Green Designs AWS resources.
 - **Lambda Function URL** (no API Gateway) with CORS scoped to the site domain
 - **Lambda execution IAM role** + CloudWatch log group (30-day retention)
 - **GitHub OIDC provider** + IAM role for CI, scoped to `main` branch only
+- **AWS Budget** with email alerts at 50% / 80% / 100% of a configurable
+  monthly cap (default $30 — see `monthly_budget_usd` in `variables.tf`)
 
 For a full architectural picture see [`../docs/architecture.md`](../docs/architecture.md).
 For first-time deploy walkthrough see [`../docs/deployment.md`](../docs/deployment.md).

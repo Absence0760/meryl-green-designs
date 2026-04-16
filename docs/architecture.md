@@ -213,7 +213,7 @@ difference is how requests reach the app.
   runtime; the testimonials section silently no-ops if the response is
   empty or the fetch fails.
 - `POST /orders` — accepts an order JSON body with a `cart` array, validates
-  it, looks up product prices in Sanity, generates a reference `MG-YYMMDD-XXXX`,
+  it, looks up product prices in Sanity, generates a reference `MG-YYMMDD-XXXXXX`,
   **creates a Sanity `order` document**, sends the owner notification email,
   and returns signed PayFast form data for redirect:
   `{ success, ref, payfast: { action, fields } }`

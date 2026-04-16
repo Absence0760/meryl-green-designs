@@ -1,12 +1,12 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { gallery } from './routes/gallery.js';
-import { orders } from './routes/orders.js';
-import { orderLookup } from './routes/order-lookup.js';
+import { ordersRouter } from './routes/orders.js';
+import { orderLookupRouter } from './routes/order-lookup.js';
 import { products } from './routes/products.js';
 import { testimonials } from './routes/testimonials.js';
-import { payfastItn } from './routes/payfast-itn.js';
-import { sanityWebhook } from './routes/sanity-webhook.js';
+import { payfastItnRouter } from './routes/payfast-itn.js';
+import { sanityWebhookRouter } from './routes/sanity-webhook.js';
 
 export function createApp() {
 	const app = new Hono();
@@ -31,10 +31,14 @@ export function createApp() {
 	app.route('/products', products);
 	app.route('/gallery', gallery);
 	app.route('/testimonials', testimonials);
-	app.route('/orders', orders);
-	app.route('/orders', orderLookup);
-	app.route('/webhooks', sanityWebhook);
-	app.route('/webhooks/payfast-itn', payfastItn);
+
+	// Rate-limited routes use factory functions so each createApp() call
+	// produces fresh limiter buckets — important for test isolation and
+	// also a cleaner pattern in general.
+	app.route('/orders', ordersRouter());
+	app.route('/orders', orderLookupRouter());
+	app.route('/webhooks', sanityWebhookRouter());
+	app.route('/webhooks/payfast-itn', payfastItnRouter());
 
 	app.onError((err, c) => {
 		console.error('Unhandled error', err);

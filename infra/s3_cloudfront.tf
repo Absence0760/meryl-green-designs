@@ -4,6 +4,15 @@
 
 resource "aws_s3_bucket" "frontend" {
   bucket = "${local.project}-frontend"
+
+  # Belt-and-braces guard against accidental teardown via `terraform destroy`
+  # or a stray `terraform apply` after the resource block is removed. Bucket
+  # contents (the deployed site) are deleted along with the bucket and would
+  # require a re-deploy to restore. To genuinely tear down, set this to
+  # `false`, apply, then run destroy.
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "aws_s3_bucket_public_access_block" "frontend" {

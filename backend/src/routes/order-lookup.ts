@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { getOrderByRef, type SanityOrder, type OrderStatus } from '../sanity.js';
+import { createRateLimiter } from '../rate-limit.js';
 
 type TrackingResponse = {
 	ref: string;
@@ -36,33 +37,42 @@ function sanitise(order: SanityOrder): TrackingResponse {
 	};
 }
 
-export const orderLookup = new Hono();
+export function orderLookupRouter() {
+	const orderLookup = new Hono();
 
-orderLookup.get('/:ref', async (c) => {
-	const ref = c.req.param('ref');
-	const email = c.req.query('email')?.trim().toLowerCase() ?? '';
+	// 20 lookups per IP per minute — enough for a customer refreshing the
+	// /track page repeatedly while waiting for status changes, but well
+	// short of useful for ref/email enumeration.
+	const lookupLimiter = createRateLimiter({ windowMs: 60_000, max: 20 });
 
-	if (!ref || !email) {
-		return c.json({ error: 'Order not found' }, 404);
-	}
+	orderLookup.get('/:ref', lookupLimiter, async (c) => {
+		const ref = c.req.param('ref');
+		const email = c.req.query('email')?.trim().toLowerCase() ?? '';
 
-	let order: SanityOrder | null;
-	try {
-		order = await getOrderByRef(ref);
-	} catch (err) {
-		console.error('Order lookup failed', err);
-		return c.json({ error: 'Order lookup failed. Please try again.' }, 500);
-	}
+		if (!ref || !email) {
+			return c.json({ error: 'Order not found' }, 404);
+		}
 
-	if (!order) {
-		return c.json({ error: 'Order not found' }, 404);
-	}
+		let order: SanityOrder | null;
+		try {
+			order = await getOrderByRef(ref);
+		} catch (err) {
+			console.error('Order lookup failed', err);
+			return c.json({ error: 'Order lookup failed. Please try again.' }, 500);
+		}
 
-	if (order.customerEmail.trim().toLowerCase() !== email) {
-		// Deliberately return the same 404 as "ref not found" to prevent
-		// enumeration distinguishing valid refs from invalid ones.
-		return c.json({ error: 'Order not found' }, 404);
-	}
+		if (!order) {
+			return c.json({ error: 'Order not found' }, 404);
+		}
 
-	return c.json(sanitise(order));
-});
+		if (order.customerEmail.trim().toLowerCase() !== email) {
+			// Deliberately return the same 404 as "ref not found" to prevent
+			// enumeration distinguishing valid refs from invalid ones.
+			return c.json({ error: 'Order not found' }, 404);
+		}
+
+		return c.json(sanitise(order));
+	});
+
+	return orderLookup;
+}

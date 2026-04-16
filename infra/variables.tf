@@ -95,3 +95,18 @@ variable "payfast_sandbox" {
   type        = string
   default     = "false"
 }
+
+# --- Monthly budget alerts ---
+
+variable "monthly_budget_usd" {
+  description = <<-EOT
+    Monthly AWS spend cap (USD) used for budget-alert thresholds. The budget
+    fires email alerts to owner_email at 50%, 80%, and 100% of actual spend,
+    plus a forecast alert when AWS predicts month-end spend will exceed the
+    cap. The expected baseline for this project is ~$1-2/month, so the
+    default of $30 is several multiples of expected spend — a tripped alert
+    means something is genuinely wrong.
+  EOT
+  type        = number
+  default     = 30
+}

@@ -28,8 +28,9 @@ studio/dist/
 # Environment & secrets
 # ---------------------------------------------------------------------------
 # Plaintext env files are always secret and never committed. The SOPS
-# variants (*.sops) are committed because they are encrypted — each value
-# requires the project's age private key to decrypt.
+# variants (*.sops) are committed because they are encrypted under the
+# project's AWS KMS key — decryption requires kms:Decrypt permission via
+# IAM, not a key file.
 #
 # See .sops.yaml + docs/deployment.md § Secrets management for the workflow.
 .env
@@ -91,4 +92,9 @@ Desktop.ini
 # ---------------------------------------------------------------------------
 # Local agent / AI tooling state
 # ---------------------------------------------------------------------------
-.claude/
+# Most .claude/ contents are per-developer state (caches, transcripts, local
+# permission overrides) and stay out of git. The committed exception is
+# settings.json, which carries the project-wide deny-list of destructive
+# commands — see docs/security.md § Risk 8.
+.claude/*
+!.claude/settings.json

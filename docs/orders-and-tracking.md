@@ -203,7 +203,7 @@ legitimately need to correct a mistake.
 2. Look up the cart's products in Sanity (`getProductsByIds`) so the price
    per item comes from the dataset, not from the client. Compute the total
    server-side.
-3. Generate the ref `MG-YYMMDD-XXXX`.
+3. Generate the ref `MG-YYMMDD-XXXXXX` (6 base-36 chars).
 4. **Create a Sanity order document** via `@sanity/client` using a write
    token (`SANITY_API_TOKEN`), with `status: 'pending_payment'`,
    `paymentMethod: 'payfast'`, and `amountZar` set to the computed total.
@@ -452,12 +452,10 @@ construct image URLs for assets they already know about (via the asset
 
 ### 2. Order enumeration
 
-The current ref format is `MG-YYMMDD-XXXX` where XXXX is 4 random base-36
-characters → ~1.6 million combinations per day. With email verification
-required on `/orders/:ref`, brute-force enumeration is impractical — an
-attacker would need to know both the ref AND the email. Still, consider
-bumping to 6 characters (~2 billion combinations) before this is a real
-concern.
+The ref format is `MG-YYMMDD-XXXXXX` where XXXXXX is 6 random base-36
+characters → ~2.2 billion combinations per day. Combined with required
+email verification on `/orders/:ref` and the per-IP rate limit (20
+lookups/min), brute-force enumeration is computationally infeasible.
 
 ### 3. Webhook signature verification
 

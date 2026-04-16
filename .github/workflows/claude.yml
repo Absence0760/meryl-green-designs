@@ -12,7 +12,14 @@ on:
 
 jobs:
   claude:
+    # Authorisation gate. Both conditions must hold:
+    #   1. CLAUDE_AUTHORIZED_USER is set as a repo variable (vars.* is empty
+    #      string when unset → comparison fails closed).
+    #   2. github.actor matches that variable.
+    # If you ever rotate operators, update the variable in
+    # Settings → Secrets and variables → Actions → Variables.
     if: |
+      vars.CLAUDE_AUTHORIZED_USER != '' &&
       github.actor == vars.CLAUDE_AUTHORIZED_USER && (
         (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
         (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
@@ -26,14 +33,36 @@ jobs:
       issues: write
       id-token: write
     steps:
+      # Defense in depth — if the if: gate above is ever removed by mistake,
+      # this hard-fail prevents the job from progressing past authorisation.
+      - name: Verify authorised actor
+        env:
+          AUTHORISED: ${{ vars.CLAUDE_AUTHORIZED_USER }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          if [ -z "$AUTHORISED" ]; then
+            echo "::error::CLAUDE_AUTHORIZED_USER repo variable is not set." >&2
+            exit 1
+          fi
+          if [ "$ACTOR" != "$AUTHORISED" ]; then
+            echo "::error::Actor '$ACTOR' is not the authorised Claude operator." >&2
+            exit 1
+          fi
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      # Bash allowlist is deliberately tight. Broad patterns like
+      # `Bash(pnpm *)` would allow `pnpm exec <arbitrary-binary>`;
+      # `Bash(gh *)` would allow `gh release create` (triggers production
+      # deploys), `gh secret set`, `gh workflow run`, etc.; `Bash(git *)`
+      # would allow `git push --force`. Each command below is read-only or
+      # scoped to repo-local development tasks.
       - name: Run Claude Code
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          claude_args: "--max-turns 40 --allowedTools 'Bash(pnpm *),Bash(git *),Bash(gh *),Read,Write,Edit,Glob,Grep'"
+          claude_args: "--max-turns 40 --allowedTools 'Read,Write,Edit,Glob,Grep,Bash(pnpm test),Bash(pnpm test:watch),Bash(pnpm check),Bash(pnpm build),Bash(pnpm install --frozen-lockfile),Bash(pnpm frontend test),Bash(pnpm backend test),Bash(pnpm studio test),Bash(pnpm frontend check),Bash(pnpm backend check),Bash(pnpm studio check),Bash(pnpm frontend build),Bash(pnpm backend build),Bash(pnpm studio build),Bash(git log:*),Bash(git diff:*),Bash(git status),Bash(git show:*),Bash(git blame:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(gh pr diff:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh run view:*),Bash(gh run list:*)'"

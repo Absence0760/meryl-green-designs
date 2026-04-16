@@ -758,6 +758,20 @@ All populated automatically by `bin/setup.sh`.
 | `PUBLIC_SANITY_PROJECT_ID` | tfvars `sanity_project_id` | `deploy-frontend.yml` + `deploy-studio.yml` |
 | `PUBLIC_SANITY_DATASET` | tfvars `sanity_dataset` | `deploy-frontend.yml` + `deploy-studio.yml` |
 
+### GitHub Actions repo-level variables
+
+Distinct from the `production` environment variables above. Set at the repo
+root (Settings → Secrets and variables → Actions → Variables → New
+repository variable):
+
+| Variable | Required by | Purpose |
+|---|---|---|
+| `CLAUDE_AUTHORIZED_USER` | `claude.yml` | GitHub username allowed to invoke `@claude` automation. **If unset, the workflow's authorisation gate fails closed and Claude won't run** — set this to your operator account's login (e.g. `jaredhoward`). Without this, anyone who can comment on the repo could trigger the action. |
+
+```bash
+gh variable set CLAUDE_AUTHORIZED_USER --body 'your-github-username'
+```
+
 ### GitHub Actions secrets (the `production` environment)
 
 Set manually in step 6 of the setup.
@@ -1093,8 +1107,22 @@ Terraform to manage DNS records automatically.
 
 These numbers are approximate and will vary with traffic. A sudden spike
 (thousands of visitors/day, e.g. going viral) could push CloudFront and
-Resend costs up — budget alerts are a good idea, see the CloudWatch +
-Billing console.
+Resend costs up.
+
+### Budget alerts
+
+Terraform provisions a monthly AWS Budget (`infra/budget.tf`) with email
+notifications to `owner_email` at 50%, 80%, and 100% of `monthly_budget_usd`
+(default $30 — several multiples of the ~$1-2 expected baseline), plus a
+**forecast** alert that fires when AWS predicts month-end spend will exceed
+the cap, even if you haven't yet. Override the cap in `terraform.tfvars` if
+you want a tighter or looser threshold. AWS allows two budgets per account
+free of charge, so this one is free.
+
+A tripped alert means **something is wrong** — at this scale, normal
+month-to-month variance shouldn't come anywhere near $30. Common causes:
+attack-driven traffic spike, log volume runaway from an error loop, a
+mis-set CloudFront cache that misses on every request.
 
 ## Tearing everything down
 
@@ -1105,6 +1133,13 @@ terraform destroy
 
 This removes every AWS resource Terraform created — S3 bucket, CloudFront,
 Lambda, IAM, Route 53 records, ACM cert, DynamoDB lock table, OIDC provider.
+
+**`prevent_destroy` is set on the frontend S3 bucket and backend Lambda.**
+A direct `terraform destroy` will fail on those two resources to guard
+against accidental teardown. To genuinely destroy them, edit
+`infra/s3_cloudfront.tf` and `infra/lambda.tf` to set `prevent_destroy =
+false`, run `terraform apply` (this is a no-op apply that just updates the
+lifecycle metadata), then re-run `terraform destroy`.
 
 It does **not** remove:
 

@@ -96,7 +96,7 @@ describe('POST /orders', () => {
 		expect(res.status).toBe(200);
 		const data = (await res.json()) as any;
 		expect(data.success).toBe(true);
-		expect(data.ref).toMatch(/^MG-\d{6}-[A-Z0-9]{4}$/);
+		expect(data.ref).toMatch(/^MG-\d{6}-[A-Z0-9]{6}$/);
 		expect(data.payfast).toBeDefined();
 		expect(data.payfast.action).toContain('sandbox.payfast.co.za');
 		expect(data.payfast.fields.amount).toBe('450.00');

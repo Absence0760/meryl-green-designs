@@ -91,19 +91,33 @@ inbox.
 - CORS restricts browser-origin submissions to the allowlisted domains.
   Server-to-server clients still reach it, but CORS cuts down on
   opportunistic browser-side exploitation.
+- **Per-IP rate limiting** (`backend/src/rate-limit.ts`) on every
+  state-changing endpoint, configured at the route level:
+
+  | Route | Limit |
+  |---|---|
+  | `POST /orders` | 5 / 15 minutes per IP |
+  | `GET /orders/:ref` | 20 / minute per IP |
+  | `POST /webhooks/sanity-order` | 60 / minute per IP |
+  | `POST /webhooks/payfast-itn` | 60 / minute per IP |
+
+  Implementation is an in-memory fixed-window limiter keyed on the first
+  IP in `x-forwarded-for` (set automatically by the Lambda Function URL).
+  Over the limit returns `429 Too Many Requests` with a `Retry-After`
+  header. Covered by `__tests__/rate-limit.test.ts` (12 tests including
+  integration regression guards on `/orders` and `/orders/:ref`).
 
 **Residual risk:**
-- **No rate limiting.** A determined bot can flood the endpoint. There is
-  currently no per-IP or global throttle on `POST /orders`. This is the
-  single biggest hardening gap in the order flow. See roadmap.
-- Bots that run a headless browser and don't fill the honeypot will still
-  succeed. Sanity is the backstop — Meryl sees every order and can mark
-  obvious junk as `cancelled`.
-
-**Mitigation priority:** add rate limiting before the site sees any real
-volume. Hono middleware (e.g. `hono-rate-limiter`) or AWS API Gateway
-throttling on the Lambda Function URL (if it starts supporting it) are the
-two realistic options.
+- **In-memory limits are per-Lambda-instance.** A request that lands on a
+  cold-started instance starts with a fresh bucket; under heavy
+  concurrency, the effective global limit is `max × instances`. For
+  single-IP flooding this is still meaningfully restrictive; for
+  distributed-attacker mitigation (botnet), a shared store (DynamoDB,
+  Redis) or AWS WAF in front of the Function URL would be needed. Out of
+  scope at current volume.
+- Bots that run a headless browser and don't fill the honeypot can still
+  succeed up to the rate-limit cap. Sanity is the backstop — Meryl sees
+  every order and can mark obvious junk as `cancelled`.
 
 ---
 
@@ -114,11 +128,11 @@ two realistic options.
 | **Likelihood** | low |
 | **Impact** | medium |
 
-**What could happen:** An attacker guesses order references (`MG-YYMMDD-XXXX`)
+**What could happen:** An attacker guesses order references (`MG-YYMMDD-XXXXXX`)
 to look up strangers' orders on `/track`.
 
 **Current mitigations:**
-- `XXXX` is 4 random base-36 characters (~1.6M combinations per day).
+- `XXXXXX` is 6 random base-36 characters (~2.2 billion combinations per day).
 - `GET /orders/:ref` requires an email parameter that must match the order's
   `customerEmail` (case-insensitive). Without the email, the endpoint
   returns 404.
@@ -126,12 +140,11 @@ to look up strangers' orders on `/track`.
   "real ref, wrong email" from "fake ref". Covered by tests.
 
 **Residual risk:**
-- 4 characters of entropy is adequate but not generous. Bumping to 6
-  characters would take this from ~1.6M/day to ~2B/day combinations — worth
-  doing before volume grows.
-- No rate limiting on the lookup endpoint, so a persistent attacker with
-  both a valid ref and a guess at the email could brute-force the email.
-  Same fix as risk #2.
+- The 20/min lookup rate limit caps brute-force attempts at ~28k/day per
+  IP. With 6-char base-36 entropy (~2.2B refs per day) and required email
+  verification, fully enumerating one day's refs from a single IP would
+  take ~78,000 days; from 1,000 distributed IPs, ~78 days. Computationally
+  infeasible at any realistic scale.
 
 ---
 
@@ -291,9 +304,14 @@ ends up encrypted with the wrong key.
   no long-lived AWS access keys in GitHub secrets. The only GitHub
   Actions secret is `SANITY_AUTH_TOKEN` (studio deploy), which is a
   scope-limited "Deploy Studio" token, not an admin token.
-- `.claude/settings.json` denies common destructive AWS commands
-  (`aws s3api delete-bucket`, `aws cloudfront delete*`, etc.) to reduce
-  the chance of accidental disclosure during interactive debugging.
+- `.claude/settings.json` is committed (the rest of `.claude/` is
+  gitignored — see `.gitignore`) and ships a project-wide deny-list of
+  destructive commands: AWS resource deletion (S3, CloudFront, Lambda,
+  IAM, KMS, Route 53, ACM, DynamoDB, CloudWatch Logs, Budgets), force
+  pushes, hard resets, `terraform apply/destroy`, `gh secret set`,
+  `gh release create`, `gh workflow run`, and the studio deploy
+  variants. Operators using Claude Code in the project inherit the
+  deny-list automatically.
 
 **Residual risk:**
 - **An AWS credential with `kms:Decrypt` on the project key is a
@@ -335,11 +353,21 @@ client, Resend SDK, esbuild, vitest, etc.) ships a CVE. We pick it up via
 - Direct deps are pinned or narrow-ranged. No `^0.x.*`-style wildcards on
   critical packages.
 - No runtime code fetches from external sources.
+- **Scheduled `pnpm audit`** (`.github/workflows/audit.yml`) runs every
+  Monday at 06:00 UTC and on manual dispatch, scanning all workspaces at
+  `--audit-level=moderate`. Findings open a `dependency-audit`-labelled
+  GitHub issue; the next clean run auto-closes it.
+- Dependabot is configured (grouped weekly updates per workspace) — see
+  the roadmap.
 
 **Residual risk:**
-- No automated vulnerability scanning (Dependabot, Renovate, `pnpm audit`
-  in CI). **This is a gap** — worth adding a simple `pnpm audit` step to a
-  scheduled GitHub Actions workflow.
+- `pnpm audit`'s vulnerability database lags GHSA/NVD by hours-to-days for
+  newly-disclosed CVEs. For zero-day-class issues, manual response from
+  GitHub Security alerts is the faster signal.
+- Audit only catches *known* CVEs — supply-chain attacks via compromised
+  packages with no published advisory pass through. Risk mitigated by
+  `pnpm-lock.yaml` and only running `--frozen-lockfile` in CI/deploy
+  workflows.
 
 ---
 
@@ -480,13 +508,10 @@ If something goes wrong:
 
 Captured here so they don't get lost:
 
-- **Rate limiting** on `POST /orders`, `GET /orders/:ref`, and
-  `POST /webhooks/sanity-order`.
-- **Dependency scanning** — a scheduled `pnpm audit` workflow in GitHub
-  Actions.
-- **Bumping order ref entropy** from 4 to 6 base-36 characters before
-  volume grows.
 - **Dedicated sender domain with DMARC/SPF/DKIM** for the outbound Resend
   email identity, to make impersonation harder outside the repo.
 - **Signed tokens on tracking URLs** instead of email-in-querystring. Low
   priority.
+- **AWS WAF in front of the Lambda Function URL** for distributed-attacker
+  rate limiting (the in-memory limiter only caps per-instance). Out of
+  scope at current volume; revisit if real attack traffic appears.

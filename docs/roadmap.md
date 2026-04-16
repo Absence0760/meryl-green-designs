@@ -200,8 +200,9 @@ None are blocking; pick the ones that match observed pain.
       image appearance
 - [ ] Extend the CMS to cover home page story, poem, and hero photo so
       Meryl can edit those without a dev
-- [ ] Rate limiting on `POST /orders` (Hono middleware, ~10 lines) — add
-      when spam becomes a real problem
+- [x] Rate limiting on `POST /orders`, `GET /orders/:ref`, and the two
+      webhook endpoints — per-IP fixed-window in-memory limiter
+      (`backend/src/rate-limit.ts`)
 - [ ] Structured product picker on the order form (checkboxes + quantities
       per product) — only worth it once there are enough products that
       the free-text field feels clumsy

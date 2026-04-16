@@ -99,6 +99,12 @@ resource "aws_lambda_function" "backend" {
       source_code_hash,
       last_modified,
     ]
+
+    # Guard against accidental teardown. The Lambda holds the live backend
+    # code uploaded by the deploy workflow — destroy would require a fresh
+    # release deploy to restore. To genuinely tear down, set this to
+    # `false`, apply, then run destroy.
+    prevent_destroy = true
   }
 }
 
