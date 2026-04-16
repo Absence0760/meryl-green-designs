@@ -92,10 +92,20 @@ anything in the repo) — see [`roadmap.md`](./roadmap.md).
 
 ## Gallery (`/gallery`)
 
+The gallery is a **commission portfolio**, not a catalogue of for-sale items.
+Each photograph is an example of a style or finish that can be made bespoke
+to a customer's space; pricing happens by enquiry, not at a public price tag.
+Page copy and the closing CTA reflect that — visitors are guided to
+`/contact` to start a commission, not to add anything to a cart.
+
 - **Photos managed in Sanity Studio.** Meryl uploads photos, writes captions,
   sets display order, and toggles visibility from the same studio she uses
   for products and orders. No dev involvement needed to add or remove gallery
   photos.
+- **Commission CTA** at the bottom of the page (only renders when at least
+  one photograph is present) — explicit prompt to enquire, with a primary
+  button linking to `/contact`. Reinforces the commission-not-shop framing
+  that the lede already sets up.
 - **Justified flex-wrap layout**, centred. Each tile's `flex-basis`
   scales with its aspect ratio (parsed from the Sanity asset `_ref`,
   which embeds `{width}x{height}`), so landscape photos take more

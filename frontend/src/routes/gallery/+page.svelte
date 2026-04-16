@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { PUBLIC_API_URL } from '$env/static/public';
 	import { imageUrl, type GalleryPhoto } from '$lib/sanity';
+	import Button from '$lib/Button.svelte';
 
 	const apiUrl = PUBLIC_API_URL;
 
@@ -74,22 +75,23 @@
 	<title>Gallery — Meryl Green Designs</title>
 	<meta
 		name="description"
-		content="Photographs of screens, finishes and bespoke options from Meryl Green Designs."
+		content="Examples of styles and finishes you can commission from Meryl Green Designs — handcrafted screens adjusted to your space."
 	/>
 	<meta property="og:title" content="Gallery — Meryl Green Designs" />
 	<meta
 		property="og:description"
-		content="Photographs of screens, finishes and bespoke options from Meryl Green Designs."
+		content="Examples of styles and finishes you can commission from Meryl Green Designs — handcrafted screens adjusted to your space."
 	/>
 </svelte:head>
 
 <section class="section section--intro">
 	<div class="container">
 		<p class="eyebrow">Gallery</p>
-		<h1>Screens &amp; design options</h1>
+		<h1>Styles you can commission</h1>
 		<p class="lede">
-			A growing collection of photographs showing the different screens, finishes and bespoke
-			options available. More images are being added — please check back soon.
+			Each photograph is an example of a style or finish that can be made for you.
+			Dimensions, wood and colour can be adjusted to suit your space — get in touch
+			with the size you need and a few words about where it will go.
 		</p>
 	</div>
 </section>
@@ -147,6 +149,20 @@
 	</div>
 </section>
 
+{#if !photosLoading && !photosError && photos.length > 0}
+	<section class="commission-cta">
+		<div class="container">
+			<h2>See something you'd like for your space?</h2>
+			<p>
+				Each piece in this gallery can be commissioned in custom sizes,
+				woods or finishes. Send a quick note about what you have in
+				mind and we'll come back with a quote.
+			</p>
+			<Button href="/contact" variant="primary">Enquire about a commission</Button>
+		</div>
+	</section>
+{/if}
+
 {#if lightboxIndex !== null && photos[lightboxIndex]}
 	{@const current = photos[lightboxIndex]}
 	{@const fullSrc = imageUrl(current.image, 1800)}
@@ -197,6 +213,22 @@
 
 	.gallery-section {
 		padding: 0 0 var(--space-6);
+	}
+
+	.commission-cta {
+		padding: var(--space-5) 0 var(--space-6);
+		text-align: center;
+		border-top: 1px solid var(--color-rule);
+	}
+
+	.commission-cta h2 {
+		margin: 0 0 var(--space-2);
+	}
+
+	.commission-cta p {
+		max-width: 50ch;
+		margin: 0 auto var(--space-3);
+		color: var(--color-ink-soft);
 	}
 
 	/* Flex-wrap justified layout. Tiles don't grow to fill the row — they
