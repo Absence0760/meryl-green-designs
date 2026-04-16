@@ -64,7 +64,11 @@ resource "aws_lambda_function" "backend" {
 
   handler = "lambda.handler"
   runtime = "nodejs20.x"
-  timeout = 10
+  # 30s accommodates the monthly PII cleanup sweep (~60 sequential Sanity
+  # patches on the first run, ~5/month thereafter — see pii-cleanup.ts).
+  # HTTP request handlers complete in well under a second; the longer
+  # timeout is dormant for those.
+  timeout = 30
 
   # 128 MB (the AWS default) throttles cold-start CPU enough that a Node 20
   # bundle with @sanity/client takes ~1s to initialise. AWS scales CPU

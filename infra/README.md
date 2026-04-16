@@ -17,6 +17,8 @@ Terraform configuration for the Meryl Green Designs AWS resources.
 - **GitHub OIDC provider** + IAM role for CI, scoped to `main` branch only
 - **AWS Budget** with email alerts at 50% / 80% / 100% of a configurable
   monthly cap (default $30 — see `monthly_budget_usd` in `variables.tf`)
+- **EventBridge schedule** that invokes the backend Lambda monthly (04:00
+  UTC on the 1st) for the POPIA retention sweep — see `pii_cleanup.tf`
 
 For a full architectural picture see [`../docs/architecture.md`](../docs/architecture.md).
 For first-time deploy walkthrough see [`../docs/deployment.md`](../docs/deployment.md).

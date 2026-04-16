@@ -264,3 +264,58 @@ export async function getTestimonials(): Promise<SanityTestimonial[]> {
 	const client = getClient();
 	return client.fetch<SanityTestimonial[]>(TESTIMONIALS_QUERY);
 }
+
+// ---------------------------------------------------------------------------
+// PII retention — see backend/src/pii-cleanup.ts and docs/security.md
+// ---------------------------------------------------------------------------
+
+/** Subset returned by findOrdersWithExpiredPii — just enough for the cleanup. */
+export type ExpiredOrder = {
+	_id: string;
+	orderRef: string;
+	status: OrderStatus;
+};
+
+/**
+ * Find orders in a terminal state (`delivered` or `cancelled`) whose
+ * `_updatedAt` is older than `cutoffIso`. These are eligible for PII
+ * scrubbing under the documented retention policy. Already-scrubbed
+ * orders self-exclude — `clearOrderPii()` updates `_updatedAt`, so the
+ * order won't match the next time the query runs.
+ */
+export async function findOrdersWithExpiredPii(cutoffIso: string): Promise<ExpiredOrder[]> {
+	const client = getClient();
+	const query = `*[_type == "order"
+		&& status in ["delivered", "cancelled"]
+		&& _updatedAt < $cutoff
+		&& (defined(customerEmail) || defined(customerName) || defined(shippingAddress) || defined(customerPhone))
+	] | order(_updatedAt asc) {
+		_id,
+		orderRef,
+		status
+	}`;
+	return client.fetch<ExpiredOrder[]>(query, { cutoff: cutoffIso });
+}
+
+/**
+ * Set the PII fields on a single order to null. `orderRef`, `status`,
+ * `amountZar`, `paymentMethod`, `paymentId`, `_createdAt`, `items` are
+ * preserved for accounting/audit purposes — none of those are PII.
+ *
+ * `items` contains the product summary (`"1 x Small Screen — R 450"`)
+ * which has no customer-identifying content; safe to keep.
+ */
+export async function clearOrderPii(orderId: string): Promise<void> {
+	const client = getClient();
+	await client
+		.patch(orderId)
+		.set({
+			customerName: null,
+			customerEmail: null,
+			customerPhone: null,
+			shippingAddress: null,
+			customerNotes: null,
+			internalNotes: null
+		})
+		.commit();
+}

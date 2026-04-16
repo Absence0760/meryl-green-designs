@@ -204,16 +204,32 @@
 
 		<h2>How long we keep it</h2>
 		<p>
-			We keep your order records for as long as necessary to fulfil
-			the order, to provide after-sales support, and to comply with
-			tax and consumer-protection law (which may require us to
-			retain transaction records for several years). Server logs are
-			retained for the period set by our hosting provider's default
-			log retention.
+			<strong>Customer details on completed orders</strong> (your
+			name, email address, phone number, shipping address, and any
+			notes you sent us) are kept for <strong>12 months</strong>
+			after an order reaches a final state — either delivered or
+			cancelled. After 12 months, those personal details are
+			automatically removed from our records by a scheduled cleanup
+			job. We retain the order reference, status, amount, and
+			payment method indefinitely for accounting and audit
+			purposes — none of those identify you personally.
 		</p>
 		<p>
-			If you ask us to delete your information, we will delete what
-			is not required by law to be kept.
+			While an order is still in progress (pending payment, payment
+			received, shipped), we keep the full details so we can
+			complete the fulfilment and respond to questions.
+		</p>
+		<p>
+			Server logs are retained for 30 days at our hosting
+			provider's default. Email records are retained by Resend
+			(our email provider) according to their own policy.
+		</p>
+		<p>
+			If you ask us to delete your information sooner than the
+			12-month window, we will delete what is not required by law
+			to be kept. Statutory record-keeping (e.g. tax invoices) may
+			oblige us to retain certain transactional details for up to
+			5 years under SARS rules, even after a deletion request.
 		</p>
 
 		<h2>How we protect it</h2>

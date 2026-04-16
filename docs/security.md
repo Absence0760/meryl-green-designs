@@ -504,6 +504,85 @@ If something goes wrong:
 
 ---
 
+## PII retention (POPIA Section 14)
+
+The site stores customer PII on Sanity order documents: `customerName`,
+`customerEmail`, `customerPhone`, `shippingAddress`, `customerNotes`, and
+the operator-only `internalNotes`. POPIA requires retention to be tied to
+a documented purpose, so the longer this PII sits in Sanity past
+fulfilment, the weaker the legal posture.
+
+### The policy
+
+- **Retention window**: 12 months after `_updatedAt`, for orders in a
+  terminal state (`delivered` or `cancelled`).
+- **What gets cleared**: `customerName`, `customerEmail`,
+  `customerPhone`, `shippingAddress`, `customerNotes`, `internalNotes`
+  → all set to `null`.
+- **What's preserved**: `orderRef`, `status`, `amountZar`,
+  `paymentMethod`, `paymentId`, `_createdAt`, and `items` (the line-item
+  product summary, no PII). Sufficient for SARS audit, dispute resolution,
+  and revenue accounting; insufficient for re-identifying the customer.
+- **Declared in the public privacy policy** at
+  `frontend/src/routes/privacy/+page.svelte` § "How long we keep it".
+  Required by POPIA — the retention period must be visible to the data
+  subject, not only documented internally.
+
+### Automated enforcement
+
+`backend/src/pii-cleanup.ts` runs the sweep. The same Lambda function
+that serves the API is invoked once a month by an EventBridge schedule
+rule (`infra/pii_cleanup.tf`, `cron(0 4 1 * ? *)` — 04:00 UTC on the 1st).
+The dispatcher in `backend/src/lambda.ts` detects
+`event.source === 'aws.events'` and routes to `runPiiCleanup()` instead of
+the Hono HTTP handler.
+
+The cleanup is idempotent — clearing PII updates `_updatedAt`, so
+already-cleaned orders self-exclude from the next month's query. Per-order
+failures are logged and the run continues; the summary line in CloudWatch
+Logs shows `cutoff=`, `scanned=`, `cleared=`, `failed=`.
+
+Override the retention period via the `RETENTION_DAYS` env var on the
+Lambda if the legal posture changes. Default is 365 days.
+
+### Manual fallback
+
+If the automated sweep is disabled (EventBridge rule paused, Lambda
+broken, retention policy under review), the same outcome can be achieved
+by hand from the Sanity Studio. Quarterly is a reasonable cadence;
+monthly matches the automated schedule.
+
+1. Open Sanity Studio → **Orders**.
+2. Filter by `status` = `delivered` OR `cancelled`.
+3. Sort by `_updatedAt` ascending.
+4. For every order whose `_updatedAt` is more than 12 months ago:
+   - Open the document.
+   - Clear (delete the value of) every field in this list:
+     `customerName`, `customerEmail`, `customerPhone`, `shippingAddress`,
+     `customerNotes`, `internalNotes`.
+   - Click **Publish**.
+5. Note the date of the manual sweep in the operator runbook.
+
+The fields to keep, even during the manual sweep, are the same as the
+automated job: `orderRef`, `status`, `amountZar`, `paymentMethod`,
+`paymentId`, `items`. **Do not delete the order document itself** — that
+removes the audit trail for tax purposes.
+
+### Verifying it ran
+
+CloudWatch Logs for the Lambda will show a line like:
+
+```
+[pii-cleanup] cutoff=2026-04-16T04:00:00.000Z scanned=12 cleared=12 failed=0
+```
+
+once a month. If it doesn't appear for two consecutive months, something
+broke — either the EventBridge rule is disabled, the Lambda permission is
+missing, or the function itself is failing silently. Fall back to the
+manual procedure above and investigate.
+
+---
+
 ## Known hardening gaps (roadmap items)
 
 Captured here so they don't get lost:
