@@ -159,3 +159,49 @@ export function customerEmailForStatus(order: SanityOrder): { subject: string; h
 	if (!template) return null;
 	return template(order);
 }
+
+// ---------------------------------------------------------------------------
+// Commission enquiry — sent to OWNER_EMAIL when someone submits the contact
+// form on /contact. Visitor-supplied fields are explicitly flagged as
+// unverified so a forged "from" doesn't trick the owner into replying with
+// sensitive details (see docs/security.md § replyTo).
+// ---------------------------------------------------------------------------
+
+export type CommissionEnquiryInput = {
+	name: string;
+	email: string;
+	phone: string;
+	photoReference: string;
+	size: string;
+	finish: string;
+	location: string;
+	message: string;
+};
+
+export function commissionEnquiry(input: CommissionEnquiryInput): { subject: string; html: string } {
+	const optionalRow = (label: string, value: string) =>
+		value.trim()
+			? `<p><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value).replace(/\n/g, '<br>')}</p>`
+			: '';
+
+	return {
+		subject: `Commission enquiry — ${input.name}`,
+		html: `
+			<div style="background:#fff7d6;border:1px solid #e2c769;padding:0.6rem 0.9rem;border-radius:4px;margin-bottom:1rem;">
+				<strong>Heads up:</strong> the name and email below were entered into
+				the public commission form on the website and have not been verified.
+				Confirm authenticity before sending sensitive information in reply.
+			</div>
+			<h2>Commission enquiry</h2>
+			<p><strong>Name:</strong> ${escapeHtml(input.name)}</p>
+			<p><strong>Email:</strong> ${escapeHtml(input.email)}</p>
+			${optionalRow('Phone', input.phone)}
+			${optionalRow('Photo reference', input.photoReference)}
+			${optionalRow('Size', input.size)}
+			${optionalRow('Wood / finish', input.finish)}
+			${optionalRow('Where it will go', input.location)}
+			<h3>Message</h3>
+			<p>${escapeHtml(input.message).replace(/\n/g, '<br>')}</p>
+		`
+	};
+}

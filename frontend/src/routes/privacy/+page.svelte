@@ -63,8 +63,8 @@
 		<p>
 			If you have any questions about this policy, or you want to
 			exercise any of the rights described below, please email
-			<a href="mailto:hello@merylgreendesigns.co.za"
-				>hello@merylgreendesigns.co.za</a
+			<a href="mailto:zagreenwoman@gmail.com"
+				>zagreenwoman@gmail.com</a
 			>.
 		</p>
 
@@ -290,8 +290,8 @@
 		</ul>
 		<p>
 			To exercise any of these rights, email
-			<a href="mailto:hello@merylgreendesigns.co.za"
-				>hello@merylgreendesigns.co.za</a>. We will respond within
+			<a href="mailto:zagreenwoman@gmail.com"
+				>zagreenwoman@gmail.com</a>. We will respond within
 			30 days.
 		</p>
 
@@ -322,8 +322,8 @@
 		<p>
 			For any questions about this policy, or to exercise your
 			rights, please email
-			<a href="mailto:hello@merylgreendesigns.co.za"
-				>hello@merylgreendesigns.co.za</a>.
+			<a href="mailto:zagreenwoman@gmail.com"
+				>zagreenwoman@gmail.com</a>.
 		</p>
 	</div>
 </section>

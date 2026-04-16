@@ -88,6 +88,7 @@ meryl-green-designs/
 │           ├── testimonials.ts     GET /testimonials — list visible testimonials from Sanity
 │           ├── orders.ts           POST /orders — validate + create Sanity doc + PayFast/email
 │           ├── order-lookup.ts     GET /orders/:ref?email= — track page lookup
+│           ├── enquiries.ts        POST /enquiries — commission enquiry form → owner email
 │           ├── payfast-itn.ts      POST /webhooks/payfast-itn — PayFast payment confirmation
 │           └── sanity-webhook.ts   POST /webhooks/sanity-order — verify sig + dispatch email
 ├── studio/
@@ -222,6 +223,13 @@ difference is how requests reach the app.
   returns a sanitised subset (no internal notes, no phone, no shipping
   address). 404 on both missing ref and email mismatch to prevent
   enumeration.
+- `POST /enquiries` — commission enquiry form on `/contact`. Validates
+  the body (required name/email/message + length limits, honeypot, valid
+  email regex), then sends a single notification email to `OWNER_EMAIL`
+  via Resend with `replyTo` set to the visitor's claimed email and a
+  prominent unverified-sender warning rendered in the email body. No
+  Sanity document is created — at the current scale, treating enquiries
+  as a transient email is simpler than another data store.
 - `POST /webhooks/sanity-order` — receives webhook POSTs from Sanity when an
   order's `status` field changes. Verifies the HMAC-SHA256 signature on the
   **raw** request body (before JSON parsing) against

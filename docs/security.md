@@ -97,6 +97,7 @@ inbox.
   | Route | Limit |
   |---|---|
   | `POST /orders` | 5 / 15 minutes per IP |
+  | `POST /enquiries` | 5 / 15 minutes per IP |
   | `GET /orders/:ref` | 20 / minute per IP |
   | `POST /webhooks/sanity-order` | 60 / minute per IP |
   | `POST /webhooks/payfast-itn` | 60 / minute per IP |

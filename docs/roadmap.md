@@ -143,7 +143,7 @@ traffic. Most are external, and each is documented with exact steps in
       threat model). She needs a saved email snippet with the real values
       so the reply takes 30 seconds per order, not 3 minutes.
 - [ ] Real contact details on `frontend/src/routes/contact/+page.svelte`:
-      - [ ] real email (currently `hello@merylgreendesigns.co.za` placeholder)
+      - [x] real email — `zagreenwoman@gmail.com` (confirmed by Meryl 2026-04-16)
       - [ ] phone number (or remove the row — `TODO` in markup; current
             placeholder reads "By email first, please.")
       - [ ] studio location/town (`TODO` in markup; current placeholder

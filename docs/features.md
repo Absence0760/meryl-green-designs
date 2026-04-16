@@ -245,12 +245,20 @@ Page copy and the closing CTA reflect that — visitors are guided to
   Studio, Response time) in a two-column layout that stacks on narrow
   viewports. Top and bottom rules give it visual weight without a
   card.
-- **Commissions block** — calls out that Meryl takes bespoke
-  commissions, with instructions on how to enquire.
+- **Commission enquiry form** — structured form with fields for name,
+  email, phone (optional), photo reference (optional, pre-filled from
+  `?photo=` query param when arriving from a gallery lightbox CTA),
+  approximate size, wood/finish, where it'll go, and a free-text
+  message. POSTs JSON to `${PUBLIC_API_URL}/enquiries`. The backend
+  validates, then sends a single email to `OWNER_EMAIL` via Resend with
+  `replyTo` set to the visitor's email and a yellow "unverified
+  sender" warning rendered at the top of the email body so Meryl
+  doesn't accidentally trust the form input. Success and error states
+  render inline; the form clears on success. A hidden honeypot
+  (`name="website"`, position-absolute off-screen) deters simple bots,
+  and the backend rate-limits to 5 submissions per IP per 15 minutes.
 - **Existing orders block** — links to `/track` for customers who just
   want to check a placed order.
-- A real contact form can be added later or the shop order form can be
-  repurposed for general enquiries.
 
 ## Privacy policy (`/privacy`)
 

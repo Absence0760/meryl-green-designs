@@ -187,6 +187,12 @@
 			{#if current.caption}
 				<figcaption>{current.caption}</figcaption>
 			{/if}
+			<a
+				class="lightbox-enquire"
+				href="/contact?photo={encodeURIComponent(current.caption ?? current.image.alt ?? 'gallery photograph')}"
+			>
+				Enquire about this style →
+			</a>
 		</figure>
 	</div>
 {/if}
@@ -196,13 +202,6 @@
 		max-width: 60ch;
 		color: var(--color-ink-soft);
 		margin-bottom: 0;
-	}
-
-	.backdrop {
-		background-color: #c8d1b9;
-		background-size: cover;
-		background-position: center;
-		padding: var(--space-4) 0 var(--space-6);
 	}
 
 	/* Collapse the gap between intro and photo wall — no need for a full
@@ -336,6 +335,18 @@
 		font-size: 0.9rem;
 		font-style: italic;
 		text-align: center;
+	}
+
+	.lightbox-enquire {
+		color: #f6f4ee;
+		text-decoration: underline;
+		text-underline-offset: 3px;
+		font-size: 0.9rem;
+	}
+
+	.lightbox-enquire:hover,
+	.lightbox-enquire:focus {
+		color: #fff;
 	}
 
 	.lightbox-close,
