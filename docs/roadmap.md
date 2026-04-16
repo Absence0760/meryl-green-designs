@@ -6,7 +6,7 @@ planned for later. Items move between sections as they're shipped.
 ## Status at a glance
 
 **The app is code-complete for v1.** Every feature in the original client
-brief (home with hero + story + poem, gallery, shop with EFT ordering,
+brief (home with hero + story + poem, gallery, shop with PayFast checkout,
 customer order tracking, CMS) is built. All three workspace packages typecheck
 clean and build clean. Deployment is a single command (`bin/setup.sh`).
 
@@ -142,8 +142,12 @@ traffic. Most are external, and each is documented with exact steps in
       (intentional — see `docs/security.md § Risk 1` for the impersonation
       threat model). She needs a saved email snippet with the real values
       so the reply takes 30 seconds per order, not 3 minutes.
-- [ ] Real contact email — currently `hello@merylgreendesigns.co.za`
-      placeholder in `frontend/src/routes/contact/+page.svelte`
+- [ ] Real contact details on `frontend/src/routes/contact/+page.svelte`:
+      - [ ] real email (currently `hello@merylgreendesigns.co.za` placeholder)
+      - [ ] phone number (or remove the row — `TODO` in markup; current
+            placeholder reads "By email first, please.")
+      - [ ] studio location/town (`TODO` in markup; current placeholder
+            reads "Based in South Africa. Shipped nationwide.")
 - [ ] Meryl populates the shop with real products via Sanity Studio
 - [ ] Meryl populates the gallery with real photos via Sanity Studio
 
@@ -233,11 +237,12 @@ step up in complexity and shouldn't be taken lightly.
 Things we deliberately will not build unless the business case changes
 materially.
 
-- **Customer accounts / login.** The site is small, EFT is manual, and
-  tracking is key-based (ref + email). Accounts would be friction for no
-  gain.
+- **Customer accounts / login.** The site is small and order tracking is
+  key-based (ref + email). Accounts would be friction for no gain.
 - **Real-time chat / live support.**
 - **A mobile app.** Everything important works in a mobile browser.
 - **Marketplace features.** Only one seller, not a platform.
-- **Bank API integration for automatic payment confirmation.** Not
-  available for small South African EFT use cases at reasonable cost.
+- **Bank API integration for direct payouts / reconciliation.** PayFast
+  already auto-confirms payments via ITN, so there's no manual confirmation
+  step that bank-API access would shorten. Direct bank integration is
+  also not available for small South African use cases at reasonable cost.

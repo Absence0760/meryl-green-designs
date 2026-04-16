@@ -179,7 +179,9 @@ pending_payment ──► payment_received ──► shipped ──► delivered
 ```
 
 - `pending_payment` — initial state, set when the backend creates the document.
-- `payment_received` — Meryl confirms EFT arrived in her bank.
+- `payment_received` — set automatically by the PayFast ITN handler when
+  payment completes, or manually by Meryl if she has confirmed payment
+  some other way.
 - `shipped` — dispatched. `trackingNumber` should be filled in at this point.
 - `delivered` — optional terminal state. Could be set manually or skipped.
 - `cancelled` — abandoned order. Reason can go in `internalNotes`.
@@ -191,47 +193,41 @@ legitimately need to correct a mistake.
 
 ## Flows
 
-### 1. Creating an order (modified)
+### 1. Creating an order
 
-Current: `POST /orders` validates, sends two emails, returns `{ success, ref }`.
+`POST /orders` accepts a JSON body with customer details and a structured
+`cart` array (`{ productId, quantity }[]`). The handler:
 
-New: same inputs, but after validation and before sending emails:
-
-1. Generate ref as today (`MG-YYMMDD-XXXX`).
-2. **Create a Sanity document** via `@sanity/client` using a write token
-   (`SANITY_API_TOKEN`):
-   ```ts
-   await sanity.create({
-     _type: 'order',
-     orderRef: ref,
-     status: 'pending_payment',
-     customerName: data.name,
-     customerEmail: data.email,
-     customerPhone: data.phone,
-     shippingAddress: data.address,
-     items: data.items,
-     customerNotes: data.notes
-   });
-   ```
-3. Send the owner notification email — includes the full order details and an
-   explicit "reply to this email with your banking details" prompt. This is
-   the owner's cue to send banking info manually (see
-   [`docs/security.md`](./security.md) for why it's manual).
-4. Send the customer acknowledgement email. **This email never contains
-   banking details.** It confirms the order was received, shows the order
-   reference, tells the customer to expect a personal reply from Meryl with
-   the banking details, and includes a tracking link:
-   `https://merylgreendesigns.co.za/track?ref=MG-XXX&email=customer@example.com`
-5. Return `{ success: true, ref }`.
+1. Validate the body (required fields present, email looks like an email,
+   honeypot empty, cart non-empty).
+2. Look up the cart's products in Sanity (`getProductsByIds`) so the price
+   per item comes from the dataset, not from the client. Compute the total
+   server-side.
+3. Generate the ref `MG-YYMMDD-XXXX`.
+4. **Create a Sanity order document** via `@sanity/client` using a write
+   token (`SANITY_API_TOKEN`), with `status: 'pending_payment'`,
+   `paymentMethod: 'payfast'`, and `amountZar` set to the computed total.
+5. Send the owner notification email. The customer-facing
+   acknowledgement is deliberately not sent at this point — PayFast's
+   redirect lands the customer on `/payment/complete`, and the
+   `payment_received` email (triggered by the Sanity webhook) is what
+   they receive. The fallback `pending_payment` template only fires if
+   Meryl manually resets an order.
+6. Build signed PayFast form data (`backend/src/payfast.ts`).
+7. Return `{ success: true, ref, payfast: { action, fields } }`. The
+   browser auto-submits the hidden form to PayFast's hosted checkout.
 
 Failure modes:
 
-- **Sanity create fails**: the whole request fails with 500, no emails are sent.
-  Customer sees an error, can retry. Preferred over the alternative (emails sent
-  but no Sanity record).
-- **Email send fails after Sanity create succeeds**: the order exists in Sanity
-  but the customer didn't get confirmation. Meryl can see it in Sanity and
-  resend manually. Acceptable trade-off.
+- **Sanity create fails**: the whole request fails with 500. No PayFast
+  redirect, no owner email. Customer sees an error and can retry.
+- **Owner notification fails after Sanity create succeeds**: the order
+  exists in Sanity and the customer is still redirected to PayFast.
+  Meryl will see the order in Studio when payment completes (the ITN
+  handler updates the status). Acceptable trade-off.
+- **PayFast signature/build fails**: 500, but the order document
+  already exists in Sanity. Meryl can chase it manually. Rare in
+  practice — signature generation is local crypto.
 
 ### 2. Updating an order status (new)
 
@@ -517,7 +513,9 @@ pending-payment email`) that fails if strings like `account number` or
 ## PayFast payment integration
 
 PayFast is integrated via the **redirect model** (hosted checkout). The
-customer chooses "Pay now" or "Pay by EFT" on the order form.
+customer clicks "Pay now" in the cart panel; PayFast's hosted checkout
+exposes the full set of supported payment methods (cards, Apple Pay,
+SnapScan, Instant EFT, etc.) on its own page.
 
 ### Payment flow
 
@@ -557,10 +555,10 @@ customer chooses "Pay now" or "Pay by EFT" on the order form.
 
 ## What's NOT in this plan
 
-- **Structured order line items** — PayFast orders now use a cart with
-  product references and quantities, but EFT orders still accept free-form
-  text in the `items` field. A unified structured cart for both paths is
-  a future improvement.
+- **Persistent cart** — the cart panel keeps state in memory only. Closing
+  the tab or refreshing empties it. Could be persisted to `localStorage`
+  if abandonment becomes a concern, but the privacy policy would need
+  updating to match.
 - **Stock tracking / inventory** — still just the `available` boolean on products.
 - **Customer accounts / login** — deliberately omitted. Email + ref is the
   "key" to an order. Much simpler than building auth.

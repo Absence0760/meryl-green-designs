@@ -44,7 +44,11 @@ meryl-green-designs/
 │       ├── app.css           Base styles + theme tokens
 │       ├── app.html
 │       ├── lib/
-│       │   └── sanity.ts            Product type, image URL builder, price formatter
+│       │   ├── sanity.ts            Product / GalleryPhoto / Testimonial types, image URL builder, price formatter
+│       │   ├── Button.svelte        Shared button (4 variants × 2 sizes), renders <button> or <a>
+│       │   ├── Cart.svelte          Slide-out cart panel: line items, quantity controls, checkout form
+│       │   ├── cartStore.svelte.ts  Thin rune wrapper exposing the shared cart store ($state)
+│       │   └── cartLogic.ts         Pure cart mutations (add / remove / increment / decrement / total) — testable
 │       └── routes/
 │           ├── +layout.svelte       Header, nav, footer
 │           ├── +layout.ts           export const prerender = true
@@ -79,8 +83,9 @@ meryl-green-designs/
 │       ├── payfast.ts        PayFast signature generation, ITN validation, form-data builder
 │       ├── sanity.ts         @sanity/client wrapper: createOrder, getOrderByRef, getProducts, etc.
 │       └── routes/
-│           ├── products.ts         GET /products — list available products from Sanity
+│           ├── products.ts         GET /products + GET /products/:slug from Sanity
 │           ├── gallery.ts          GET /gallery — list visible gallery photos from Sanity
+│           ├── testimonials.ts     GET /testimonials — list visible testimonials from Sanity
 │           ├── orders.ts           POST /orders — validate + create Sanity doc + PayFast/email
 │           ├── order-lookup.ts     GET /orders/:ref?email= — track page lookup
 │           ├── payfast-itn.ts      POST /webhooks/payfast-itn — PayFast payment confirmation
@@ -94,6 +99,7 @@ meryl-green-designs/
 │       ├── index.ts          Schema registry
 │       ├── product.ts        Product schema (name, price, photos, availability, order)
 │       ├── galleryPhoto.ts   Gallery photo schema (image, caption, visible, order)
+│       ├── testimonial.ts    Testimonial schema (quote, author, location, visible, order)
 │       └── order.ts          Order schema (ref, status, customer, shipping, internal notes)
 ├── infra/
 │   ├── README.md             Bootstrap + apply walkthrough
@@ -166,8 +172,9 @@ This pattern has three deliberate properties:
    is nothing)
 3. **The site stays fully static** — no server, no SSR at runtime, no
    Node process on the hot path. S3 + CloudFront serves everything; the
-   Lambda is only invoked when a browser makes an `/orders`, `/products`,
-   `/gallery`, or `/webhooks/sanity-order` call
+   Lambda is only invoked when a browser hits `/orders`, `/products`,
+   `/products/:slug`, `/gallery`, or `/testimonials`, or when Sanity or
+   PayFast posts to a `/webhooks/*` endpoint
 
 If the backend is unreachable when the client tries to fetch, the component
 shows an error state and the skeleton clears. Empty responses (no products
@@ -194,9 +201,17 @@ difference is how requests reach the app.
   Sanity. Called by the frontend's shop page at runtime (client-side `fetch`
   in `onMount`). This endpoint exists so the Sanity dataset can stay private
   while the product catalogue is still visible on the public site.
+- `GET /products/:slug` — returns a single published, available product by
+  slug. Called by the frontend's `/shop/[slug]` detail page at runtime.
+  Returns 404 when no matching product exists, which the page renders as
+  a "product not found" state.
 - `GET /gallery` — returns the list of visible gallery photos from Sanity,
-  ordered by the `order` field. Called by the frontend's gallery page at
-  runtime, same pattern as `/products`.
+  ordered by the `order` field. Called by the frontend's gallery page and
+  the home page's featured-photographs band at runtime.
+- `GET /testimonials` — returns the list of visible testimonials from
+  Sanity, ordered by the `order` field. Called by the home page at
+  runtime; the testimonials section silently no-ops if the response is
+  empty or the fetch fails.
 - `POST /orders` — accepts an order JSON body with a `cart` array, validates
   it, looks up product prices in Sanity, generates a reference `MG-YYMMDD-XXXX`,
   **creates a Sanity `order` document**, sends the owner notification email,
@@ -233,7 +248,9 @@ in `src/email.ts`. Templates are extracted into `src/email-templates.ts`,
 keyed by order status:
 
 - `ownerNotification()` — sent to Meryl on every new order
-- `pending_payment` — customer confirmation with EFT banking details
+- `pending_payment` — fallback "we've received your order, awaiting payment"
+  (the normal PayFast flow redirects straight to checkout, so this template
+  only fires if Meryl manually resets an order's status)
 - `payment_received` — "we got your payment, shipping soon"
 - `shipped` — "on the way", including tracking info if present
 - `delivered` — optional "hope you love it"
@@ -246,9 +263,11 @@ time.
 ### Sanity client
 
 `src/sanity.ts` wraps `@sanity/client` and exposes `createOrder()`,
-`getOrderByRef()`, `getProducts()`, and `getGalleryPhotos()`. Uses
-`SANITY_API_TOKEN` for authentication — writes and reads both require the
-token, because the dataset is configured as private in the Sanity dashboard.
+`updateOrderPayment()`, `getOrderByRef()`, `getProducts()`,
+`getProductBySlug()`, `getProductsByIds()`, `getGalleryPhotos()`, and
+`getTestimonials()`. Uses `SANITY_API_TOKEN` for authentication — writes
+and reads both require the token, because the dataset is configured as
+private in the Sanity dashboard.
 The frontend never talks to Sanity's query API directly; it only builds
 image URLs from the public asset CDN using the project ID baked into its
 bundle.
@@ -268,8 +287,8 @@ application, not part of the SvelteKit app. It runs in one of three places:
 
 Schemas are defined in `studio/schemas/`. Adding a new schema means creating a
 file, registering it in `schemas/index.ts`, and (usually) adding a backend
-route that fetches it via the authenticated Sanity client. Three schemas
-currently exist: `product`, `galleryPhoto`, and `order`.
+route that fetches it via the authenticated Sanity client. Four schemas
+currently exist: `product`, `galleryPhoto`, `testimonial`, and `order`.
 
 The studio reads `SANITY_STUDIO_PROJECT_ID` and `SANITY_STUDIO_DATASET` from its
 own `.env`. The frontend reads the *same* project via `PUBLIC_SANITY_PROJECT_ID`

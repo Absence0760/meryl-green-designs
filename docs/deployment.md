@@ -618,6 +618,7 @@ time; rebuilding is required to change them.
 | Variable | Source |
 |---|---|
 | `PUBLIC_API_URL` | `lambda_function_url` Terraform output |
+| `PUBLIC_SITE_URL` | tfvars `site_url` (e.g. `https://merylgreendesigns.co.za`) — used to build absolute Open Graph / Twitter Card URLs |
 | `PUBLIC_SANITY_PROJECT_ID` | tfvars `sanity_project_id` |
 | `PUBLIC_SANITY_DATASET` | tfvars `sanity_dataset` |
 
@@ -817,24 +818,27 @@ something, roll back by either:
 
 ## Adding a new content type
 
-Suppose you want to add "testimonials" or "blog posts" to the CMS. The
-pattern for doing so is consistent across all the document types we have
-today (`product`, `galleryPhoto`, `order`):
+Suppose you want to add a new content type to the CMS — for example,
+"FAQ entries" or "press mentions". The pattern is consistent across the
+document types we already have (`product`, `galleryPhoto`, `testimonial`,
+`order`); the example below uses a hypothetical `pressMention` to keep
+the worked code distinct from anything already shipped.
 
 ### 1. Create the Sanity schema
 
-Create `studio/schemas/testimonial.ts`:
+Create `studio/schemas/pressMention.ts`:
 
 ```typescript
 import { defineField, defineType } from 'sanity';
 
-export const testimonial = defineType({
-  name: 'testimonial',
-  title: 'Testimonial',
+export const pressMention = defineType({
+  name: 'pressMention',
+  title: 'Press mention',
   type: 'document',
   fields: [
-    defineField({ name: 'author', type: 'string', validation: (r) => r.required() }),
-    defineField({ name: 'quote', type: 'text', rows: 4, validation: (r) => r.required() }),
+    defineField({ name: 'publication', type: 'string', validation: (r) => r.required() }),
+    defineField({ name: 'headline', type: 'string', validation: (r) => r.required() }),
+    defineField({ name: 'url', type: 'url' }),
     defineField({ name: 'visible', type: 'boolean', initialValue: true }),
     defineField({ name: 'order', type: 'number', initialValue: 0 })
   ],
@@ -842,15 +846,18 @@ export const testimonial = defineType({
 });
 ```
 
+(See `studio/schemas/testimonial.ts` in the repo for a fuller example
+with field descriptions, validation limits, and a custom preview.)
+
 ### 2. Register it in the schema index
 
 `studio/schemas/index.ts`:
 
 ```typescript
-import { testimonial } from './testimonial';
+import { pressMention } from './pressMention';
 // ... plus existing imports ...
 
-export const schemaTypes = [product, galleryPhoto, order, testimonial];
+export const schemaTypes = [product, galleryPhoto, testimonial, order, pressMention];
 ```
 
 ### 3. Add the backend type + query helper
@@ -859,41 +866,42 @@ In `backend/src/sanity.ts`, add the TypeScript type, the GROQ query, and a
 fetcher:
 
 ```typescript
-export type SanityTestimonial = {
+export type SanityPressMention = {
   _id: string;
-  author: string;
-  quote: string;
+  publication: string;
+  headline: string;
+  url: string | null;
   visible: boolean;
   order: number;
 };
 
-const TESTIMONIALS_QUERY = `*[_type == "testimonial" && visible == true] | order(order asc) {
-  _id, author, quote, visible, order
+const PRESS_MENTIONS_QUERY = `*[_type == "pressMention" && visible == true] | order(order asc) {
+  _id, publication, headline, url, visible, order
 }`;
 
-export async function getTestimonials(): Promise<SanityTestimonial[]> {
+export async function getPressMentions(): Promise<SanityPressMention[]> {
   const client = getClient();
-  return client.fetch<SanityTestimonial[]>(TESTIMONIALS_QUERY);
+  return client.fetch<SanityPressMention[]>(PRESS_MENTIONS_QUERY);
 }
 ```
 
 ### 4. Create the backend route
 
-`backend/src/routes/testimonials.ts`:
+`backend/src/routes/press-mentions.ts`:
 
 ```typescript
 import { Hono } from 'hono';
-import { getTestimonials } from '../sanity.js';
+import { getPressMentions } from '../sanity.js';
 
-export const testimonials = new Hono();
+export const pressMentions = new Hono();
 
-testimonials.get('/', async (c) => {
+pressMentions.get('/', async (c) => {
   try {
-    const list = await getTestimonials();
-    return c.json({ testimonials: list });
+    const list = await getPressMentions();
+    return c.json({ pressMentions: list });
   } catch (err) {
-    console.error('Failed to fetch testimonials', err);
-    return c.json({ testimonials: [], error: 'Failed to load' }, 500);
+    console.error('Failed to fetch press mentions', err);
+    return c.json({ pressMentions: [], error: 'Failed to load' }, 500);
   }
 });
 ```
@@ -901,9 +909,9 @@ testimonials.get('/', async (c) => {
 ### 5. Mount it in `app.ts`
 
 ```typescript
-import { testimonials } from './routes/testimonials.js';
+import { pressMentions } from './routes/press-mentions.js';
 // ...
-app.route('/testimonials', testimonials);
+app.route('/press-mentions', pressMentions);
 ```
 
 ### 6. Frontend consumption
@@ -922,7 +930,7 @@ Two options depending on the route's characteristics:
 
 ```bash
 git add studio/ backend/ frontend/
-git commit -m "feat: add testimonials content type"
+git commit -m "feat: add press-mentions content type"
 git push origin main
 gh release create v0.4.0 --generate-notes --target main
 ```
@@ -937,7 +945,7 @@ If the new type should trigger content rebuilds, extend the content-rebuild
 Sanity webhook's GROQ filter to include it:
 
 ```groq
-_type == "product" || _type == "galleryPhoto" || _type == "testimonial"
+_type == "product" || _type == "galleryPhoto" || _type == "testimonial" || _type == "pressMention"
 ```
 
 ## Cost expectations

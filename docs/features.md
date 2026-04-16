@@ -3,9 +3,10 @@
 This document describes what the site currently does.
 
 The code and UI are complete for v1. Remaining pre-launch items are content
-(real contact email, Meryl's own products and gallery photos in Sanity
-Studio) and Meryl's reusable banking-details reply block (a saved email
-snippet, not anything in the repo) — see [`roadmap.md`](./roadmap.md).
+(real contact details on the contact page — email, phone, studio
+location; Meryl's own products and gallery photos in Sanity Studio) and
+Meryl's reusable banking-details reply block (a saved email snippet, not
+anything in the repo) — see [`roadmap.md`](./roadmap.md).
 
 ## Site-wide
 
@@ -184,24 +185,35 @@ snippet, not anything in the repo) — see [`roadmap.md`](./roadmap.md).
   that swaps for real content after hydration.
 - **Empty state** when no products have been published. **Error state**
   when the backend is unreachable.
-- **"Enquire / Order" button** pre-fills the order form's items field with
-  `1 x {product name} — R{price}` and smooth-scrolls to the form. Multiple
-  clicks append new lines so customers can order several items in one submit.
-- **Order form** with fields for name, email, phone (optional), shipping
-  address, items, and notes. All inputs have proper `name`, `id`,
-  `autocomplete`, and `inputmode` attributes so mobile autofill and form
-  fillers work correctly. Required fields show a red `*` and a legend
-  explains the marker. The submit button is full-width and visibly primary.
-  A hidden honeypot field (`name="website"`, offscreen-absolute) deters
-  simple bots.
+- **"Add to order" button** on each product tile and detail page pushes
+  the product into the shared cart store and opens the cart panel.
+  Multiple clicks on the same product increment its quantity in place
+  rather than creating duplicate line items.
+- **Order form (inside the cart panel)** with fields for name, email,
+  phone (optional), shipping address, and notes. All inputs have proper
+  `name`, `id`, and `autocomplete` attributes so mobile autofill works
+  correctly. Required fields show a red `*`. A hidden honeypot field
+  (`name="website"`, offscreen-absolute) deters simple bots. The
+  cart-line items are submitted as a structured `cart` array
+  (`{ productId, quantity }[]`) — there is no free-form items textarea.
 - **Submission flow**: the form POSTs JSON to the backend's `/orders`
-  endpoint. On success, the form is replaced by a confirmation showing the
-  unique order reference (`MG-YYMMDD-XXXX`). On failure, an error alert is
-  shown and the form remains editable.
-- **Cart with quantity controls** — clicking "Add to order" on a product
-  adds it to a cart summary above the order form. Quantities are adjustable
-  with +/- buttons. The cart total is computed and displayed. The backend
-  verifies prices against Sanity to prevent tampering.
+  endpoint. The backend validates, looks up product prices in Sanity,
+  creates the Sanity order document (status `pending_payment`), sends
+  the owner notification email, and returns signed PayFast form data.
+  The browser auto-submits a hidden form to PayFast, clearing the cart
+  on the way out. On failure, an error alert is shown inside the cart
+  panel and the form remains editable.
+- **Slide-out cart panel** — a persistent cart icon in the header opens a
+  right-anchored panel (`frontend/src/lib/Cart.svelte`) with an
+  `Escape`/backdrop-click close. Clicking "Add to order" on a product
+  card or detail page pushes into a shared store
+  (`frontend/src/lib/cartStore.svelte.ts`, backed by `$state`) and the
+  panel reflects the change immediately. Each line item has +/- quantity
+  controls and a remove button; the cart total is computed live. The
+  order form (name / email / phone / address / notes, plus a hidden
+  honeypot) lives inside the panel under the line items, so checkout is
+  a single contiguous flow rather than a separate page section. The
+  backend verifies prices against Sanity to prevent tampering.
 - **PayFast payment** — clicking "Pay now" redirects the customer to
   PayFast's hosted payment page. After payment, they land on
   `/payment/complete`. PayFast sends an ITN (server-to-server callback)
@@ -319,12 +331,27 @@ snippet, not anything in the repo) — see [`roadmap.md`](./roadmap.md).
 
 - **Routes**:
   - `GET /health` — uptime check, returns `{ ok: true }`
-  - `POST /orders` — create a new order (validates, creates Sanity doc,
-    sends owner notification + customer confirmation)
+  - `GET /products` — list of published, available products from Sanity
+    (called by the shop page on hydration)
+  - `GET /products/:slug` — single product by slug (called by the
+    `/shop/[slug]` detail page on hydration); 404 if the slug doesn't
+    match a published product
+  - `GET /gallery` — list of visible gallery photos from Sanity
+    (called by the gallery page and the home featured-band on hydration)
+  - `GET /testimonials` — list of visible testimonials from Sanity
+    (called by the home page on hydration; section silently no-ops when
+    empty)
+  - `POST /orders` — create a new order (validates, looks up product
+    prices in Sanity, creates Sanity doc, sends owner notification, and
+    returns signed PayFast form data for redirect)
   - `GET /orders/:ref?email=…` — email-verified order lookup for the
     customer-facing `/track` page
   - `POST /webhooks/sanity-order` — receives Sanity webhook on order update,
     verifies HMAC-SHA256 signature, sends the matching status email
+  - `POST /webhooks/payfast-itn` — receives PayFast Instant Transaction
+    Notifications, validates the MD5 signature + amount, and updates the
+    order status to `payment_received` (which triggers the Sanity webhook
+    above)
 - **Validation**: required fields (name, email, address, items) must be present;
   email must look like an email; fields have maximum lengths.
 - **Order reference**: generated server-side as `MG-{YY}{MM}{DD}-{4 random
@@ -355,8 +382,7 @@ See [roadmap.md](./roadmap.md) for the full list. Notable absences:
 - No search.
 - No progressive enhancement on the order form: JavaScript is required to submit
   it, because the backend is a different origin.
-- No structured order line items — the order form still uses a free-form items
-  textarea, pre-filled from product clicks. Meryl manually reads what was
-  ordered from the Studio / order email.
+- No "guest cart persistence" — the cart is in-memory only. Refreshing the
+  page or closing the tab empties it.
 - No refund handling in the data model — the `cancelled` status doesn't
   distinguish between "never paid" and "refunded".

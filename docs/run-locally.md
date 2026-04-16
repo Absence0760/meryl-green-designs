@@ -186,7 +186,7 @@ page should show the current order status.
 
 The status-change email fires from a Sanity webhook, which needs a
 publicly-reachable backend URL. To test locally, run an ngrok tunnel to
-`localhost:3001`, point a Sanity webhook at `<ngrok-url>/webhooks/sanity`
+`localhost:3001`, point a Sanity webhook at `<ngrok-url>/webhooks/sanity-order`
 with `SANITY_WEBHOOK_SECRET` as the shared secret, and re-publish an order
 with a new status. See [`orders-and-tracking.md`](./orders-and-tracking.md)
 for the full webhook wiring. Skip this on the first pass — everything else

@@ -237,10 +237,10 @@
 		<p>
 			This website does <strong>not</strong> use cookies for tracking
 			or advertising. It does not use Google Analytics, Facebook
-			pixels, or any comparable behavioural-tracking tools. Browser
-			storage (local storage) is only used to remember the contents
-			of your cart while you are shopping, and that data stays on
-			your device — we do not receive it.
+			pixels, or any comparable behavioural-tracking tools. Your
+			cart is held in memory while you browse and is cleared when
+			you close the tab or refresh the page — we do not store it
+			on your device or on our servers.
 		</p>
 
 		<h2>Your rights under POPIA</h2>

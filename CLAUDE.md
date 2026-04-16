@@ -4,7 +4,7 @@ Guidance for Claude Code working in this repository. Keep this file short — it
 
 ## Project
 
-Meryl Green Designs — website for a small South African studio selling handcrafted screens and designs. Static brochure + gallery, a shop that takes orders via Electronic Funds Transfer (no card processor), and a Sanity CMS the owner uses to manage products.
+Meryl Green Designs — website for a small South African studio selling handcrafted screens and designs. Static brochure + gallery, a shop that takes payments via PayFast (cards, Apple Pay, SnapScan, Instant EFT — redirect model, no card data on our servers), and a Sanity CMS the owner uses to manage products.
 
 ## Stack
 
