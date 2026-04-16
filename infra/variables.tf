@@ -98,6 +98,18 @@ variable "payfast_sandbox" {
 
 # --- Monthly budget alerts ---
 
+variable "lambda_reserved_concurrency" {
+  description = <<-EOT
+    Cap on concurrent invocations of the backend Lambda. Default 20 is well
+    above expected organic load (this site sees a handful of orders per
+    week) but caps blast radius if an attacker bypasses the in-memory
+    rate limiter. Setting to -1 removes the cap and falls back to the
+    account default (1000 in af-south-1).
+  EOT
+  type        = number
+  default     = 20
+}
+
 variable "monthly_budget_usd" {
   description = <<-EOT
     Monthly AWS spend cap (USD) used for budget-alert thresholds. The budget

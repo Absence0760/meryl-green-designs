@@ -11,8 +11,8 @@
 #   5. Reads `terraform output -json` to get bucket names, ARNs, URLs
 #   6. Creates the `production` GitHub Actions environment if missing
 #   7. Populates all 8 GitHub environment variables via the `gh` CLI
-#   8. (If SANITY_ADMIN_TOKEN is set) creates the backend Sanity webhook and
-#      flips the dataset to Private
+#   8. Creates the backend Sanity webhook and flips the dataset to Private
+#      (verifies aclMode after — fails the run if the change didn't take)
 #   9. Prints a final checklist of the remaining manual steps (Resend
 #      domain verification, content-rebuild webhook, etc.)
 #
@@ -24,10 +24,10 @@
 #   - jq (JSON parser)
 #   - af-south-1 region enabled in your AWS account
 #   - infra/terraform.tfvars exists and is filled in
-#
-#   For Sanity automation (optional):
-#   - SANITY_ADMIN_TOKEN env var set to a token from
+#   - SANITY_ADMIN_TOKEN env var set to an Administrator token from
 #     https://www.sanity.io/manage → project → API → Tokens
+#     (REQUIRED — without it the dataset can't be flipped to private and
+#     order documents would be queryable by anyone with the project ID)
 #
 # Usage:
 #
@@ -123,6 +123,30 @@ check_prereqs() {
 	else
 		fatal "GitHub CLI is not authenticated. Run: gh auth login"
 	fi
+
+	# SANITY_ADMIN_TOKEN is required up-front. Without it, the script can't
+	# flip the dataset to private — and a public dataset exposes every order
+	# document (PII) to anyone with the project ID (which ships in the
+	# frontend bundle). Fail fast, before doing any AWS work.
+	if [[ -z "${SANITY_ADMIN_TOKEN:-}" ]]; then
+		err "SANITY_ADMIN_TOKEN environment variable is not set."
+		log ""
+		log "This token is required so the script can flip the Sanity dataset"
+		log "to private. Without it, your order documents (containing customer"
+		log "PII) would be queryable by anyone with the project ID."
+		log ""
+		log "Create one at:"
+		log "  https://www.sanity.io/manage → project → API → Tokens → Add API token"
+		log "  Permissions: Administrator"
+		log ""
+		log "Then re-run:"
+		log "  SANITY_ADMIN_TOKEN=<token> ./bin/setup.sh"
+		log ""
+		log "(You can delete the token after this script finishes — it's only"
+		log "used during setup, never stored anywhere persistent.)"
+		exit 1
+	fi
+	ok "SANITY_ADMIN_TOKEN is set"
 
 	ensure_plaintext_tfvars
 }
@@ -398,15 +422,10 @@ populate_github() {
 setup_sanity() {
 	step "Setting up Sanity webhook + dataset privacy"
 
+	# SANITY_ADMIN_TOKEN is checked up-front in check_prereqs — assert
+	# defensively in case this function is invoked out of order.
 	if [[ -z "${SANITY_ADMIN_TOKEN:-}" ]]; then
-		warn "SANITY_ADMIN_TOKEN env var is not set — skipping Sanity automation"
-		log "To automate these steps, create a token at:"
-		log "  https://www.sanity.io/manage → project → API → Tokens → Add API token"
-		log "  (Permissions: Administrator)"
-		log "Then re-run:"
-		log "  SANITY_ADMIN_TOKEN=<token> ./bin/setup.sh"
-		SANITY_AUTOMATED=0
-		return
+		fatal "SANITY_ADMIN_TOKEN env var is unset — this should have been caught in check_prereqs"
 	fi
 
 	if [[ -z "$SANITY_WEBHOOK_SECRET" ]]; then
@@ -420,7 +439,7 @@ setup_sanity() {
 	local api="https://api.sanity.io/v2021-06-07/projects/$SANITY_PROJECT_ID"
 	local webhook_url="${LAMBDA_FUNCTION_URL%/}/webhooks/sanity-order"
 
-	# ---- Flip dataset to private (idempotent) ----
+	# ---- Flip dataset to private (idempotent) + verify ----
 	log "Setting dataset '$SANITY_DATASET' to private..."
 	if (( DRY_RUN )); then
 		log "  [dry run] skipped"
@@ -430,11 +449,24 @@ setup_sanity() {
 			-H "Authorization: Bearer $SANITY_ADMIN_TOKEN" \
 			-H "Content-Type: application/json" \
 			-d '{"aclMode": "private"}' 2>&1)" || {
-			err "Failed to flip dataset to private: $response"
-			SANITY_AUTOMATED=0
-			return
+			fatal "Failed to flip dataset to private: $response"
 		}
-		ok "Dataset set to private"
+
+		# Verify the change took effect — Sanity's PATCH can return 200 even
+		# when the change wasn't applied (e.g. token lacks permission for
+		# the specific operation). Independently query the current aclMode
+		# before claiming success.
+		local current_acl
+		current_acl="$(curl -fsS \
+			-H "Authorization: Bearer $SANITY_ADMIN_TOKEN" \
+			"$api/datasets" \
+			| jq -r --arg name "$SANITY_DATASET" \
+				'.[] | select(.name == $name) | .aclMode' 2>/dev/null || true)"
+
+		if [[ "$current_acl" != "private" ]]; then
+			fatal "Dataset privacy verification failed — aclMode is '$current_acl', expected 'private'. Check the token's permissions in the Sanity dashboard."
+		fi
+		ok "Dataset confirmed private (aclMode=private)"
 	fi
 
 	# ---- Create backend webhook (check first, skip if exists) ----

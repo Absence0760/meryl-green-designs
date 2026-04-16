@@ -6,6 +6,9 @@ Terraform configuration for the Meryl Green Designs AWS resources.
 
 - **S3 bucket** hosting the prerendered SvelteKit site
 - **CloudFront distribution** with Origin Access Control in front of the bucket
+- **CloudFront response headers policy** applying HSTS (1y, includeSubDomains,
+  preload), X-Frame-Options DENY, X-Content-Type-Options nosniff, and
+  Referrer-Policy strict-origin-when-cross-origin to every response
 - **ACM certificate** (in us-east-1, as CloudFront requires) with DNS validation
 - **Route 53 records** for the apex domain, `www`, and cert validation
 - **Lambda function** running the Hono backend as an ESM bundle

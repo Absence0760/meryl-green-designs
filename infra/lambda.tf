@@ -72,6 +72,13 @@ resource "aws_lambda_function" "backend" {
   # at the same per-ms price.
   memory_size = 512
 
+  # Cap concurrent invocations as a defence-in-depth complement to the
+  # in-memory rate limiter (backend/src/rate-limit.ts). Without this,
+  # a distributed attacker that bypasses per-IP limits could fan out to
+  # the account-default 1000 concurrent Lambdas — each invocation calls
+  # Sanity, which has its own quotas. See variables.tf for the rationale.
+  reserved_concurrent_executions = var.lambda_reserved_concurrency
+
   environment {
     variables = {
       RESEND_API_KEY        = var.resend_api_key

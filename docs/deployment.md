@@ -97,10 +97,19 @@ it again; it will pick up where it left off.
 5. Reads outputs from `terraform output -json`
 6. Creates the `production` GitHub Actions environment
 7. Populates all 8 GitHub Actions **variables** from the Terraform outputs
-8. *(if `SANITY_ADMIN_TOKEN` is set)* Flips the Sanity dataset to private
-9. *(if `SANITY_ADMIN_TOKEN` is set)* Creates the backend webhook for order
-   status emails (idempotent: skips if a webhook with the same name exists)
+8. Flips the Sanity dataset to private and **verifies** the change took
+   effect (fails the run otherwise — order documents must not be queryable
+   anonymously)
+9. Creates the backend webhook for order status emails (idempotent: skips
+   if a webhook with the same name exists)
 10. Prints a final checklist of the remaining manual steps
+
+`SANITY_ADMIN_TOKEN` is **required** — the script fails fast at the
+prerequisite check if it's unset. This used to be optional and silently
+skip Sanity automation, which left the dataset queryable by anyone with
+the project ID (which ships in the deployed JS bundle). The token is only
+used during this run; it can be deleted from the Sanity dashboard after
+setup completes.
 
 **What it does NOT automate** (because it genuinely can't):
 
@@ -380,9 +389,12 @@ webhooks and change dataset privacy).
 4. Copy the value. You'll use it as an environment variable in the next step,
    and can safely delete it afterwards if you want
 
-If you skip this step, the script will still run, but it'll leave the Sanity
-dataset public and won't create the order-status webhook. You can run it
-again later with the token set.
+**This token is required.** `bin/setup.sh` fails fast at the prerequisite
+check if `SANITY_ADMIN_TOKEN` is unset — without it, the dataset stays
+queryable by anyone with the project ID (which ships in the deployed
+frontend bundle), exposing every order document to the public internet.
+Delete the token from the Sanity dashboard once setup is complete; it's
+only used for the duration of this run.
 
 ### Step 4. Run the setup script
 
@@ -1165,10 +1177,18 @@ is separate from AWS).
   Account → AWS Regions → Enable *Africa (Cape Town)*. Takes ~5 minutes
   before the region responds.
 
-**Setup script: "SANITY_ADMIN_TOKEN env var is not set"**
-: Not fatal — the AWS and GitHub parts will still run. You can re-run the
-  script later with the token set to automate the Sanity dataset privacy and
-  webhook creation. Or do those two steps manually in the Sanity dashboard.
+**Setup script: "SANITY_ADMIN_TOKEN environment variable is not set"**
+: **Fatal** — the script refuses to run without it because dataset privacy
+  is non-negotiable. Create an Administrator token at the Sanity dashboard
+  (Project → API → Tokens → Add API token), export it
+  (`export SANITY_ADMIN_TOKEN=<token>`), and re-run. Delete the token after
+  setup completes; it's only used during this run.
+
+**Setup script: "Dataset privacy verification failed"**
+: The PATCH succeeded but the dataset's `aclMode` didn't actually change
+  to `private`. This usually means the token lacks the right scope —
+  create a fresh token with `Administrator` permissions in the Sanity
+  dashboard and re-run.
 
 **Setup script: Sanity webhook creation returns 401**
 : Your `SANITY_ADMIN_TOKEN` doesn't have Administrator scope. Create a new

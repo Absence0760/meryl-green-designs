@@ -47,6 +47,11 @@ payfast_merchant_key = ""
 payfast_passphrase   = ""
 payfast_sandbox      = "false"
 
+# Cap on concurrent Lambda invocations. Default 20 is far above expected
+# organic load and caps blast radius for traffic spikes / abuse attempts.
+# Set to -1 to remove the cap (falls back to the AWS account default).
+lambda_reserved_concurrency = 20
+
 # Monthly AWS spend cap (USD). Email alerts fire at 50% / 80% / 100% of
 # actual spend, plus a forecast alert when AWS predicts you'll exceed it.
 # Default $30 is several multiples of the expected ~$1-2/month baseline.
