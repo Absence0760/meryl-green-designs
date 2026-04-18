@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { sendEmail } from '../email.js';
 import { ownerNotification } from '../email-templates.js';
 import { createOrder, getProductsByIds } from '../sanity.js';
@@ -75,8 +75,14 @@ function siteUrl(): string {
 	return (process.env.SITE_URL ?? 'http://localhost:7777').replace(/\/$/, '');
 }
 
-function apiUrl(): string {
-	return (process.env.API_URL ?? `http://localhost:${process.env.PORT ?? '3001'}`).replace(/\/$/, '');
+// Backend base URL for PayFast's notify_url (where ITN callbacks land).
+// Derived from the incoming request so Terraform doesn't need to set an
+// API_URL env var — which would create a cycle with the Lambda Function
+// URL resource. Env override kept for local ngrok testing, where the
+// request arrives at localhost but PayFast must call the public tunnel.
+function apiUrl(c: Context): string {
+	const override = process.env.API_URL?.trim();
+	return (override || new URL(c.req.url).origin).replace(/\/$/, '');
 }
 
 export function ordersRouter() {
@@ -210,7 +216,7 @@ export function ordersRouter() {
 		}
 
 		const site = siteUrl();
-		const api = apiUrl();
+		const api = apiUrl(c);
 
 		const formData = buildPaymentFormData(pfConfig, {
 			orderRef: ref,
