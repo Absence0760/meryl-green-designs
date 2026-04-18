@@ -190,12 +190,238 @@ page should show the current order status.
 **6. (Optional) Test the status-change email**
 
 The status-change email fires from a Sanity webhook, which needs a
-publicly-reachable backend URL. To test locally, run an ngrok tunnel to
-`localhost:3001`, point a Sanity webhook at `<ngrok-url>/webhooks/sanity-order`
-with `SANITY_WEBHOOK_SECRET` as the shared secret, and re-publish an order
-with a new status. See [`orders-and-tracking.md`](./orders-and-tracking.md)
-for the full webhook wiring. Skip this on the first pass — everything else
-works without it.
+publicly-reachable backend URL. Skip on the first pass — everything else
+works without it. Full walkthrough (ngrok, secret, dashboard config,
+filter) in [Testing the Sanity order-status webhook](#testing-the-sanity-order-status-webhook)
+below.
+
+## Testing PayFast with sandbox credentials
+
+PayFast provides a public sandbox merchant that anyone can use for testing —
+no account registration, no real money moves. Use it to exercise the full
+checkout flow locally before wiring up Meryl's real PayFast credentials.
+
+### Sandbox credentials
+
+These are public test values. Safe to commit into `backend/.env` (which is
+gitignored anyway). Never use them in production.
+
+```ini
+PAYFAST_MERCHANT_ID=10004002
+PAYFAST_MERCHANT_KEY=q1cd2rdny4a53
+PAYFAST_PASSPHRASE=payfast
+PAYFAST_SANDBOX=true
+```
+
+With `PAYFAST_SANDBOX=true` the backend signs form data against
+`https://sandbox.payfast.co.za/eng/process` instead of the live endpoint.
+Browsing that URL directly returns a 400 — it only accepts POST with signed
+fields, which the frontend auto-submits after `POST /orders` succeeds.
+
+Restart the backend (`Ctrl+C` and re-run `pnpm backend dev`) after editing
+`.env` — `tsx watch` does not auto-reload on env changes.
+
+### Smoke-test the order endpoint
+
+```bash
+# Grab a real product ID from Sanity
+curl -s http://localhost:3001/products | head -c 400
+
+# Place an order (replace PRODUCT_ID)
+curl -i -X POST http://localhost:3001/orders \
+  -H 'Content-Type: application/json' \
+  -H 'Origin: http://localhost:7777' \
+  -d '{"name":"Test User","email":"you@example.com","phone":"0821234567","address":"1 Main St, Cape Town, 8001","notes":"","cart":[{"productId":"PRODUCT_ID","quantity":1}],"paymentMethod":"payfast"}'
+```
+
+A healthy response is `HTTP/1.1 200` with a `payfast` block in the body:
+
+```json
+{
+  "success": true,
+  "ref": "MG-260417-XXXXXX",
+  "payfast": {
+    "action": "https://sandbox.payfast.co.za/eng/process",
+    "fields": { "merchant_id": "10004002", "signature": "...", ... }
+  }
+}
+```
+
+Common failure modes:
+
+- **`500 "Payment processing is not configured."`** — one of the four
+  `PAYFAST_*` vars is empty. Check `grep PAYFAST backend/.env` and restart.
+- **`200` with `warning` but no `payfast` block** — the owner notification
+  email failed (usually missing/invalid `RESEND_API_KEY`), which early-returns
+  before payment form data is built. Fix Resend config and retry.
+- **`400 "Please enter your name."` (or similar)** — request body shape is
+  wrong. The backend expects top-level `name`/`email`/`phone`/`address`/`notes`
+  plus a `cart` of `{productId, quantity}` objects — **not** nested under
+  `customer` and **not** `slug`.
+
+### Full round-trip via the UI
+
+Fastest way to see the sandbox checkout page render:
+
+1. `pnpm dev`
+2. Browser → http://localhost:7777/shop
+3. Add a product → check out → fill the form → submit
+4. The browser auto-submits a hidden form to sandbox PayFast; you land on
+   their hosted payment page
+5. Pay with the sandbox test card below (or click "Complete Payment")
+6. PayFast redirects to `/payment/complete?ref=MG-...`
+
+#### Sandbox test cards
+
+| Card number | Outcome |
+|---|---|
+| `4000 0000 0000 0002` | Visa — always approves |
+| `5200 0000 0000 0015` | Mastercard — always approves |
+
+CVV: any 3 digits. Expiry: any future date.
+
+### Enabling ITN callbacks with ngrok
+
+The steps above exercise order creation and the customer redirect, but
+**PayFast's ITN webhook won't reach your laptop** — `notify_url` defaults
+to `http://localhost:3001/webhooks/payfast-itn`, which PayFast's servers
+can't resolve. Without ITN, orders stay on `awaiting_payment` in Sanity
+even after "paying" in the sandbox.
+
+To close the loop, expose the backend with ngrok:
+
+**1. Install and authenticate** (one-time)
+
+```bash
+brew install ngrok
+# Grab your authtoken from https://dashboard.ngrok.com/get-started/your-authtoken
+ngrok config add-authtoken <YOUR_TOKEN>
+```
+
+**2. Start the tunnel** (leave running in its own terminal)
+
+```bash
+ngrok http 3001
+```
+
+Copy the `https://<random>.ngrok-free.app` URL from the forwarding line.
+
+**3. Update `backend/.env`**
+
+```ini
+API_URL=https://<random>.ngrok-free.app
+```
+
+Restart the backend. New orders will have the ngrok URL baked into their
+`notify_url`. (Orders placed *before* the change keep the old URL and their
+ITN will never arrive — that's fine for testing, just place a fresh order.)
+
+**4. Verify the ITN arrives**
+
+Place and complete a new sandbox order. You should see:
+
+- A `POST /webhooks/payfast-itn` line in the ngrok terminal
+- `ITN verified` (or similar) in the backend logs
+- The order status flip from `awaiting_payment` to `payment_received` in
+  Sanity Studio at :3333
+
+**Gotchas:**
+
+- ngrok's free tier assigns a new URL on every restart. Restart ngrok →
+  update `API_URL` → restart the backend. Paid plans offer stable subdomains.
+- The `ngrok-free.app` browser warning page only affects GET requests from
+  browsers; PayFast's server-to-server POST bypasses it.
+- If the ITN signature fails, double-check `PAYFAST_PASSPHRASE=payfast`
+  (lowercase, exactly). A wrong passphrase produces a silently-invalid
+  signature with no obvious error.
+
+### Moving to production
+
+Once the sandbox flow works end-to-end, swap to Meryl's real credentials.
+She'll provide them after registering at [payfast.co.za](https://payfast.co.za)
+(needs SA bank account + ID) and activating her account for the payment
+methods you want to accept. Set `PAYFAST_SANDBOX=false` (or unset it) and
+populate the real `PAYFAST_MERCHANT_ID`, `PAYFAST_MERCHANT_KEY`, and
+`PAYFAST_PASSPHRASE` via
+[`deployment.md § Secrets management`](./deployment.md#secrets-management).
+
+## Testing the Sanity order-status webhook
+
+PayFast's ITN flips orders to `payment_received` in Sanity, but the customer
+"payment received" email doesn't fire automatically — it's sent by the
+**Sanity webhook**, which POSTs to `/webhooks/sanity-order` whenever an
+order's `status` field changes. To test this end-to-end locally you need
+three things: a shared secret in `backend/.env`, a webhook configured in
+Sanity's dashboard, and the same ngrok tunnel used for PayFast ITN.
+
+This is optional — everything except customer status emails works without
+it. Skip on first pass, come back when you want to verify the email flow.
+
+### 1. Generate the shared secret
+
+```bash
+openssl rand -hex 32
+```
+
+Paste the output into `backend/.env`:
+
+```ini
+SANITY_WEBHOOK_SECRET=<the-hex-string>
+```
+
+Restart the backend. The **same** string goes into Sanity's webhook
+configuration below — Sanity uses it to sign each webhook request and the
+backend rejects requests whose signature doesn't verify.
+
+### 2. Create the webhook in the Sanity dashboard
+
+1. Open https://www.sanity.io/manage → your project → **API** tab →
+   **Webhooks** → **Create webhook**.
+2. Fill in:
+
+| Field | Value |
+|---|---|
+| **Name** | `Order status email` |
+| **Dataset** | `production` (or whichever dataset holds orders) |
+| **URL** | `https://<your-ngrok>.ngrok-free.app/webhooks/sanity-order` |
+| **Trigger on** | **Update** only (uncheck Create and Delete) |
+| **Filter** (GROQ) | `_type == "order" && delta::changedAny(status)` |
+| **Projection** | leave blank (defaults to full document) |
+| **HTTP method** | `POST` |
+| **API version** | latest (e.g. `v2025-01-01`) |
+| **Secret** | the hex string from step 1 |
+
+3. Save.
+
+The GROQ filter is important: without it, **any** edit to an order doc
+(adding a tracking number, fixing a typo) would re-fire the status email
+and spam the customer. `delta::changedAny(status)` restricts the webhook
+to transitions only.
+
+### 3. Trigger a status change and verify
+
+- Open Sanity Studio (http://localhost:3333) → **Orders** → find the
+  order you just paid for (status should be `payment_received`)
+- Change the status to `confirmed` (or any other value) → **Publish**
+- Watch the backend logs — you should see a `POST /webhooks/sanity-order`
+  line and an email send log
+- Watch the ngrok terminal — same `POST /webhooks/sanity-order 200`
+- Check the customer inbox (use a plus-alias of your Resend signup email,
+  e.g. `jaredhoward0912+customer@gmail.com`, so Resend's sandbox sender
+  will actually deliver it)
+
+### Troubleshooting
+
+| Symptom | Likely cause |
+|---|---|
+| `401` in backend logs | Secret mismatch between `.env` and the Sanity dashboard |
+| `404` / connection refused | Stale ngrok URL in the Sanity webhook, or backend not running |
+| `200` but no email | Resend sandbox sender only delivers to your Resend signup address. Plus-aliases of that address work; a random third-party email won't. |
+| No webhook fires at all | Filter too restrictive — Sanity only fires on `delta::changedAny(status)`. If you edited a different field, nothing fires. |
+
+The ngrok URL is shared with PayFast's ITN — same tunnel handles both. If
+you restart ngrok, update both `API_URL` in `backend/.env` and the webhook
+URL in the Sanity dashboard.
 
 ## Quick backend smoke test
 

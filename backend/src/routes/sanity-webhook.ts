@@ -91,8 +91,17 @@ export function sanityWebhookRouter() {
 				html: mail.html
 			});
 		} catch (err) {
-			console.error('Failed to send status update email', err);
-			return c.json({ error: 'Failed to send email' }, 500);
+			// Sanity retries aggressively on non-2xx responses — a permanently
+			// broken send (Resend validation error, invalid recipient) would
+			// retry forever with the frozen-at-event-time payload, eventually
+			// flooding logs and blocking fresh events behind the retry queue.
+			// Log the failure and ack 200 so Sanity stops retrying; operator
+			// can re-trigger manually by bumping the doc status if needed.
+			console.error(
+				`Failed to send status update email for ${order.orderRef}`,
+				err
+			);
+			return c.json({ ok: true, ref: order.orderRef, emailed: false });
 		}
 
 		return c.json({ ok: true, ref: order.orderRef, status: order.status });

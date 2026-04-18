@@ -13,6 +13,7 @@
 	let notes = '';
 	let website = '';
 	let submitting = false;
+	let redirecting = false;
 	let error: string | null = null;
 
 	function handleBackdropClick(e: MouseEvent) {
@@ -86,6 +87,7 @@
 			}
 
 			if (data.payfast) {
+				redirecting = true;
 				cart.clear();
 				redirectToPayFast(data.payfast);
 				return;
@@ -115,7 +117,13 @@
 				</button>
 			</header>
 
-			{#if cart.items.length === 0}
+			{#if redirecting}
+				<div class="redirecting" role="status" aria-live="polite">
+					<div class="spinner" aria-hidden="true"></div>
+					<p>Redirecting to PayFast…</p>
+					<p class="empty-hint">Complete your payment on the next page.</p>
+				</div>
+			{:else if cart.items.length === 0}
 				<div class="empty">
 					<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3">
 						<circle cx="9" cy="21" r="1"></circle>
@@ -254,7 +262,8 @@
 		color: var(--color-ink);
 	}
 
-	.empty {
+	.empty,
+	.redirecting {
 		flex: 1;
 		display: flex;
 		flex-direction: column;
@@ -266,7 +275,26 @@
 		font-size: 0.9rem;
 	}
 
-	.empty p { margin: 0; }
+	.empty p,
+	.redirecting p { margin: 0; }
+
+	.spinner {
+		width: 32px;
+		height: 32px;
+		border: 3px solid var(--color-rule);
+		border-top-color: var(--color-leaf-dark);
+		border-radius: 50%;
+		animation: spin 0.8s linear infinite;
+		margin-bottom: 8px;
+	}
+
+	@keyframes spin {
+		to { transform: rotate(360deg); }
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.spinner { animation: none; }
+	}
 
 	.empty-hint {
 		font-size: 0.8rem;

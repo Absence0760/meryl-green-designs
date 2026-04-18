@@ -29,16 +29,15 @@ export function payfastItnRouter() {
 			return c.json({ error: 'Payment webhook not configured' }, 500);
 		}
 
-		let body: Record<string, string>;
+		let raw: string;
 		try {
-			const raw = await c.req.text();
-			body = Object.fromEntries(new URLSearchParams(raw));
+			raw = await c.req.text();
 		} catch {
-			console.warn('PayFast ITN: failed to parse URL-encoded body');
+			console.warn('PayFast ITN: failed to read request body');
 			return c.text('OK', 200);
 		}
 
-		const result = validateItn(body, passphrase);
+		const result = validateItn(raw, passphrase);
 
 		if (!result.valid) {
 			console.warn('PayFast ITN: invalid signature', { orderRef: result.orderRef });

@@ -1,4 +1,4 @@
-import { createHash } from 'crypto';
+import { createHash, timingSafeEqual } from 'crypto';
 
 export type PayFastConfig = {
 	merchantId: string;
@@ -65,23 +65,28 @@ export function buildPaymentFormData(
 	config: PayFastConfig,
 	input: PaymentFormInput
 ): PaymentFormData {
+	// PayFast verifies the signature over fields in the order documented in
+	// their integration guide: merchant_id, merchant_key, return_url,
+	// cancel_url, notify_url, name_first, name_last, email_address,
+	// m_payment_id, amount, item_name. JS object insertion order is
+	// preserved, so build the object in that exact order — putting
+	// name_last anywhere else produces a signature PayFast will reject.
+	const firstName = input.customerName.split(' ')[0] || '';
+	const lastName = input.customerName.split(' ').slice(1).join(' ');
+
 	const data: Record<string, string> = {
 		merchant_id: config.merchantId,
 		merchant_key: config.merchantKey,
 		return_url: input.returnUrl,
 		cancel_url: input.cancelUrl,
 		notify_url: input.notifyUrl,
-		name_first: input.customerName.split(' ')[0] || '',
+		name_first: firstName,
+		...(lastName ? { name_last: lastName } : {}),
 		email_address: input.customerEmail,
 		m_payment_id: input.orderRef,
 		amount: input.amountZar.toFixed(2),
 		item_name: input.itemName
 	};
-
-	const lastName = input.customerName.split(' ').slice(1).join(' ');
-	if (lastName) {
-		data.name_last = lastName;
-	}
 
 	const signature = generateSignature(data, config.passphrase);
 	data.signature = signature;
@@ -94,17 +99,34 @@ export function buildPaymentFormData(
 
 /**
  * Validate an ITN (Instant Transaction Notification) callback from PayFast.
- * Returns the parsed result. The caller is responsible for checking the
- * amount against the stored order and updating the order status.
+ *
+ * Takes the **raw** URL-encoded POST body. The signature MUST be verified
+ * against the raw bytes PayFast sent, not a re-encoded parsed form — PayFast
+ * signs using PHP's `urlencode` (which encodes `!*'()` that JS's
+ * `encodeURIComponent` leaves alone) and includes empty-value fields in the
+ * signature string. Parsing and re-encoding would drop both properties and
+ * produce a signature that never matches.
+ *
+ * The caller is responsible for checking the amount against the stored order
+ * and updating the order status.
  */
-export function validateItn(
-	body: ItnPayload,
-	passphrase: string | null
-): ItnResult {
-	const { signature: receivedSig, ...dataWithoutSig } = body;
+export function validateItn(rawBody: string, passphrase: string | null): ItnResult {
+	const body = Object.fromEntries(new URLSearchParams(rawBody));
+	const receivedSig = body.signature ?? '';
 
-	const expectedSig = generateSignature(dataWithoutSig, passphrase);
-	const valid = receivedSig === expectedSig;
+	// Strip the signature field from the raw body, preserving everything else
+	// byte-for-byte. PayFast always sends signature as the final param, but
+	// handle both "&signature=..." and "signature=..." at the start defensively.
+	const stripped = rawBody.replace(/(^|&)signature=[^&]*/, '').replace(/^&/, '');
+
+	const sigString = passphrase
+		? `${stripped}&passphrase=${encodeURIComponent(passphrase.trim()).replace(/%20/g, '+')}`
+		: stripped;
+
+	const expectedSig = createHash('md5').update(sigString).digest('hex');
+	const valid =
+		receivedSig.length === expectedSig.length &&
+		timingSafeEqual(Buffer.from(receivedSig), Buffer.from(expectedSig));
 
 	return {
 		valid,

@@ -533,6 +533,20 @@ SnapScan, Instant EFT, etc.) on its own page.
    amount, then updates the Sanity order to `payment_received`.
 10. The existing Sanity webhook fires and sends the "payment received" email.
 
+### ITN signature verification (raw-body)
+
+PayFast signs the ITN POST body using PHP's `urlencode` and **includes empty
+fields** (`item_description=&custom_str1=&name_last=&…`) in the signed string.
+JS's `encodeURIComponent` encodes a few characters differently (`!*'()`), and
+filtering empty fields changes the set being signed — so parsing the body and
+re-signing from the parsed values produces a signature that will never match.
+
+`validateItn()` in `backend/src/payfast.ts` therefore takes the **raw**
+URL-encoded body, strips only the `&signature=…` portion, appends
+`&passphrase=<urlencoded>` if configured, and MD5s the result. This matches
+the exact bytes PayFast signed on their end. Don't refactor it to take a
+parsed object — that's how this bug came back the first time.
+
 ### New env vars for PayFast
 
 | Var | Sensitive | Purpose |
@@ -542,6 +556,10 @@ SnapScan, Instant EFT, etc.) on its own page.
 | `PAYFAST_PASSPHRASE` | **yes** | Passphrase for signature generation/verification |
 | `PAYFAST_SANDBOX` | no | `'true'` to use sandbox environment |
 | `API_URL` | no | Backend URL for constructing the ITN `notify_url` |
+
+For testing locally against PayFast's public sandbox (including ngrok setup
+for ITN callbacks), see
+[`run-locally.md § Testing PayFast with sandbox credentials`](./run-locally.md#testing-payfast-with-sandbox-credentials).
 
 ### New Sanity fields on the order schema
 

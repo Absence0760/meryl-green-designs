@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import { describe, it, expect } from 'vitest';
 import {
 	generateSignature,
@@ -111,11 +112,64 @@ describe('buildPaymentFormData', () => {
 		expect(result.fields.name_first).toBe('Madonna');
 		expect(result.fields.name_last).toBeUndefined();
 	});
+
+	it('orders fields per PayFast spec so the signature verifies server-side', () => {
+		// PayFast verifies the signature using fields in their documented
+		// order. If name_last lands anywhere other than between name_first
+		// and email_address, PayFast responds with "Generated signature
+		// does not match submitted signature" and the payment fails.
+		const result = buildPaymentFormData(testConfig, testInput);
+		const keys = Object.keys(result.fields);
+		expect(keys).toEqual([
+			'merchant_id',
+			'merchant_key',
+			'return_url',
+			'cancel_url',
+			'notify_url',
+			'name_first',
+			'name_last',
+			'email_address',
+			'm_payment_id',
+			'amount',
+			'item_name',
+			'signature'
+		]);
+	});
+
+	it('omits name_last from the ordering when absent', () => {
+		const input = { ...testInput, customerName: 'Madonna' };
+		const result = buildPaymentFormData(testConfig, input);
+		const keys = Object.keys(result.fields);
+		expect(keys).toEqual([
+			'merchant_id',
+			'merchant_key',
+			'return_url',
+			'cancel_url',
+			'notify_url',
+			'name_first',
+			'email_address',
+			'm_payment_id',
+			'amount',
+			'item_name',
+			'signature'
+		]);
+	});
 });
 
 describe('validateItn', () => {
-	function buildValidItnBody(): Record<string, string> {
-		const body: Record<string, string> = {
+	const pfEncode = (v: string) => encodeURIComponent(v).replace(/%20/g, '+');
+
+	/**
+	 * Build a raw ITN body the way PayFast does: URL-encoded key=value pairs
+	 * joined with `&`, a trailing `&signature=<md5>` computed over
+	 * `<body>&passphrase=<urlencoded>`. Matching PayFast's serialisation is
+	 * the whole point of the raw-body verification path.
+	 */
+	function buildRawItn(
+		passphrase: string | null = 'payfast',
+		overrides: Record<string, string> = {}
+	): string {
+		const fields: Record<string, string> = {
 			m_payment_id: 'MG-260413-AB12',
 			pf_payment_id: '1234567',
 			payment_status: 'COMPLETE',
@@ -123,15 +177,20 @@ describe('validateItn', () => {
 			amount_gross: '450.00',
 			amount_fee: '-14.40',
 			amount_net: '435.60',
-			merchant_id: '10004002'
+			merchant_id: '10004002',
+			...overrides
 		};
-		body.signature = generateSignature(body, 'payfast');
-		return body;
+		const body = Object.entries(fields)
+			.map(([k, v]) => `${k}=${pfEncode(v)}`)
+			.join('&');
+		const sigInput = passphrase ? `${body}&passphrase=${pfEncode(passphrase.trim())}` : body;
+		const signature = createHash('md5').update(sigInput).digest('hex');
+		return `${body}&signature=${signature}`;
 	}
 
 	it('returns valid=true for a correctly signed payload', () => {
-		const body = buildValidItnBody();
-		const result = validateItn(body, 'payfast');
+		const raw = buildRawItn('payfast');
+		const result = validateItn(raw, 'payfast');
 		expect(result.valid).toBe(true);
 		expect(result.paymentStatus).toBe('COMPLETE');
 		expect(result.pfPaymentId).toBe('1234567');
@@ -139,39 +198,63 @@ describe('validateItn', () => {
 		expect(result.orderRef).toBe('MG-260413-AB12');
 	});
 
+	it('returns valid=true for a payload containing empty fields (PayFast pattern)', () => {
+		// PayFast sends item_description, custom_str1-5, custom_int1-5, and
+		// name_last as empty strings even when unused — and INCLUDES them in
+		// the signed string. Re-encoding from a parsed body would drop these
+		// and produce a mismatch. The raw-body verifier handles them by
+		// virtue of MD5-ing the exact bytes PayFast sent.
+		const raw = buildRawItn('payfast', {
+			item_description: '',
+			custom_str1: '',
+			custom_str2: '',
+			custom_int1: '',
+			name_first: 'test',
+			name_last: '',
+			email_address: 'test@example.com'
+		});
+		const result = validateItn(raw, 'payfast');
+		expect(result.valid).toBe(true);
+	});
+
 	it('returns valid=false for a tampered signature', () => {
-		const body = buildValidItnBody();
-		body.signature = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
-		const result = validateItn(body, 'payfast');
+		const raw = buildRawItn('payfast').replace(/&signature=[a-f0-9]+$/, `&signature=${'a'.repeat(32)}`);
+		const result = validateItn(raw, 'payfast');
 		expect(result.valid).toBe(false);
 	});
 
 	it('returns valid=false for a wrong passphrase', () => {
-		const body = buildValidItnBody();
-		const result = validateItn(body, 'wrong-passphrase');
+		const raw = buildRawItn('payfast');
+		const result = validateItn(raw, 'wrong-passphrase');
 		expect(result.valid).toBe(false);
 	});
 
 	it('returns valid=false when the amount is tampered', () => {
-		const body = buildValidItnBody();
-		body.amount_gross = '999.00';
-		// signature was computed with 450.00, so it no longer matches
-		const result = validateItn(body, 'payfast');
+		// Signature was computed over amount_gross=450.00; tampering the raw
+		// bytes must invalidate it even though the mutation preserves field order.
+		const raw = buildRawItn('payfast').replace('amount_gross=450.00', 'amount_gross=999.00');
+		const result = validateItn(raw, 'payfast');
 		expect(result.valid).toBe(false);
 	});
 
 	it('parses amount_gross as a number', () => {
-		const body = buildValidItnBody();
-		const result = validateItn(body, 'payfast');
+		const raw = buildRawItn('payfast');
+		const result = validateItn(raw, 'payfast');
 		expect(typeof result.amountGross).toBe('number');
 	});
 
-	it('handles missing fields gracefully', () => {
-		const result = validateItn({ signature: 'abc' }, 'payfast');
+	it('handles an unsigned/empty body gracefully', () => {
+		const result = validateItn('signature=abc', 'payfast');
 		expect(result.valid).toBe(false);
 		expect(result.paymentStatus).toBe('');
 		expect(result.pfPaymentId).toBe('');
 		expect(result.amountGross).toBe(0);
 		expect(result.orderRef).toBe('');
+	});
+
+	it('verifies without a passphrase when none is configured', () => {
+		const raw = buildRawItn(null);
+		const result = validateItn(raw, null);
+		expect(result.valid).toBe(true);
 	});
 });

@@ -216,7 +216,11 @@ describe('POST /webhooks/sanity-order', () => {
 		});
 	});
 
-	it('returns 500 when sendEmail throws on a valid signed request', async () => {
+	it('returns 200 when sendEmail throws on a valid signed request', async () => {
+		// Sanity retries aggressively on non-2xx responses, so a permanently
+		// broken send (Resend validation error, invalid recipient) must NOT
+		// return 500 — otherwise the same frozen payload retries for hours
+		// and crowds out fresh events.
 		vi.mocked(email.sendEmail).mockRejectedValueOnce(new Error('resend down'));
 		const body = JSON.stringify(makeOrderDoc());
 		const signature = signPayload(body);
@@ -229,8 +233,9 @@ describe('POST /webhooks/sanity-order', () => {
 			},
 			body
 		});
-		expect(res.status).toBe(500);
-		const data = (await res.json()) as any;
-		expect(data.error).toMatch(/email/i);
+		expect(res.status).toBe(200);
+		const data = (await res.json()) as { ok: boolean; emailed: boolean };
+		expect(data.ok).toBe(true);
+		expect(data.emailed).toBe(false);
 	});
 });
