@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, dev]
+  workflow_dispatch:
+
+concurrency:
+  # Cancel in-progress runs for the same ref — a new push supersedes the old one.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test and typecheck
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Seed frontend .env for typecheck
+        # svelte-check imports from $env/static/public, which only exports
+        # PUBLIC_* keys that exist at build time. CI has no real secrets, so
+        # seed from the example to give the generated module a stable shape.
+        run: cp frontend/.env.example frontend/.env
+
+      - name: Typecheck all workspaces
+        run: pnpm check
+
+      - name: Run tests
+        run: pnpm test

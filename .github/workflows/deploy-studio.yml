@@ -1,0 +1,103 @@
+name: Deploy studio
+
+# Release-gated: deploys only fire when a GitHub release is published.
+# workflow_dispatch is kept for manual re-runs.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-studio
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      should_deploy: ${{ steps.check.outputs.should_deploy }}
+    steps:
+      - name: Checkout (full history + tags)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Decide whether to deploy studio
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            echo "Triggered by workflow_dispatch — deploying unconditionally."
+            echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          CURRENT_TAG="${GITHUB_REF_NAME}"
+          echo "Current release tag: $CURRENT_TAG"
+
+          PREV_TAG=$(gh release list --exclude-drafts --limit 10 --json tagName \
+            --jq ".[] | select(.tagName != \"$CURRENT_TAG\") | .tagName" \
+            | head -n 1 || true)
+
+          if [[ -z "$PREV_TAG" ]]; then
+            echo "No previous release found — deploying (first release)."
+            echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Previous release tag: $PREV_TAG"
+          git fetch --tags --quiet
+
+          CHANGED=$(git diff --name-only "$PREV_TAG..$CURRENT_TAG" -- \
+            'studio/' \
+            'pnpm-lock.yaml' \
+            '.github/workflows/deploy-studio.yml' \
+            || true)
+
+          if [[ -n "$CHANGED" ]]; then
+            echo "Studio files changed since $PREV_TAG:"
+            echo "$CHANGED" | sed 's/^/  /'
+            echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No studio files changed between $PREV_TAG and $CURRENT_TAG — skipping deploy."
+            echo "should_deploy=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  deploy:
+    needs: check
+    if: needs.check.outputs.should_deploy == 'true'
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Deploy studio to Sanity
+        working-directory: studio
+        env:
+          SANITY_STUDIO_PROJECT_ID: ${{ vars.PUBLIC_SANITY_PROJECT_ID }}
+          SANITY_STUDIO_DATASET: ${{ vars.PUBLIC_SANITY_DATASET }}
+          SANITY_AUTH_TOKEN: ${{ secrets.SANITY_AUTH_TOKEN }}
+        run: pnpm exec sanity deploy

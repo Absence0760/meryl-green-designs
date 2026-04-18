@@ -1,0 +1,29 @@
+{
+	"$schema": "https://json.schemastore.org/package.json",
+	"name": "@meryl-green-designs/backend",
+	"version": "0.0.1",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "tsx watch src/server.ts",
+		"build": "esbuild src/lambda.ts --bundle --platform=node --target=node20 --format=esm --outfile=dist/lambda.mjs --banner:js=\"import{createRequire}from'module';const require=createRequire(import.meta.url);\"",
+		"check": "tsc -p tsconfig.json --noEmit",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"start": "node dist/server.js"
+	},
+	"dependencies": {
+		"@sanity/client": "^7.20.0",
+		"dotenv": "^17.4.1",
+		"hono": "4.12.12"
+	},
+	"devDependencies": {
+		"@hono/node-server": "1.19.13",
+		"@types/aws-lambda": "8.10.161",
+		"@types/node": "25.6.0",
+		"esbuild": "0.28.0",
+		"tsx": "4.21.0",
+		"typescript": "6.0.2",
+		"vitest": "4.1.4"
+	}
+}

@@ -1,0 +1,58 @@
+# Copy this file to terraform.tfvars and fill in the values.
+# terraform.tfvars is gitignored — secrets stay out of source control.
+
+# Primary AWS region. Leave as-is unless you know you want something else.
+aws_region = "af-south-1"
+
+# Apex domain for the site (no protocol, no trailing slash).
+domain_name = "merylgreendesigns.co.za"
+
+# Route 53 hosted zone ID for the apex domain.
+# Find it with: aws route53 list-hosted-zones-by-name --dns-name merylgreendesigns.co.za
+route53_zone_id = "Z0000000000000000000"
+
+# GitHub repo in 'owner/name' form — used to scope the CI role's trust policy.
+github_repo = "jaredhoward/meryl-green-designs"
+
+# Backend secrets. These are passed to the Lambda as env vars on first apply.
+# After that, rotate them by updating this file and re-running `terraform apply`.
+resend_api_key = "re_xxxxxxxxxxxxxxxxxxxx"
+from_email     = "Meryl Green Designs <orders@merylgreendesigns.co.za>"
+owner_email    = "meryl@example.com"
+
+# Sanity project — the value baked into the frontend build at CI time and
+# also passed to the backend for reading/writing order documents.
+sanity_project_id = ""
+sanity_dataset    = "production"
+
+# Sanity API token with write access to the `order` document type. Create at
+# https://www.sanity.io/manage → project → API → Tokens (Editor role, or a
+# custom role scoped to the `order` type).
+sanity_api_token = ""
+
+# Shared secret for verifying Sanity webhook signatures. Generate with:
+#   openssl rand -hex 32
+# Use the same value in the Sanity webhook configuration.
+sanity_webhook_secret = ""
+
+# Optional: override the base URL used in tracking links embedded in order
+# emails. Defaults to https://<domain_name> when empty.
+site_url = ""
+
+# PayFast payment gateway. Register free at https://payfast.co.za.
+# For sandbox testing: merchant_id = "10004002", merchant_key = "q1cd2rdny4a53",
+# passphrase = "payfast", sandbox = "true".
+payfast_merchant_id  = ""
+payfast_merchant_key = ""
+payfast_passphrase   = ""
+payfast_sandbox      = "false"
+
+# Cap on concurrent Lambda invocations. Default 20 is far above expected
+# organic load and caps blast radius for traffic spikes / abuse attempts.
+# Set to -1 to remove the cap (falls back to the AWS account default).
+lambda_reserved_concurrency = 20
+
+# Monthly AWS spend cap (USD). Email alerts fire at 50% / 80% / 100% of
+# actual spend, plus a forecast alert when AWS predicts you'll exceed it.
+# Default $30 is several multiples of the expected ~$1-2/month baseline.
+monthly_budget_usd = 30

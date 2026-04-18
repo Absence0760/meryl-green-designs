@@ -1,0 +1,130 @@
+name: Deploy backend
+
+# Release-gated: deploys only fire when a GitHub release is published.
+# workflow_dispatch is kept so you can manually re-run the deploy against the
+# current `main` (for hotfixes, rollbacks after a flaky AWS call, or
+# re-running a failed step) without cutting a new release.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-backend
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  # Skip-if-unchanged: a release fires all three deploy workflows, but we
+  # only want to actually deploy workspaces whose files changed since the
+  # previous release. This check job decides whether the deploy job runs.
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      should_deploy: ${{ steps.check.outputs.should_deploy }}
+    steps:
+      - name: Checkout (full history + tags)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Decide whether to deploy backend
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # Manual dispatch always deploys — matches operator intent.
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            echo "Triggered by workflow_dispatch — deploying unconditionally."
+            echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          CURRENT_TAG="${GITHUB_REF_NAME}"
+          echo "Current release tag: $CURRENT_TAG"
+
+          PREV_TAG=$(gh release list --exclude-drafts --limit 10 --json tagName \
+            --jq ".[] | select(.tagName != \"$CURRENT_TAG\") | .tagName" \
+            | head -n 1 || true)
+
+          if [[ -z "$PREV_TAG" ]]; then
+            echo "No previous release found — deploying (first release)."
+            echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Previous release tag: $PREV_TAG"
+          git fetch --tags --quiet
+
+          CHANGED=$(git diff --name-only "$PREV_TAG..$CURRENT_TAG" -- \
+            'backend/' \
+            'pnpm-lock.yaml' \
+            '.github/workflows/deploy-backend.yml' \
+            || true)
+
+          if [[ -n "$CHANGED" ]]; then
+            echo "Backend files changed since $PREV_TAG:"
+            echo "$CHANGED" | sed 's/^/  /'
+            echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No backend files changed between $PREV_TAG and $CURRENT_TAG — skipping deploy."
+            echo "should_deploy=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  deploy:
+    needs: check
+    if: needs.check.outputs.should_deploy == 'true'
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        working-directory: backend
+        run: pnpm check
+
+      - name: Build Lambda bundle
+        working-directory: backend
+        run: pnpm build
+
+      - name: Package Lambda zip
+        working-directory: backend
+        run: |
+          cd dist
+          zip -9 lambda.zip lambda.mjs
+          ls -lh lambda.zip
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Update Lambda function code
+        run: |
+          aws lambda update-function-code \
+            --function-name "${{ vars.LAMBDA_FUNCTION_NAME }}" \
+            --zip-file "fileb://backend/dist/lambda.zip" \
+            --publish

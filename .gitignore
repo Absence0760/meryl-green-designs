@@ -1,0 +1,100 @@
+# ---------------------------------------------------------------------------
+# Dependencies
+# ---------------------------------------------------------------------------
+node_modules/
+.pnpm-store/
+
+# ---------------------------------------------------------------------------
+# Build output
+# ---------------------------------------------------------------------------
+.svelte-kit/
+build/
+dist/
+frontend/build/
+frontend/.svelte-kit/
+backend/dist/
+studio/dist/
+
+# Sanity CLI local state (auth cache, deploy cache)
+.sanity/
+
+# Vite cache (outside node_modules)
+.vite/
+
+# TypeScript incremental build info
+*.tsbuildinfo
+
+# ---------------------------------------------------------------------------
+# Environment & secrets
+# ---------------------------------------------------------------------------
+# Plaintext env files are always secret and never committed. The SOPS
+# variants (*.sops) are committed because they are encrypted under the
+# project's AWS KMS key — decryption requires kms:Decrypt permission via
+# IAM, not a key file.
+#
+# See .sops.yaml + docs/deployment.md § Secrets management for the workflow.
+.env
+.env.*
+.envrc
+!.env.example
+!.env.sops
+
+# Terraform variable files. The plaintext terraform.tfvars is secret; the
+# SOPS-encrypted terraform.tfvars.sops is committed. The example file is a
+# placeholder template, safe to commit.
+*.tfvars
+!*.tfvars.example
+# (terraform.tfvars.sops ends in .sops, not .tfvars, so the *.tfvars rule
+# doesn't match it — it's committed by default. Explicit rule below for clarity.)
+!*.tfvars.sops
+
+# ---------------------------------------------------------------------------
+# Logs
+# ---------------------------------------------------------------------------
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ---------------------------------------------------------------------------
+# Test artifacts (future-proofing — no tests yet)
+# ---------------------------------------------------------------------------
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+.playwright/
+
+# ---------------------------------------------------------------------------
+# OS
+# ---------------------------------------------------------------------------
+.DS_Store
+._*
+.AppleDouble
+.LSOverride
+Thumbs.db
+Desktop.ini
+
+# ---------------------------------------------------------------------------
+# Editors & IDEs
+# ---------------------------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# ---------------------------------------------------------------------------
+# Local agent / AI tooling state
+# ---------------------------------------------------------------------------
+# Most .claude/ contents are per-developer state (caches, transcripts, local
+# permission overrides) and stay out of git. The committed exception is
+# settings.json, which carries the project-wide deny-list of destructive
+# commands — see docs/security.md § Risk 8.
+.claude/*
+!.claude/settings.json

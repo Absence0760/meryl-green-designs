@@ -1,0 +1,29 @@
+{
+	"$schema": "https://json.schemastore.org/package.json",
+	"name": "@meryl-green-designs/frontend",
+	"version": "0.0.1",
+	"private": true,
+	"scripts": {
+		"dev": "vite dev --port 7777",
+		"build": "vite build",
+		"preview": "vite preview --port 8888",
+		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"test": "vitest run",
+		"test:watch": "vitest"
+	},
+	"devDependencies": {
+		"@sveltejs/adapter-static": "3.0.10",
+		"@sveltejs/kit": "2.57.1",
+		"@sveltejs/vite-plugin-svelte": "7.0.0",
+		"svelte": "5.55.3",
+		"svelte-check": "4.4.6",
+		"typescript": "6.0.2",
+		"vite": "8.0.8",
+		"vitest": "4.1.4"
+	},
+	"type": "module",
+	"dependencies": {
+		"@sanity/image-url": "^2.1.1"
+	}
+}

@@ -1,0 +1,20 @@
+{
+	"$schema": "https://json.schemastore.org/package.json",
+	"name": "meryl-green-designs",
+	"version": "0.0.1",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "pnpm --filter @meryl-green-designs/frontend --filter @meryl-green-designs/backend --parallel run dev",
+		"dev:all": "pnpm -r --parallel run dev",
+		"build": "pnpm -r run build",
+		"check": "pnpm -r run check",
+		"test": "pnpm -r run test",
+		"frontend": "pnpm --filter @meryl-green-designs/frontend",
+		"backend": "pnpm --filter @meryl-green-designs/backend",
+		"studio": "pnpm --filter @meryl-green-designs/studio"
+	},
+	"engines": {
+		"node": ">=20"
+	}
+}
