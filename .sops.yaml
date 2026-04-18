@@ -74,7 +74,7 @@ creation_rules:
   # secret rotated without decrypting both versions. Acceptable for the
   # rare-rotation cadence on this project.
   - path_regex: infra/terraform\.tfvars\.sops$
-    kms: 'arn:aws:kms:KMS_REGION_PLACEHOLDER:KMS_ACCOUNT_PLACEHOLDER:alias/meryl-green-designs-sops'
+    kms: 'arn:aws:kms:af-south-1:965057220096:alias/meryl-green-designs-sops'
 
   - path_regex: backend/\.env\.sops$
-    kms: 'arn:aws:kms:KMS_REGION_PLACEHOLDER:KMS_ACCOUNT_PLACEHOLDER:alias/meryl-green-designs-sops'
+    kms: 'arn:aws:kms:af-south-1:965057220096:alias/meryl-green-designs-sops'
