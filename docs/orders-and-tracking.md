@@ -246,7 +246,11 @@ Webhook payload includes the updated document. Backend receives
 2. Parse the document from the body.
 3. Look up the email template matching the new status.
 4. Send the email via Resend to `customerEmail`.
-5. Return 200.
+5. Return 200 — even if the send throws. Sanity retries aggressively on
+   non-2xx responses, and the retry payload is frozen at event time, so a
+   permanently-invalid recipient (e.g. Resend sandbox validation rejection)
+   would retry for hours and crowd out fresh events. Log the failure; the
+   operator can re-trigger manually by bumping the doc status.
 
 Detecting "status actually changed":
 

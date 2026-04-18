@@ -35,7 +35,7 @@ Mounted in `src/app.ts`. Each route file lives under `src/routes/` and exports a
 - `POST /orders` — validate, look up prices in Sanity (server-side total — never trust client amount), create order doc, send owner email, return signed PayFast form data
 - `GET /orders/:ref?email=` — email-verified track lookup. **Wrong email returns 404, not 403** (no enumeration).
 - `POST /webhooks/sanity-order` — verify HMAC-SHA256 over **raw body** before parsing, then dispatch status email
-- `POST /webhooks/payfast-itn` — verify MD5 sig + amount, update order to `payment_received`
+- `POST /webhooks/payfast-itn` — verify MD5 sig **over the raw body** (PayFast signs with PHP `urlencode` and includes empty fields; re-encoding from the parsed body produces a mismatch) + amount, update order to `payment_received`
 
 ## Hard rules
 

@@ -285,7 +285,7 @@ CVV: any 3 digits. Expiry: any future date.
 The steps above exercise order creation and the customer redirect, but
 **PayFast's ITN webhook won't reach your laptop** — `notify_url` defaults
 to `http://localhost:3001/webhooks/payfast-itn`, which PayFast's servers
-can't resolve. Without ITN, orders stay on `awaiting_payment` in Sanity
+can't resolve. Without ITN, orders stay on `pending_payment` in Sanity
 even after "paying" in the sandbox.
 
 To close the loop, expose the backend with ngrok:
@@ -320,10 +320,11 @@ ITN will never arrive — that's fine for testing, just place a fresh order.)
 
 Place and complete a new sandbox order. You should see:
 
-- A `POST /webhooks/payfast-itn` line in the ngrok terminal
-- `ITN verified` (or similar) in the backend logs
-- The order status flip from `awaiting_payment` to `payment_received` in
-  Sanity Studio at :3333
+- A `POST /webhooks/payfast-itn` line in the ngrok terminal (200 response)
+- No `PayFast ITN: invalid signature` / `not found` warnings in the backend
+  logs — the ITN route only logs on failures, so silence is success
+- The order status flip from `pending_payment` to `payment_received` in
+  Sanity Studio at :3333, with the `paymentId` field populated
 
 **Gotchas:**
 
@@ -425,16 +426,17 @@ URL in the Sanity dashboard.
 
 ## Quick backend smoke test
 
-To exercise the backend without touching the frontend:
+To confirm the backend is up without touching the frontend:
 
 ```bash
 curl http://localhost:3001/health
 # {"ok":true}
-
-curl -X POST http://localhost:3001/orders \
-  -H 'Content-Type: application/json' \
-  -d '{"name":"Test","email":"you@example.com","address":"1 Test St","items":"1 x widget"}'
 ```
+
+To exercise `POST /orders` without the UI, see the curl example under
+[Testing PayFast with sandbox credentials § Smoke-test the order endpoint](#smoke-test-the-order-endpoint)
+— the order body needs a real product ID from Sanity and PayFast creds
+configured, so it's not a one-liner.
 
 ## Type-checking and linting
 
