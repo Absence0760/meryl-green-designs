@@ -76,10 +76,11 @@ function siteUrl(): string {
 }
 
 // Backend base URL for PayFast's notify_url (where ITN callbacks land).
-// Derived from the incoming request so Terraform doesn't need to set an
-// API_URL env var — which would create a cycle with the Lambda Function
-// URL resource. Env override kept for local ngrok testing, where the
-// request arrives at localhost but PayFast must call the public tunnel.
+// Production: Terraform sets API_URL on the Lambda env to the CloudFront-
+// fronted public path (https://<domain>/api) so PayFast can reach the
+// /webhooks/payfast-itn route through CloudFront → API Gateway → Lambda.
+// Local dev: set API_URL to an ngrok tunnel URL for sandbox testing.
+// Fallback: if API_URL is unset, derive from the incoming request's origin.
 function apiUrl(c: Context): string {
 	const override = process.env.API_URL?.trim();
 	return (override || new URL(c.req.url).origin).replace(/\/$/, '');

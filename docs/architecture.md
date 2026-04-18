@@ -18,9 +18,10 @@ and GitHub Actions workflows for CI/CD:
   (name, price, photos, availability). Runs locally or as a free hosted app at
   `*.sanity.studio`.
 - `infra/` — Terraform module that provisions all AWS resources (S3, CloudFront,
-  Lambda, IAM, Route 53, ACM, GitHub OIDC). Not a workspace package.
-- `.github/workflows/` — three deploy workflows (frontend, backend, studio) that
-  authenticate to AWS via OIDC and deploy on push to `main`.
+  Lambda, API Gateway HTTP API, IAM, Route 53, ACM, GitHub OIDC). Not a workspace package.
+- `.github/workflows/` — three deploy workflows (frontend, backend, studio)
+  that authenticate to AWS via OIDC and run when a GitHub release is published
+  (release-gated, with skip-if-unchanged checks per workspace).
 
 The three app packages are decoupled. The frontend knows the backend only by its
 URL (`PUBLIC_API_URL`), and knows Sanity only by a project ID
@@ -107,9 +108,10 @@ meryl-green-designs/
 │   ├── main.tf               Providers (af-south-1 + us-east-1 alias), state backend
 │   ├── variables.tf
 │   ├── outputs.tf            Values CI reads (bucket, distribution id, role ARN, etc.)
-│   ├── s3_cloudfront.tf      Bucket + OAC + cert + CloudFront + Route 53 records
-│   ├── lambda.tf             Function + exec role + log group + Function URL
-│   ├── github_oidc.tf        GitHub OIDC provider + CI role + scoped policy
+│   ├── s3_cloudfront.tf      Bucket + OAC + cert + CloudFront (incl. /api/* → API Gateway behavior) + Route 53 records
+│   ├── lambda.tf             Function + exec role + log group
+│   ├── api_gateway.tf        HTTP API + AWS_PROXY integration + default stage + invoke permission
+│   ├── github_oidc.tf        GitHub OIDC provider + CI role (trust-policied to `production` env) + scoped policy
 │   └── terraform.tfvars.example
 └── .github/
     └── workflows/
@@ -421,9 +423,16 @@ document and must not live on a public Sanity dataset in production — see
 - **Frontend**: S3 bucket (private, blocked public access) + CloudFront
   distribution with Origin Access Control. ACM certificate in `us-east-1`
   (CloudFront requirement). Route 53 A-alias records for apex and `www`.
-- **Backend**: AWS Lambda with a Function URL (no API Gateway). Bundled to a
-  single `dist/lambda.mjs` file via esbuild, zipped, uploaded by CI. IAM
+- **Backend**: AWS Lambda fronted by API Gateway v2 (HTTP API), with
+  CloudFront routing `/api/*` to API Gateway via a second origin. A
+  CloudFront Function strips the `/api` prefix before forwarding, so Hono
+  routes stay at `/orders`, `/products`, etc. The Lambda code is bundled to
+  a single `dist/lambda.mjs` via esbuild, zipped, uploaded by CI. IAM
   execution role with CloudWatch Logs permission. 30-day log retention.
+  Historical note: the backend originally used a Lambda Function URL, but
+  that feature hit an undiagnosable AWS-side 403 in this account + region
+  for every invocation (public or IAM-signed via CloudFront OAC). API
+  Gateway uses a different gateway pipeline and works correctly.
 - **Studio**: hosted by Sanity at `https://<name>.sanity.studio` via
   `pnpm studio deploy`. No AWS resources involved.
 
@@ -434,15 +443,24 @@ an S3 bucket with a DynamoDB lock table (created manually once; see
 `af-south-1` (Cape Town); the ACM cert provider alias targets `us-east-1`.
 
 CI/CD lives in `.github/workflows/`:
-- `deploy-frontend.yml` — path-filtered on `frontend/**`; also triggered by
-  `repository_dispatch` events from the Sanity webhook (for content changes)
-- `deploy-backend.yml` — path-filtered on `backend/**`; typechecks, bundles
-  with esbuild, zips, updates the Lambda via `aws lambda update-function-code`
-- `deploy-studio.yml` — path-filtered on `studio/**`; runs `sanity deploy`
+- `ci.yml` — typecheck + vitest on every PR and push. Never deploys.
+- `deploy-frontend.yml` — runs on `release: published`. Check job diffs the
+  release tag against the previous release, scoped to `frontend/**` + shared
+  files; deploys only if anything relevant changed. Also responds to
+  `repository_dispatch: sanity-publish` events from the Sanity content-rebuild
+  webhook (always deploys in that case).
+- `deploy-backend.yml` — runs on `release: published`, same skip-if-unchanged
+  logic scoped to `backend/**`. Typechecks, bundles with esbuild, zips,
+  updates the Lambda via `aws lambda update-function-code`.
+- `deploy-studio.yml` — runs on `release: published`, same skip-if-unchanged
+  logic scoped to `studio/**`. Runs `sanity deploy`.
 
 All three workflows authenticate to AWS via **GitHub OIDC federation** — no
 long-lived access keys are stored in the repo. The IAM role's trust policy
-is scoped to the `main` branch of the repo only.
+is scoped to the `production` GitHub Actions environment of the repo (not
+the `main` branch, because release-triggered workflows run with
+`github.ref = refs/tags/<tag>`, which a branch-scoped trust policy would
+reject).
 
 Full walkthrough of first-time deployment: see
 [`deployment.md`](./deployment.md).

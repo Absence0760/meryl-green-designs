@@ -1,6 +1,6 @@
 # backend/
 
-Hono app deployed two ways: local Node server for dev, AWS Lambda (Function URL) for prod. Dev port `3001` (`PORT` env override).
+Hono app deployed two ways: local Node server for dev, AWS Lambda (fronted by API Gateway HTTP API, in turn fronted by CloudFront at `/api/*`) for prod. Dev port `3001` (`PORT` env override).
 
 ## Stack
 
