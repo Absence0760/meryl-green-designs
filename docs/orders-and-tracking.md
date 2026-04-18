@@ -559,7 +559,7 @@ parsed object — that's how this bug came back the first time.
 | `PAYFAST_MERCHANT_KEY` | **yes** | PayFast merchant key |
 | `PAYFAST_PASSPHRASE` | **yes** | Passphrase for signature generation/verification |
 | `PAYFAST_SANDBOX` | no | `'true'` to use sandbox environment |
-| `API_URL` | no | Backend URL for constructing the ITN `notify_url` |
+| `API_URL` | no | **Optional, local dev only.** Overrides the auto-computed notify_url base for ngrok testing. In production the backend derives its own public URL from `c.req.url`, so this is unset |
 
 For testing locally against PayFast's public sandbox (including ngrok setup
 for ITN callbacks), see

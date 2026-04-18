@@ -98,7 +98,6 @@ resource "aws_lambda_function" "backend" {
       PAYFAST_MERCHANT_KEY  = var.payfast_merchant_key
       PAYFAST_PASSPHRASE    = var.payfast_passphrase
       PAYFAST_SANDBOX       = var.payfast_sandbox
-      API_URL               = aws_lambda_function_url.backend.function_url
     }
   }
 

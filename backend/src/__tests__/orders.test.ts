@@ -110,6 +110,34 @@ describe('POST /orders', () => {
 		expect(createArg.amountZar).toBe(450);
 	});
 
+	it('derives the PayFast notify_url from the incoming request host', async () => {
+		// Production behaviour: Lambda Function URL invocations arrive with
+		// host=<url-id>.lambda-url.<region>.on.aws. The backend must use that
+		// as the notify_url base so PayFast can reach it — there is no
+		// API_URL env var in prod (Terraform cycle: see infra/lambda.tf).
+		vi.stubEnv('API_URL', '');
+		const app = createApp();
+		const res = await app.request('https://abc123.lambda-url.af-south-1.on.aws/orders', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(validOrderBody)
+		});
+		expect(res.status).toBe(200);
+		const data = (await res.json()) as any;
+		expect(data.payfast.fields.notify_url).toBe(
+			'https://abc123.lambda-url.af-south-1.on.aws/webhooks/payfast-itn'
+		);
+	});
+
+	it('prefers the API_URL env override when set (local ngrok testing)', async () => {
+		vi.stubEnv('API_URL', 'https://tunnel.ngrok-free.app');
+		const res = await postOrder(validOrderBody);
+		const data = (await res.json()) as any;
+		expect(data.payfast.fields.notify_url).toBe(
+			'https://tunnel.ngrok-free.app/webhooks/payfast-itn'
+		);
+	});
+
 	it('sends only the owner notification email (customer email comes after payment)', async () => {
 		await postOrder(validOrderBody);
 		expect(email.sendEmail).toHaveBeenCalledTimes(1);

@@ -740,7 +740,8 @@ environment block. Update by editing tfvars and re-running `terraform apply`.
 | `PAYFAST_MERCHANT_KEY` | tfvars `payfast_merchant_key` | PayFast merchant key (sensitive) |
 | `PAYFAST_PASSPHRASE` | tfvars `payfast_passphrase` | PayFast signature passphrase (sensitive) |
 | `PAYFAST_SANDBOX` | tfvars `payfast_sandbox` | `'true'` for sandbox, `'false'` for production |
-| `API_URL` | derived from Lambda Function URL | Backend URL for PayFast ITN notify_url |
+
+The PayFast `notify_url` is computed at request time from the incoming request's `Host` header (`new URL(c.req.url).origin` in `backend/src/routes/orders.ts`), not from an env var. This avoids a circular dependency between `aws_lambda_function` and `aws_lambda_function_url` in Terraform. Local dev can set `API_URL` to an ngrok tunnel URL as an override — see `docs/run-locally.md`.
 
 ### Frontend build-time env
 
