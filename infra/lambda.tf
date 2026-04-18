@@ -98,6 +98,10 @@ resource "aws_lambda_function" "backend" {
       PAYFAST_MERCHANT_KEY  = var.payfast_merchant_key
       PAYFAST_PASSPHRASE    = var.payfast_passphrase
       PAYFAST_SANDBOX       = var.payfast_sandbox
+      # Backend's public base URL (via CloudFront, not the raw Function URL)
+      # for building PayFast notify_url. Lambda Function URL is private
+      # (AWS_IAM auth) and only CloudFront can reach it directly.
+      API_URL = var.site_url != "" ? "${var.site_url}/api" : "https://${var.domain_name}/api"
     }
   }
 
@@ -118,20 +122,7 @@ resource "aws_lambda_function" "backend" {
   }
 }
 
-resource "aws_lambda_function_url" "backend" {
-  function_name      = aws_lambda_function.backend.function_name
-  authorization_type = "NONE"
-
-  cors {
-    allow_credentials = false
-    allow_origins     = ["https://${var.domain_name}", "https://www.${var.domain_name}"]
-    # Do not include "OPTIONS" — the Lambda Function URL API validates
-    # each method name against an undocumented length constraint (≤ 6
-    # chars), which OPTIONS fails. AWS handles preflight automatically
-    # when CORS is configured, so only the methods the frontend actually
-    # calls need to be listed here.
-    allow_methods = ["GET", "POST"]
-    allow_headers = ["content-type"]
-    max_age       = 600
-  }
-}
+# Lambda Function URL removed — see api_gateway.tf for the replacement.
+# The Function URL feature hit an undiagnosable 403 at the gateway layer
+# in this account + af-south-1 that affected both public and signed IAM
+# traffic. API Gateway v2 HTTP API now fronts the Lambda.
