@@ -125,8 +125,13 @@ resource "aws_lambda_function_url" "backend" {
   cors {
     allow_credentials = false
     allow_origins     = ["https://${var.domain_name}", "https://www.${var.domain_name}"]
-    allow_methods     = ["POST", "GET", "OPTIONS"]
-    allow_headers     = ["content-type"]
-    max_age           = 600
+    # "*" instead of ["POST", "GET", "OPTIONS"] — AWS provider rejected
+    # the explicit list with a misleading length-constraint error. The
+    # frontend only calls POST/GET; preflight OPTIONS is handled
+    # automatically. Wildcard is functionally equivalent here given the
+    # allow_origins is already tightly scoped to our two hostnames.
+    allow_methods = ["*"]
+    allow_headers = ["content-type"]
+    max_age       = 600
   }
 }
