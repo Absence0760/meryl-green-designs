@@ -66,6 +66,6 @@ Treat "code changed, docs and tests unchanged" as an incomplete task — flag it
 - `docs/orders-and-tracking.md` — order schema + status webhook design
 - `docs/security.md` — risk register, mitigations, incident playbook
 - `infra/README.md` — Terraform module specifics
-- `.github/workflows/` — `ci.yml` (PR + push typecheck/test), three release-gated deploy workflows with skip-if-unchanged checks, `claude.yml` automation
+- `.github/workflows/` — `ci.yml` (PR + push typecheck/test), three release-gated deploy workflows with skip-if-unchanged checks, `dependabot-lockfile.yml` (syncs root pnpm-lock.yaml on Dependabot PRs), `claude.yml` automation
 
 Prefer reading these over guessing. Update them when behaviour changes.
