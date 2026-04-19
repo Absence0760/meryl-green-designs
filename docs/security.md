@@ -103,7 +103,8 @@ inbox.
   | `POST /webhooks/payfast-itn` | 60 / minute per IP |
 
   Implementation is an in-memory fixed-window limiter keyed on the first
-  IP in `x-forwarded-for` (set automatically by the Lambda Function URL).
+  IP in `x-forwarded-for` (populated by CloudFront / API Gateway as the
+  request traverses the front-door stack).
   Over the limit returns `429 Too Many Requests` with a `Retry-After`
   header. Covered by `__tests__/rate-limit.test.ts` (12 tests including
   integration regression guards on `/orders` and `/orders/:ref`).
@@ -114,7 +115,7 @@ inbox.
   concurrency, the effective global limit is `max × instances`. For
   single-IP flooding this is still meaningfully restrictive; for
   distributed-attacker mitigation (botnet), a shared store (DynamoDB,
-  Redis) or AWS WAF in front of the Function URL would be needed. Out of
+  Redis) or AWS WAF in front of CloudFront / API Gateway would be needed. Out of
   scope at current volume.
 - Bots that run a headless browser and don't fill the honeypot can still
   succeed up to the rate-limit cap. Sanity is the backstop — Meryl sees
@@ -592,6 +593,6 @@ Captured here so they don't get lost:
   email identity, to make impersonation harder outside the repo.
 - **Signed tokens on tracking URLs** instead of email-in-querystring. Low
   priority.
-- **AWS WAF in front of the Lambda Function URL** for distributed-attacker
+- **AWS WAF in front of CloudFront** for distributed-attacker
   rate limiting (the in-memory limiter only caps per-instance). Out of
   scope at current volume; revisit if real attack traffic appears.

@@ -7,7 +7,7 @@ For deploying to AWS, see [`deployment.md`](./deployment.md) instead.
 
 ## Prerequisites
 
-- **Node.js 20 or later** — check with `node --version`
+- **Node.js 22 or later** — check with `node --version`
 - **pnpm 9 or later** — check with `pnpm --version`, install with
   `npm install -g pnpm` if missing
 - A **Resend API key** — free at [resend.com](https://resend.com). Not strictly

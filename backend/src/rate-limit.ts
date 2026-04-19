@@ -53,7 +53,7 @@ export function createRateLimiter(opts: {
 }
 
 /**
- * AWS Lambda Function URLs populate `x-forwarded-for` with the originating
+ * CloudFront → API Gateway populates `x-forwarded-for` with the originating
  * client IP (first entry) followed by any intermediaries. Local dev via
  * `@hono/node-server` may or may not set it depending on the proxy chain.
  *
