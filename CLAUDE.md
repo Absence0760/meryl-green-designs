@@ -6,7 +6,7 @@ Repo-wide guidance. Loads into every Claude Code session — keep short. Per-wor
 
 Meryl Green Designs — website for a small South African studio selling handcrafted screens. Static brochure + gallery + shop, payments via PayFast (cards, Apple Pay, SnapScan, EFT — redirect model, no card data on our servers), Sanity CMS for content.
 
-## Workspaces (pnpm monorepo, Node ≥20)
+## Workspaces (pnpm monorepo, Node ≥22)
 
 | Path | What | Dev port | Per-workspace guide |
 |---|---|---|---|

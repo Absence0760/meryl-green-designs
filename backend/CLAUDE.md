@@ -4,7 +4,7 @@ Hono app deployed two ways: local Node server for dev, AWS Lambda (fronted by AP
 
 ## Stack
 
-- Hono on Node 20 — same app code runs as `@hono/node-server` locally and `hono/aws-lambda` in prod
+- Hono on Node 22 — same app code runs as `@hono/node-server` locally and `hono/aws-lambda` in prod
 - TypeScript, esbuild bundle (`dist/lambda.mjs`), `tsx watch` for local dev
 - vitest with mocked Sanity + Resend (no network)
 - `@sanity/client` for reads/writes; **Resend via raw `fetch`** — no SDK

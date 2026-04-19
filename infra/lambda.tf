@@ -63,14 +63,14 @@ resource "aws_lambda_function" "backend" {
   source_code_hash = data.archive_file.lambda_stub.output_base64sha256
 
   handler = "lambda.handler"
-  runtime = "nodejs20.x"
+  runtime = "nodejs22.x"
   # 30s accommodates the monthly PII cleanup sweep (~60 sequential Sanity
   # patches on the first run, ~5/month thereafter — see pii-cleanup.ts).
   # HTTP request handlers complete in well under a second; the longer
   # timeout is dormant for those.
   timeout = 30
 
-  # 128 MB (the AWS default) throttles cold-start CPU enough that a Node 20
+  # 128 MB (the AWS default) throttles cold-start CPU enough that a Node 22
   # bundle with @sanity/client takes ~1s to initialise. AWS scales CPU
   # linearly with memory up to ~1792 MB, so 512 MB roughly halves cold starts
   # at the same per-ms price.
