@@ -18,9 +18,14 @@ output "lambda_function_name" {
   value       = aws_lambda_function.backend.function_name
 }
 
-output "lambda_function_url" {
-  description = "HTTPS URL of the backend Lambda Function URL. Set this as PUBLIC_API_URL when building the frontend."
-  value       = aws_lambda_function_url.backend.function_url
+output "api_gateway_invoke_url" {
+  description = "Direct invoke URL of the HTTP API (internal — use api_url for the public path through CloudFront)."
+  value       = aws_apigatewayv2_api.backend.api_endpoint
+}
+
+output "api_url" {
+  description = "Public base URL for the backend API, fronted by CloudFront. Set this as PUBLIC_API_URL when building the frontend."
+  value       = "https://${var.domain_name}/api"
 }
 
 output "site_url" {

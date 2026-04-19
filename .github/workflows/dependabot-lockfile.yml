@@ -1,0 +1,73 @@
+name: Dependabot lockfile sync
+
+# Dependabot updates <workspace>/package.json but never touches the root
+# pnpm-lock.yaml, which breaks ci.yml's `pnpm install --frozen-lockfile`. This
+# workflow regenerates the lockfile on every Dependabot PR and commits the
+# result back, which retriggers CI and lets the PR go green without manual
+# intervention.
+#
+# Setup (one-time):
+#   1. Create a fine-grained PAT scoped to this repo with "Contents: Write"
+#      permission (Settings → Developer settings → Personal access tokens →
+#      Fine-grained tokens). Expiry up to you — rotate when it expires.
+#   2. Add it as a repo secret named `DEPENDABOT_LOCKFILE_PAT`
+#      (Settings → Secrets and variables → Actions → New repository secret).
+#
+# Why a PAT and not GITHUB_TOKEN: pushes made with GITHUB_TOKEN do not retrigger
+# workflows — GitHub blocks that path to prevent infinite loops. A PAT push is
+# attributed to the token owner and does retrigger `pull_request` events, so
+# ci.yml re-runs on the synced branch.
+
+on:
+  pull_request:
+    paths:
+      - "**/package.json"
+
+permissions:
+  contents: read
+
+jobs:
+  sync-lockfile:
+    # Only run on Dependabot-authored PRs. `github.actor` is the bot username,
+    # so this also neatly skips Dependabot security updates authored by a human
+    # re-push if there ever is one.
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          # Using the PAT here means the subsequent `git push` is attributed to
+          # the PAT owner (not github-actions), which is what causes CI to
+          # retrigger on the resulting synchronize event.
+          token: ${{ secrets.DEPENDABOT_LOCKFILE_PAT }}
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Regenerate lockfile
+        # --lockfile-only updates pnpm-lock.yaml without actually installing to
+        # node_modules — fast and avoids running postinstall scripts from a
+        # dep that's being bumped (defense in depth against a malicious bump).
+        run: pnpm install --lockfile-only
+
+      - name: Commit & push if changed
+        run: |
+          if git diff --quiet pnpm-lock.yaml; then
+            echo "Lockfile already in sync — nothing to commit."
+            exit 0
+          fi
+          git config user.name "dependabot[bot]"
+          git config user.email "49699333+dependabot[bot]@users.noreply.github.com"
+          git add pnpm-lock.yaml
+          git commit -m "chore: sync pnpm-lock.yaml"
+          git push
