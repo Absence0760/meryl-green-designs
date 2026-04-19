@@ -63,14 +63,14 @@ resource "aws_lambda_function" "backend" {
   source_code_hash = data.archive_file.lambda_stub.output_base64sha256
 
   handler = "lambda.handler"
-  runtime = "nodejs20.x"
+  runtime = "nodejs22.x"
   # 30s accommodates the monthly PII cleanup sweep (~60 sequential Sanity
   # patches on the first run, ~5/month thereafter — see pii-cleanup.ts).
   # HTTP request handlers complete in well under a second; the longer
   # timeout is dormant for those.
   timeout = 30
 
-  # 128 MB (the AWS default) throttles cold-start CPU enough that a Node 20
+  # 128 MB (the AWS default) throttles cold-start CPU enough that a Node 22
   # bundle with @sanity/client takes ~1s to initialise. AWS scales CPU
   # linearly with memory up to ~1792 MB, so 512 MB roughly halves cold starts
   # at the same per-ms price.
@@ -98,7 +98,11 @@ resource "aws_lambda_function" "backend" {
       PAYFAST_MERCHANT_KEY  = var.payfast_merchant_key
       PAYFAST_PASSPHRASE    = var.payfast_passphrase
       PAYFAST_SANDBOX       = var.payfast_sandbox
-      API_URL               = aws_lambda_function_url.backend.function_url
+      # Backend's public base URL (CloudFront → API Gateway → Lambda) used
+      # by the Hono app to build PayFast's notify_url. PayFast POSTs the
+      # ITN callback to this URL, which reaches the Lambda through the
+      # same /api/* path the browser uses.
+      API_URL = var.site_url != "" ? "${var.site_url}/api" : "https://${var.domain_name}/api"
     }
   }
 
@@ -119,15 +123,7 @@ resource "aws_lambda_function" "backend" {
   }
 }
 
-resource "aws_lambda_function_url" "backend" {
-  function_name      = aws_lambda_function.backend.function_name
-  authorization_type = "NONE"
-
-  cors {
-    allow_credentials = false
-    allow_origins     = ["https://${var.domain_name}", "https://www.${var.domain_name}"]
-    allow_methods     = ["POST", "GET", "OPTIONS"]
-    allow_headers     = ["content-type"]
-    max_age           = 600
-  }
-}
+# Lambda Function URL removed — see api_gateway.tf for the replacement.
+# The Function URL feature hit an undiagnosable 403 at the gateway layer
+# in this account + af-south-1 that affected both public and signed IAM
+# traffic. API Gateway v2 HTTP API now fronts the Lambda.

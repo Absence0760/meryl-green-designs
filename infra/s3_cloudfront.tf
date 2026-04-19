@@ -119,6 +119,28 @@ resource "aws_cloudfront_origin_access_control" "frontend" {
   signing_protocol                  = "sigv4"
 }
 
+# CloudFront Function that rewrites /api/foo → /foo before forwarding to
+# the API Gateway origin. This lets the Hono app keep routes mounted at
+# /orders, /products, etc. while the public API surface lives under /api/*.
+resource "aws_cloudfront_function" "strip_api_prefix" {
+  name    = "${local.project}-strip-api-prefix"
+  runtime = "cloudfront-js-2.0"
+  comment = "Strip /api prefix from request URI before forwarding to API Gateway"
+  publish = true
+
+  code = <<-EOT
+    function handler(event) {
+      var request = event.request;
+      if (request.uri === '/api' || request.uri === '/api/') {
+        request.uri = '/';
+      } else if (request.uri.startsWith('/api/')) {
+        request.uri = request.uri.substring(4);
+      }
+      return request;
+    }
+  EOT
+}
+
 resource "aws_cloudfront_distribution" "frontend" {
   enabled             = true
   is_ipv6_enabled     = true
@@ -132,6 +154,37 @@ resource "aws_cloudfront_distribution" "frontend" {
     domain_name              = aws_s3_bucket.frontend.bucket_regional_domain_name
     origin_id                = "s3-frontend"
     origin_access_control_id = aws_cloudfront_origin_access_control.frontend.id
+  }
+
+  origin {
+    domain_name = local.api_gateway_host
+    origin_id   = "api-gateway-backend"
+
+    custom_origin_config {
+      http_port              = 80
+      https_port             = 443
+      origin_protocol_policy = "https-only"
+      origin_ssl_protocols   = ["TLSv1.2"]
+    }
+  }
+
+  # /api/* → Lambda origin. Strips the /api prefix via CloudFront Function
+  # so the Hono app sees its normal route paths. No caching (API responses
+  # are dynamic). Forwards all HTTP methods that the backend handles.
+  ordered_cache_behavior {
+    path_pattern             = "/api/*"
+    target_origin_id         = "api-gateway-backend"
+    viewer_protocol_policy   = "https-only"
+    allowed_methods          = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
+    cached_methods           = ["GET", "HEAD"]
+    compress                 = true
+    cache_policy_id          = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad" # Managed-CachingDisabled
+    origin_request_policy_id = "b689b0a8-53d0-40ab-baf2-68738e2966ac" # Managed-AllViewerExceptHostHeader
+
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.strip_api_prefix.arn
+    }
   }
 
   default_cache_behavior {
