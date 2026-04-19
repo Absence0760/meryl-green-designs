@@ -6,9 +6,10 @@ import { runPiiCleanup } from './pii-cleanup.js';
 const httpHandler = handle(createApp());
 
 /**
- * Single Lambda function URL serving two distinct event sources:
+ * Single Lambda serving two distinct event sources:
  *
- * 1. **HTTP requests** via the Function URL — the regular Hono app.
+ * 1. **HTTP requests** via API Gateway v2 (HTTP API, AWS_PROXY integration)
+ *    fronted by CloudFront at `/api/*` — the regular Hono app.
  * 2. **EventBridge scheduled invocations** for the PII retention sweep.
  *    EventBridge events have `source === 'aws.events'`; the schedule
  *    rule is defined in `infra/pii_cleanup.tf`.

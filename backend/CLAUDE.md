@@ -1,10 +1,10 @@
 # backend/
 
-Hono app deployed two ways: local Node server for dev, AWS Lambda (Function URL) for prod. Dev port `3001` (`PORT` env override).
+Hono app deployed two ways: local Node server for dev, AWS Lambda (fronted by API Gateway HTTP API, in turn fronted by CloudFront at `/api/*`) for prod. Dev port `3001` (`PORT` env override).
 
 ## Stack
 
-- Hono on Node 20 — same app code runs as `@hono/node-server` locally and `hono/aws-lambda` in prod
+- Hono on Node 22 — same app code runs as `@hono/node-server` locally and `hono/aws-lambda` in prod
 - TypeScript, esbuild bundle (`dist/lambda.mjs`), `tsx watch` for local dev
 - vitest with mocked Sanity + Resend (no network)
 - `@sanity/client` for reads/writes; **Resend via raw `fetch`** — no SDK

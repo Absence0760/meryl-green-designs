@@ -110,6 +110,46 @@ describe('POST /orders', () => {
 		expect(createArg.amountZar).toBe(450);
 	});
 
+	it('prefers the API_URL env var when set (production behaviour)', async () => {
+		// In production, Terraform sets API_URL on the Lambda to the
+		// CloudFront-fronted public path (https://<domain>/api), which the
+		// backend uses to build the PayFast notify_url so PayFast can reach
+		// the /webhooks/payfast-itn route through CloudFront + API Gateway.
+		vi.stubEnv('API_URL', 'https://merylgreendesigns.com/api');
+		const res = await postOrder(validOrderBody);
+		const data = (await res.json()) as any;
+		expect(data.payfast.fields.notify_url).toBe(
+			'https://merylgreendesigns.com/api/webhooks/payfast-itn'
+		);
+	});
+
+	it('falls back to request origin when API_URL is unset (pure local dev)', async () => {
+		// Fallback path: if API_URL isn't set, the backend derives the base
+		// URL from c.req.url. Production always has API_URL set, so this is
+		// a local-dev / edge-case path.
+		vi.stubEnv('API_URL', '');
+		const app = createApp();
+		const res = await app.request('https://example.test/orders', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(validOrderBody)
+		});
+		expect(res.status).toBe(200);
+		const data = (await res.json()) as any;
+		expect(data.payfast.fields.notify_url).toBe(
+			'https://example.test/webhooks/payfast-itn'
+		);
+	});
+
+	it('prefers API_URL env override when set (e.g. local ngrok testing)', async () => {
+		vi.stubEnv('API_URL', 'https://tunnel.ngrok-free.app');
+		const res = await postOrder(validOrderBody);
+		const data = (await res.json()) as any;
+		expect(data.payfast.fields.notify_url).toBe(
+			'https://tunnel.ngrok-free.app/webhooks/payfast-itn'
+		);
+	});
+
 	it('sends only the owner notification email (customer email comes after payment)', async () => {
 		await postOrder(validOrderBody);
 		expect(email.sendEmail).toHaveBeenCalledTimes(1);
