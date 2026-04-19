@@ -454,8 +454,14 @@ CI/CD lives in `.github/workflows/`:
   updates the Lambda via `aws lambda update-function-code`.
 - `deploy-studio.yml` — runs on `release: published`, same skip-if-unchanged
   logic scoped to `studio/**`. Runs `sanity deploy`.
+- `dependabot-lockfile.yml` — runs on Dependabot PRs that touch any
+  `package.json`. Regenerates the root `pnpm-lock.yaml` with
+  `pnpm install --lockfile-only` and commits it back, because Dependabot
+  itself only rewrites per-workspace `package.json` and leaves the shared
+  root lockfile stale (which otherwise breaks `ci.yml`'s `--frozen-lockfile`).
+  Requires a `DEPENDABOT_LOCKFILE_PAT` repo secret — see the workflow file.
 
-All three workflows authenticate to AWS via **GitHub OIDC federation** — no
+All three deploy workflows authenticate to AWS via **GitHub OIDC federation** — no
 long-lived access keys are stored in the repo. The IAM role's trust policy
 is scoped to the `production` GitHub Actions environment of the repo (not
 the `main` branch, because release-triggered workflows run with
