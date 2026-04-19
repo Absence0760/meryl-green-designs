@@ -359,7 +359,7 @@ read_outputs() {
 	FRONTEND_BUCKET="$(echo "$outputs" | jq -r '.frontend_bucket_name.value')"
 	CLOUDFRONT_DISTRIBUTION_ID="$(echo "$outputs" | jq -r '.cloudfront_distribution_id.value')"
 	LAMBDA_FUNCTION_NAME="$(echo "$outputs" | jq -r '.lambda_function_name.value')"
-	LAMBDA_FUNCTION_URL="$(echo "$outputs" | jq -r '.lambda_function_url.value')"
+	API_GATEWAY_INVOKE_URL="$(echo "$outputs" | jq -r '.api_gateway_invoke_url.value')"
 	GITHUB_ACTIONS_ROLE_ARN="$(echo "$outputs" | jq -r '.github_actions_role_arn.value')"
 
 	# site_url comes from tfvars if set, otherwise defaults to https://<domain>
@@ -368,12 +368,12 @@ read_outputs() {
 		SITE_URL="https://$DOMAIN_NAME"
 	fi
 
-	log "Frontend bucket:     $FRONTEND_BUCKET"
-	log "CloudFront dist:     $CLOUDFRONT_DISTRIBUTION_ID"
-	log "Lambda function:     $LAMBDA_FUNCTION_NAME"
-	log "Lambda Function URL: $LAMBDA_FUNCTION_URL"
-	log "Site URL:            $SITE_URL"
-	log "GitHub Actions role: $GITHUB_ACTIONS_ROLE_ARN"
+	log "Frontend bucket:       $FRONTEND_BUCKET"
+	log "CloudFront dist:       $CLOUDFRONT_DISTRIBUTION_ID"
+	log "Lambda function:       $LAMBDA_FUNCTION_NAME"
+	log "API Gateway (direct):  $API_GATEWAY_INVOKE_URL"
+	log "Site URL:              $SITE_URL"
+	log "GitHub Actions role:   $GITHUB_ACTIONS_ROLE_ARN"
 }
 
 # ----------------------------------------------------------------------------
@@ -407,7 +407,10 @@ populate_github() {
 	set_var FRONTEND_BUCKET            "$FRONTEND_BUCKET"
 	set_var CLOUDFRONT_DISTRIBUTION_ID "$CLOUDFRONT_DISTRIBUTION_ID"
 	set_var LAMBDA_FUNCTION_NAME       "$LAMBDA_FUNCTION_NAME"
-	set_var PUBLIC_API_URL             "$LAMBDA_FUNCTION_URL"
+	# Backend is fronted by CloudFront at SITE_URL/api/*, which forwards to
+	# API Gateway → Lambda. The frontend talks to the public /api path, not
+	# the raw API Gateway invoke URL, so same-origin + no CORS complexity.
+	set_var PUBLIC_API_URL             "${SITE_URL%/}/api"
 	set_var PUBLIC_SITE_URL            "$SITE_URL"
 	set_var PUBLIC_SANITY_PROJECT_ID   "$SANITY_PROJECT_ID"
 	set_var PUBLIC_SANITY_DATASET      "$SANITY_DATASET"
@@ -437,7 +440,8 @@ setup_sanity() {
 	fi
 
 	local api="https://api.sanity.io/v2021-06-07/projects/$SANITY_PROJECT_ID"
-	local webhook_url="${LAMBDA_FUNCTION_URL%/}/webhooks/sanity-order"
+	# Webhook URL goes through the public CloudFront-fronted API path.
+	local webhook_url="${SITE_URL%/}/api/webhooks/sanity-order"
 
 	# ---- Flip dataset to private (idempotent) + verify ----
 	log "Setting dataset '$SANITY_DATASET' to private..."
@@ -575,9 +579,10 @@ ${C_BOLD}What still needs you (can't be automated):${C_RESET}
 
   6. ${C_BOLD}Add content${C_RESET} in Sanity Studio — products, gallery photos.
 
-${C_BOLD}Site URL:${C_RESET}            https://$DOMAIN_NAME
-${C_BOLD}Lambda Function URL:${C_RESET} $LAMBDA_FUNCTION_URL
-${C_BOLD}GitHub env vars:${C_RESET}     https://github.com/$GITHUB_REPO/settings/environments/production
+${C_BOLD}Site URL:${C_RESET}             https://$DOMAIN_NAME
+${C_BOLD}API base (public):${C_RESET}    https://$DOMAIN_NAME/api (via CloudFront → API Gateway → Lambda)
+${C_BOLD}API Gateway (direct):${C_RESET} $API_GATEWAY_INVOKE_URL
+${C_BOLD}GitHub env vars:${C_RESET}      https://github.com/$GITHUB_REPO/settings/environments/production
 
 EOF
 }

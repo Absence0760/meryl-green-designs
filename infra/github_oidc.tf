@@ -14,8 +14,12 @@ resource "aws_iam_openid_connect_provider" "github" {
 }
 
 # ----------------------------------------------------------------------------
-# Trust policy: only workflows on the main branch of the configured repo may
-# assume this role.
+# Trust policy: only workflows running in the `production` GitHub environment
+# of the configured repo may assume this role. Environment-scoped (not branch-
+# scoped) because release-gated deploys run with github.ref=refs/tags/<tag>,
+# not refs/heads/main — so a branch-based trust policy would reject them.
+# The `production` environment is created by bin/setup.sh and carries the
+# deploy variables; workflows declare `environment: production` explicitly.
 # ----------------------------------------------------------------------------
 
 data "aws_iam_policy_document" "github_actions_trust" {
@@ -36,7 +40,7 @@ data "aws_iam_policy_document" "github_actions_trust" {
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_repo}:ref:refs/heads/main"]
+      values   = ["repo:${var.github_repo}:environment:production"]
     }
   }
 }

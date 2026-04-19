@@ -28,7 +28,7 @@ For the conceptual picture of how the pieces fit together, see
 | App | Target | Trigger |
 |---|---|---|
 | Frontend | S3 + CloudFront (AWS) | `deploy-frontend.yml` on **release published** (+ `repository_dispatch` for Sanity content edits) |
-| Backend | Lambda + Function URL (AWS) | `deploy-backend.yml` on **release published** |
+| Backend | Lambda + API Gateway HTTP API (AWS), fronted by CloudFront at `/api/*` | `deploy-backend.yml` on **release published** |
 | Studio | Sanity hosted (`*.sanity.studio`) | `deploy-studio.yml` on **release published** |
 
 All three deploys are **release-gated**: they fire only when a GitHub release
@@ -527,19 +527,19 @@ Track, Contact. Every page should render without console errors.
 ### 2. Backend health check
 
 ```bash
-curl https://<lambda-url>/health
+curl https://<your-domain>/api/health
 # Expect: {"ok":true}
 ```
 
-The Lambda URL is in your Terraform outputs
-(`terraform output lambda_function_url`) or the GitHub Actions
-`PUBLIC_API_URL` variable.
+The backend is reachable at `${site_url}/api/*` via CloudFront → API Gateway → Lambda.
+The raw API Gateway invoke URL (`${terraform output api_gateway_invoke_url}`)
+also works if you need to bypass CloudFront for debugging.
 
 ### 3. Products and gallery load live
 
 With your browser devtools **Network** tab open, visit `/shop`. You should
-see a fetch to `<lambda-url>/products` returning your real products. Same for
-`/gallery` → `<lambda-url>/gallery`.
+see a fetch to `<your-domain>/api/products` returning your real products. Same for
+`/gallery` → `<your-domain>/api/gallery`.
 
 ### 4. Full order flow
 
@@ -740,7 +740,7 @@ environment block. Update by editing tfvars and re-running `terraform apply`.
 | `PAYFAST_MERCHANT_KEY` | tfvars `payfast_merchant_key` | PayFast merchant key (sensitive) |
 | `PAYFAST_PASSPHRASE` | tfvars `payfast_passphrase` | PayFast signature passphrase (sensitive) |
 | `PAYFAST_SANDBOX` | tfvars `payfast_sandbox` | `'true'` for sandbox, `'false'` for production |
-| `API_URL` | derived from Lambda Function URL | Backend URL for PayFast ITN notify_url |
+| `API_URL` | derived from tfvars `site_url` / `domain_name` | Public base URL used to build PayFast `notify_url` (defaults to `https://<domain_name>/api`). In local dev this can be set to an ngrok tunnel URL to receive PayFast sandbox ITN callbacks — see `docs/run-locally.md`. |
 
 ### Frontend build-time env
 
@@ -750,7 +750,7 @@ time; rebuilding is required to change them.
 
 | Variable | Source |
 |---|---|
-| `PUBLIC_API_URL` | `lambda_function_url` Terraform output |
+| `PUBLIC_API_URL` | `api_url` Terraform output (`https://<domain>/api` — the CloudFront-fronted path, not the raw API Gateway URL) |
 | `PUBLIC_SITE_URL` | tfvars `site_url` (e.g. `https://merylgreendesigns.co.za`) — used to build absolute Open Graph / Twitter Card URLs |
 | `PUBLIC_SANITY_PROJECT_ID` | tfvars `sanity_project_id` |
 | `PUBLIC_SANITY_DATASET` | tfvars `sanity_dataset` |
@@ -766,7 +766,7 @@ All populated automatically by `bin/setup.sh`.
 | `FRONTEND_BUCKET` | TF output `frontend_bucket_name` | `deploy-frontend.yml` (S3 sync target) |
 | `CLOUDFRONT_DISTRIBUTION_ID` | TF output `cloudfront_distribution_id` | `deploy-frontend.yml` (invalidation) |
 | `LAMBDA_FUNCTION_NAME` | TF output `lambda_function_name` | `deploy-backend.yml` (update-function-code) |
-| `PUBLIC_API_URL` | TF output `lambda_function_url` | `deploy-frontend.yml` (build env) |
+| `PUBLIC_API_URL` | derived in `bin/setup.sh` as `${SITE_URL}/api` | `deploy-frontend.yml` (build env) |
 | `PUBLIC_SANITY_PROJECT_ID` | tfvars `sanity_project_id` | `deploy-frontend.yml` + `deploy-studio.yml` |
 | `PUBLIC_SANITY_DATASET` | tfvars `sanity_dataset` | `deploy-frontend.yml` + `deploy-studio.yml` |
 
@@ -912,9 +912,9 @@ gh release create v0.3.2 --generate-notes --target main
 ### Backend
 
 The Lambda is deployed with `aws lambda update-function-code --publish`,
-which creates a numbered version each time. The **Function URL is bound to
-`$LATEST`**, not to a specific version or alias, so rollback works by
-overwriting `$LATEST` with earlier code. Two ways:
+which creates a numbered version each time. The **API Gateway HTTP API
+integration points at `$LATEST`**, not at a specific version or alias, so
+rollback works by overwriting `$LATEST` with earlier code. Two ways:
 
 1. **Re-run a previous successful `deploy-backend.yml` workflow run** from
    the Actions UI. The workflow re-checks out the commit from that run,
@@ -934,9 +934,10 @@ overwriting `$LATEST` with earlier code. Two ways:
 
 Historical versions are preserved by the `--publish` flag (you can see them
 with `aws lambda list-versions-by-function`), so you could also invoke a
-specific version manually if you wanted — but the Function URL will keep
-pointing at `$LATEST` until you either overwrite it or create an alias. For
-now, the two workflow-based options above are the supported rollback path.
+specific version manually if you wanted — but the API Gateway integration
+will keep pointing at `$LATEST` until you either overwrite it or rewire the
+integration. For now, the two workflow-based options above are the supported
+rollback path.
 
 ### Studio
 
@@ -1105,7 +1106,7 @@ orders per week, in South African Rand:
 | S3 (frontend bucket + state bucket) | ~R1 | Storage + requests, mostly under free tier |
 | CloudFront | R0–10 | First 1 TB of egress is free for 12 months, then ~R1.50/GB |
 | Lambda (requests + compute) | R0 | Free tier covers 1M requests + 400k GB-seconds/month |
-| Lambda Function URL | R0 | No extra cost beyond Lambda itself |
+| API Gateway v2 (HTTP API) | R0 | Free tier covers 1M requests/month; ~$1/mil after. Well under at this traffic. |
 | Route 53 hosted zone | ~R10 | Flat ~R9 per zone per month |
 | ACM certificate | R0 | Free for public certs |
 | CloudWatch Logs | R0–5 | Depends on log volume; 30-day retention in the config |
@@ -1224,7 +1225,7 @@ is separate from AWS).
   a Sanity-specific GROQ function; it's not a typo.
 
 **Lambda cold start is slow on first request after idle**
-: Expected. Node 20 Lambda cold starts are ~300–800 ms for our 787 KB
+: Expected. Node 22 Lambda cold starts are ~300–800 ms for our 787 KB
   bundle at 512 MB (the `memory_size` set in `infra/lambda.tf`). Subsequent
   requests are ~5–20 ms. The memory bump was a deliberate trade: AWS scales
   CPU linearly with memory up to ~1792 MB at the same per-ms price, so 512 MB
@@ -1301,7 +1302,7 @@ OUTPUTS=$(terraform output -json)
 FRONTEND_BUCKET=$(echo "$OUTPUTS" | jq -r '.frontend_bucket_name.value')
 CLOUDFRONT_ID=$(echo "$OUTPUTS" | jq -r '.cloudfront_distribution_id.value')
 LAMBDA_NAME=$(echo "$OUTPUTS" | jq -r '.lambda_function_name.value')
-LAMBDA_URL=$(echo "$OUTPUTS" | jq -r '.lambda_function_url.value')
+API_URL=$(echo "$OUTPUTS" | jq -r '.api_url.value')
 ROLE_ARN=$(echo "$OUTPUTS" | jq -r '.github_actions_role_arn.value')
 cd -
 
@@ -1315,7 +1316,7 @@ for pair in \
   "FRONTEND_BUCKET=$FRONTEND_BUCKET" \
   "CLOUDFRONT_DISTRIBUTION_ID=$CLOUDFRONT_ID" \
   "LAMBDA_FUNCTION_NAME=$LAMBDA_NAME" \
-  "PUBLIC_API_URL=$LAMBDA_URL" \
+  "PUBLIC_API_URL=$API_URL" \
   "PUBLIC_SANITY_PROJECT_ID=$SANITY_PROJECT_ID" \
   "PUBLIC_SANITY_DATASET=production"
 do

@@ -12,9 +12,15 @@ Terraform configuration for the Meryl Green Designs AWS resources.
 - **ACM certificate** (in us-east-1, as CloudFront requires) with DNS validation
 - **Route 53 records** for the apex domain, `www`, and cert validation
 - **Lambda function** running the Hono backend as an ESM bundle
-- **Lambda Function URL** (no API Gateway) with CORS scoped to the site domain
+- **API Gateway v2 (HTTP API)** fronting the Lambda via an AWS_PROXY
+  integration. CloudFront's `/api/*` behavior forwards to API Gateway, so
+  the backend is reachable at `merylgreendesigns.com/api/*`. A CloudFront
+  Function strips the `/api` prefix before forwarding, keeping Hono routes
+  at their natural paths (`/orders`, `/products`, etc.).
 - **Lambda execution IAM role** + CloudWatch log group (30-day retention)
-- **GitHub OIDC provider** + IAM role for CI, scoped to `main` branch only
+- **GitHub OIDC provider** + IAM role for CI, trust-policied to the
+  `production` GitHub Actions environment (environment-scoped rather than
+  branch-scoped so release-triggered deploys on `refs/tags/*` work)
 - **AWS Budget** with email alerts at 50% / 80% / 100% of a configurable
   monthly cap (default $30 — see `monthly_budget_usd` in `variables.tf`)
 - **EventBridge schedule** that invokes the backend Lambda monthly (04:00
@@ -107,7 +113,7 @@ terraform apply
 
 The first apply takes ~15 minutes (most of it waiting for CloudFront to
 propagate). After it finishes, Terraform prints the outputs — copy
-`github_actions_role_arn`, `lambda_function_url`, and `cloudfront_distribution_id`
+`github_actions_role_arn`, `api_url`, and `cloudfront_distribution_id`
 into your GitHub Actions workflow secrets/variables (see `docs/deployment.md`).
 
 ## Rotating secrets
