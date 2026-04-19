@@ -559,7 +559,7 @@ parsed object — that's how this bug came back the first time.
 | `PAYFAST_MERCHANT_KEY` | **yes** | PayFast merchant key |
 | `PAYFAST_PASSPHRASE` | **yes** | Passphrase for signature generation/verification |
 | `PAYFAST_SANDBOX` | no | `'true'` to use sandbox environment |
-| `API_URL` | no | Backend URL for constructing the ITN `notify_url` |
+| `API_URL` | no | Public base URL the backend uses to build the PayFast `notify_url`. In production Terraform sets this to `https://<domain>/api` (the CloudFront-fronted path); in local dev, override with an ngrok tunnel URL so PayFast sandbox ITN callbacks can reach the Hono dev server |
 
 For testing locally against PayFast's public sandbox (including ngrok setup
 for ITN callbacks), see
@@ -615,7 +615,7 @@ not the repo:
    - `SITE_URL` (for tracking links in emails)
 5. **Create the Sanity webhook.** In the dashboard:
    - **Name**: `Order status email`
-   - **URL**: `${lambda_function_url}/webhooks/sanity-order`
+   - **URL**: `${site_url}/api/webhooks/sanity-order` (the CloudFront-fronted path, not the raw API Gateway URL)
    - **Dataset**: `production` (or wherever orders live after the PII fix)
    - **Trigger on**: `Update`
    - **Filter** (GROQ): `_type == "order" && delta::changedAny(status)` —

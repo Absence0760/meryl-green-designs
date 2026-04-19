@@ -6,7 +6,7 @@ Repo-wide guidance. Loads into every Claude Code session — keep short. Per-wor
 
 Meryl Green Designs — website for a small South African studio selling handcrafted screens. Static brochure + gallery + shop, payments via PayFast (cards, Apple Pay, SnapScan, EFT — redirect model, no card data on our servers), Sanity CMS for content.
 
-## Workspaces (pnpm monorepo, Node ≥20)
+## Workspaces (pnpm monorepo, Node ≥22)
 
 | Path | What | Dev port | Per-workspace guide |
 |---|---|---|---|
@@ -66,6 +66,6 @@ Treat "code changed, docs and tests unchanged" as an incomplete task — flag it
 - `docs/orders-and-tracking.md` — order schema + status webhook design
 - `docs/security.md` — risk register, mitigations, incident playbook
 - `infra/README.md` — Terraform module specifics
-- `.github/workflows/` — `ci.yml` (PR + push typecheck/test), three release-gated deploy workflows with skip-if-unchanged checks, `claude.yml` automation
+- `.github/workflows/` — `ci.yml` (PR + push typecheck/test), three release-gated deploy workflows with skip-if-unchanged checks, `dependabot-lockfile.yml` (syncs root pnpm-lock.yaml on Dependabot PRs), `claude.yml` automation
 
 Prefer reading these over guessing. Update them when behaviour changes.

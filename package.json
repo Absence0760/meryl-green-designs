@@ -15,6 +15,6 @@
 		"studio": "pnpm --filter @meryl-green-designs/studio"
 	},
 	"engines": {
-		"node": ">=20"
+		"node": ">=22"
 	}
 }
