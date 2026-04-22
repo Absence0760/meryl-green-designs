@@ -56,4 +56,29 @@ describe('imageUrl', () => {
 		const url = imageUrl(source);
 		expect(url).not.toContain('w=');
 	});
+
+	// Regression: Sanity Studio creates array items with a `_key` as soon
+	// as a file is dropped, but the `asset` ref is only filled in when the
+	// upload completes. If a doc is published mid-upload, the array can
+	// contain entries with `asset: null`. @sanity/image-url throws on those,
+	// which previously crashed the shop page render during hydration and
+	// left it stuck on its skeleton state.
+	it('returns null for a photo-array entry whose upload never completed (asset: null)', () => {
+		const broken = {
+			_key: 'b4b737c69480',
+			alt: null,
+			asset: null,
+			crop: null,
+			hotspot: null
+		} as unknown as typeof source;
+		expect(imageUrl(broken, 640)).toBeNull();
+	});
+
+	it('returns null when asset is missing entirely', () => {
+		expect(imageUrl({ _type: 'image' } as unknown as typeof source)).toBeNull();
+	});
+
+	it('returns null when asset has no _ref', () => {
+		expect(imageUrl({ asset: {} } as unknown as typeof source)).toBeNull();
+	});
 });

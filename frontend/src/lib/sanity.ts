@@ -56,9 +56,28 @@ const builder = createImageUrlBuilder({
 
 export function imageUrl(source: SanityImageSource, width?: number): string | null {
 	if (!PUBLIC_SANITY_PROJECT_ID) return null;
+	// Sanity Studio creates array entries with a `_key` as soon as a user
+	// drops a file on an `array of image` field; the asset ref is only filled
+	// in once the upload completes. If a doc gets published mid-upload (or
+	// an upload fails silently), the published photo array contains entries
+	// with `asset: null`. @sanity/image-url throws on those. Return null here
+	// so callers fall through to their placeholder branches instead of
+	// crashing the whole page render.
+	if (!hasAssetRef(source)) return null;
 	let img = builder.image(source).auto('format').fit('max');
 	if (width) img = img.width(width);
 	return img.url();
+}
+
+function hasAssetRef(source: SanityImageSource): boolean {
+	if (!source || typeof source !== 'object') return false;
+	const asset = (source as { asset?: unknown }).asset;
+	if (!asset) return false;
+	if (typeof asset === 'string') return asset.length > 0;
+	if (typeof asset === 'object' && '_ref' in asset) {
+		return typeof (asset as { _ref: unknown })._ref === 'string';
+	}
+	return false;
 }
 
 export function formatPrice(priceZar: number | null): string {
