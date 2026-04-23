@@ -10,10 +10,6 @@ anything in the repo) — see [`roadmap.md`](./roadmap.md).
 
 ## Site-wide
 
-- **Announcement bar** — thin leaf-dark strip above the header with
-  "Free shipping across South Africa · Secure checkout via PayFast".
-  First thing any visitor sees; addresses the two biggest trust
-  questions before the header even appears.
 - **Sticky header** with brand ("Meryl Green Designs") and navigation. The
   active route is highlighted. On narrow viewports (< 620px) the inline
   nav is replaced with a hamburger (|||) button that opens a **small
