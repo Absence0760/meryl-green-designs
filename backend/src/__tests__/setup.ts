@@ -6,7 +6,7 @@
 process.env.RESEND_API_KEY = 'test-resend-key';
 process.env.FROM_EMAIL = 'Meryl Green Designs <test@example.com>';
 process.env.OWNER_EMAIL = 'owner@example.com';
-process.env.ALLOWED_ORIGINS = 'http://localhost:7777,https://merylgreendesigns.co.za';
+process.env.ALLOWED_ORIGINS = 'http://localhost:7777,https://merylgreendesigns.com';
 process.env.SITE_URL = 'http://localhost:7777';
 
 process.env.SANITY_PROJECT_ID = 'test-project';

@@ -244,7 +244,7 @@ this once per AWS account.
 #### 2. Create your admin user
 
 5. **Identity Center → Users → Add user.**
-   - **Username**: your personal handle, e.g. `jaredhoward`. Name the user
+   - **Username**: your personal handle, e.g. `Absence0760`. Name the user
      after the person, not the project — the same user gets permission sets
      for any other AWS account they need access to.
    - **Email**: a real address that can receive setup + MFA prompts.
@@ -361,11 +361,11 @@ Required values:
 
 | Variable | Where to get it |
 |---|---|
-| `domain_name` | Your apex domain, e.g. `merylgreendesigns.co.za` (no protocol, no trailing slash) |
+| `domain_name` | Your apex domain, e.g. `merylgreendesigns.com` (no protocol, no trailing slash) |
 | `route53_zone_id` | `aws route53 list-hosted-zones-by-name --dns-name <your-domain>` → copy the `Id` without the `/hostedzone/` prefix |
-| `github_repo` | Your repo in `owner/name` form, e.g. `jaredhoward/meryl-green-designs` |
+| `github_repo` | Your repo in `owner/name` form, e.g. `Absence0760/meryl-green-designs` |
 | `resend_api_key` | Resend dashboard → API Keys → Create API key → copy the value |
-| `from_email` | A verified sender on your Resend domain, e.g. `"Meryl Green Designs <orders@merylgreendesigns.co.za>"` |
+| `from_email` | A verified sender on your Resend domain, e.g. `"Meryl Green Designs <orders@merylgreendesigns.com>"` |
 | `owner_email` | Inbox that should receive new-order notifications |
 | `sanity_project_id` | Sanity dashboard → your project → top of the page |
 | `sanity_api_token` | Sanity → Project → API → Tokens → Add → `Editor` role (used by the Lambda at runtime to create orders and read documents) |
@@ -751,7 +751,7 @@ time; rebuilding is required to change them.
 | Variable | Source |
 |---|---|
 | `PUBLIC_API_URL` | `api_url` Terraform output (`https://<domain>/api` — the CloudFront-fronted path, not the raw API Gateway URL) |
-| `PUBLIC_SITE_URL` | tfvars `site_url` (e.g. `https://merylgreendesigns.co.za`) — used to build absolute Open Graph / Twitter Card URLs |
+| `PUBLIC_SITE_URL` | tfvars `site_url` (e.g. `https://merylgreendesigns.com`) — used to build absolute Open Graph / Twitter Card URLs |
 | `PUBLIC_SANITY_PROJECT_ID` | tfvars `sanity_project_id` |
 | `PUBLIC_SANITY_DATASET` | tfvars `sanity_dataset` |
 
@@ -778,7 +778,7 @@ repository variable):
 
 | Variable | Required by | Purpose |
 |---|---|---|
-| `CLAUDE_AUTHORIZED_USER` | `claude.yml` | GitHub username allowed to invoke `@claude` automation. **If unset, the workflow's authorisation gate fails closed and Claude won't run** — set this to your operator account's login (e.g. `jaredhoward`). Without this, anyone who can comment on the repo could trigger the action. |
+| `CLAUDE_AUTHORIZED_USER` | `claude.yml` | GitHub username allowed to invoke `@claude` automation. **If unset, the workflow's authorisation gate fails closed and Claude won't run** — set this to your operator account's login (e.g. `Absence0760`). Without this, anyone who can comment on the repo could trigger the action. |
 
 ```bash
 gh variable set CLAUDE_AUTHORIZED_USER --body 'your-github-username'

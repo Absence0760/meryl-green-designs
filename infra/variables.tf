@@ -5,7 +5,7 @@ variable "aws_region" {
 }
 
 variable "domain_name" {
-  description = "Apex domain for the site, e.g. merylgreendesigns.co.za"
+  description = "Apex domain for the site, e.g. merylgreendesigns.com"
   type        = string
 }
 

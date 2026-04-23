@@ -5,19 +5,19 @@
 aws_region = "af-south-1"
 
 # Apex domain for the site (no protocol, no trailing slash).
-domain_name = "merylgreendesigns.co.za"
+domain_name = "merylgreendesigns.com"
 
 # Route 53 hosted zone ID for the apex domain.
-# Find it with: aws route53 list-hosted-zones-by-name --dns-name merylgreendesigns.co.za
+# Find it with: aws route53 list-hosted-zones-by-name --dns-name merylgreendesigns.com
 route53_zone_id = "Z0000000000000000000"
 
 # GitHub repo in 'owner/name' form — used to scope the CI role's trust policy.
-github_repo = "jaredhoward/meryl-green-designs"
+github_repo = "Absence0760/meryl-green-designs"
 
 # Backend secrets. These are passed to the Lambda as env vars on first apply.
 # After that, rotate them by updating this file and re-running `terraform apply`.
 resend_api_key = "re_xxxxxxxxxxxxxxxxxxxx"
-from_email     = "Meryl Green Designs <orders@merylgreendesigns.co.za>"
+from_email     = "Meryl Green Designs <orders@merylgreendesigns.com>"
 owner_email    = "meryl@example.com"
 
 # Sanity project — the value baked into the frontend build at CI time and

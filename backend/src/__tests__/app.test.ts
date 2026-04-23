@@ -37,10 +37,10 @@ describe('CORS', () => {
 	it('allows the production domain (in ALLOWED_ORIGINS)', async () => {
 		const app = createApp();
 		const res = await app.request('/health', {
-			headers: { Origin: 'https://merylgreendesigns.co.za' }
+			headers: { Origin: 'https://merylgreendesigns.com' }
 		});
 		expect(res.headers.get('access-control-allow-origin')).toBe(
-			'https://merylgreendesigns.co.za'
+			'https://merylgreendesigns.com'
 		);
 	});
 
@@ -105,7 +105,7 @@ describe('ALLOWED_ORIGINS fallback', () => {
 		delete process.env.ALLOWED_ORIGINS;
 		const app = createApp();
 		const res = await app.request('/health', {
-			headers: { Origin: 'https://merylgreendesigns.co.za' }
+			headers: { Origin: 'https://merylgreendesigns.com' }
 		});
 		expect(res.headers.get('access-control-allow-origin')).toBeNull();
 	});
