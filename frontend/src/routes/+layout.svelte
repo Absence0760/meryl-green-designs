@@ -16,6 +16,24 @@
 	const ogImage = `${siteUrl}/two_trees.JPG`;
 	$: canonicalUrl = `${siteUrl}${page.url.pathname}`;
 
+	// Organization JSON-LD. Included site-wide because automated domain
+	// classifiers (Google Safe Browsing, Cloudflare Gateway, AV reputation
+	// feeds) weigh structured-data presence as a "real business" signal
+	// when deciding whether to flag a new low-traffic domain.
+	// Replacing `<` prevents a payload accidentally terminating the
+	// surrounding <script> tag.
+	const orgJsonLd = JSON.stringify({
+		'@context': 'https://schema.org',
+		'@type': 'Organization',
+		name: 'Meryl Green Designs',
+		url: siteUrl,
+		logo: `${siteUrl}/favicon.svg`,
+		description:
+			'Handcrafted screens and nature-inspired designs from a South African studio.',
+		email: 'zagreenwoman@gmail.com',
+		areaServed: { '@type': 'Country', name: 'South Africa' }
+	}).replace(/</g, '\\u003c');
+
 	let cartOpen = false;
 	let menuOpen = false;
 
@@ -46,6 +64,8 @@
 
 	<meta name="twitter:card" content="summary_large_image" />
 	<meta name="twitter:image" content={ogImage} />
+
+	{@html `<script type="application/ld+json">${orgJsonLd}</script>`}
 </svelte:head>
 
 <div class="announcement-bar" role="status" aria-label="Shipping and checkout information">

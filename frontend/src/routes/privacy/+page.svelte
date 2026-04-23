@@ -35,7 +35,6 @@
 		property="og:description"
 		content="How Meryl Green Designs collects, uses, and protects your personal information under POPIA."
 	/>
-	<meta name="robots" content="noindex" />
 </svelte:head>
 
 <section class="section">

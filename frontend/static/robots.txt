@@ -5,3 +5,5 @@ Allow: /
 # Without those params it's useless to crawlers, so keep it out of indexes.
 Disallow: /track
 Disallow: /payment
+
+Sitemap: https://merylgreendesigns.com/sitemap.xml
