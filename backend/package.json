@@ -15,7 +15,7 @@
 	"dependencies": {
 		"@sanity/client": "^7.21.0",
 		"dotenv": "^17.4.2",
-		"hono": "4.12.14"
+		"hono": "4.12.16"
 	},
 	"devDependencies": {
 		"@hono/node-server": "1.19.14",
