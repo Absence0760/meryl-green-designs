@@ -13,17 +13,17 @@
 		"start": "node dist/server.js"
 	},
 	"dependencies": {
-		"@sanity/client": "^7.21.0",
+		"@sanity/client": "^7.22.0",
 		"dotenv": "^17.4.2",
-		"hono": "4.12.14"
+		"hono": "4.12.16"
 	},
 	"devDependencies": {
-		"@hono/node-server": "1.19.14",
+		"@hono/node-server": "2.0.0",
 		"@types/aws-lambda": "8.10.161",
 		"@types/node": "25.6.0",
 		"esbuild": "0.28.0",
 		"tsx": "4.21.0",
 		"typescript": "6.0.3",
-		"vitest": "4.1.4"
+		"vitest": "4.1.5"
 	}
 }
