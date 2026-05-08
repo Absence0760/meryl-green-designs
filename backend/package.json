@@ -18,7 +18,7 @@
 		"hono": "4.12.16"
 	},
 	"devDependencies": {
-		"@hono/node-server": "1.19.14",
+		"@hono/node-server": "2.0.0",
 		"@types/aws-lambda": "8.10.161",
 		"@types/node": "25.6.0",
 		"esbuild": "0.28.0",
