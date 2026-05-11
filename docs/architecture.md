@@ -70,6 +70,7 @@ meryl-green-designs/
 │           │   ├── +page.ts         prerender=true, ssr=false (client-only)
 │           │   └── +page.svelte     Order lookup form + status card
 │           ├── privacy/+page.svelte  POPIA-first privacy policy
+│           ├── returns/+page.svelte  Refund / returns policy
 │           └── contact/+page.svelte
 ├── backend/
 │   ├── package.json          Build script runs esbuild → dist/lambda.mjs
@@ -134,6 +135,7 @@ build/
 ├── shop.html
 ├── contact.html
 ├── privacy.html
+├── returns.html
 └── 404.html        SPA fallback — see below
 ```
 

@@ -274,6 +274,29 @@ Page copy and the closing CTA reflect that — visitors are guided to
   The "Last updated" date must be bumped whenever data flows or
   wording change.
 
+## Refund & returns policy (`/returns`)
+
+- **Client-supplied policy text** rendered verbatim: items are
+  manufactured to order, no refunds or cancellations after payment;
+  damaged-on-arrival packages are collected free of charge with a
+  same-day photo and a replacement is produced within 3–4 weeks.
+- **Statutory-rights hedge** — closes with "These terms do not affect
+  your statutory rights under the South African Consumer Protection
+  Act, 68 of 2008", which signals that CPA section 56 protections for
+  defective goods still apply even though the policy reads as
+  no-refunds. Added because a blanket no-refunds clause can't override
+  the CPA implied warranty of quality.
+- **How-to-claim block** — points customers to
+  `zagreenwoman@gmail.com` with an order reference and a photo.
+- Linked from the site footer between Privacy policy and Contact.
+- **Maintenance note:** the source file lists known legal gaps in a
+  comment at the top of the file (e.g. defective items in undamaged
+  packaging, lost-in-transit, made-to-order CPA framing) and reminds
+  whoever edits it that this is a legal document and should be
+  reviewed by a South African legal professional before going live
+  under the business name. The "Last updated" date must be bumped
+  whenever the wording changes.
+
 ## Track order (`/track`)
 
 - **Water page-header** — short 30vh decorative strip using `water2.JPG`

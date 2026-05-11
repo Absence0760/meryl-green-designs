@@ -6,7 +6,7 @@ export const prerender = true;
 // omitted: product slugs come from Sanity and would need a build-time fetch to
 // enumerate. Crawlers discover them by following links from /shop.
 // /track and /payment/* are noindex (per-order or post-checkout only).
-const ROUTES = ['/', '/shop', '/gallery', '/contact', '/privacy'];
+const ROUTES = ['/', '/shop', '/gallery', '/contact', '/privacy', '/returns'];
 
 export function GET() {
 	const base = (PUBLIC_SITE_URL ?? '').replace(/\/$/, '');
