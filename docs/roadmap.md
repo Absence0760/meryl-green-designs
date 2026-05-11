@@ -232,6 +232,16 @@ step up in complexity and shouldn't be taken lightly.
 - [ ] Order admin dashboard for Meryl — marked promoted earlier but in
       practice the Sanity Studio IS this dashboard, so the item is moot
       unless she outgrows Studio's list view.
+- [ ] **Split order PII out of Sanity into AWS DynamoDB.** Triggered by
+      Sanity's Free plan only permitting public datasets — to drop the
+      ~R285/month Growth subscription, customer PII (name, email, phone,
+      address, items, notes, tracking) moves to a private DynamoDB table
+      while order reference + status + amount stays on Sanity. Meryl's
+      Studio workflow is preserved via custom React panels that fetch
+      PII through a new `/admin/orders` backend route. ~7–11 days of
+      work for ~R283/month (~R3,400/year) saving; the real motivation is
+      reducing third-party PII processors, not the money. **Full
+      proposal:** [`docs/orders-pii-split-plan.md`](./orders-pii-split-plan.md).
 
 ## Explicit non-goals
 

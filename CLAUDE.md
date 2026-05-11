@@ -64,6 +64,7 @@ Treat "code changed, docs and tests unchanged" as an incomplete task — flag it
 - `docs/deployment.md` — CI/CD, OIDC, release flow, SOPS workflow, env var reference
 - `docs/features.md`, `docs/roadmap.md` — current and planned features
 - `docs/orders-and-tracking.md` — order schema + status webhook design
+- `docs/orders-pii-split-plan.md` — proposal (not implemented) for moving order PII off Sanity into DynamoDB so the Sanity Free plan suffices
 - `docs/security.md` — risk register, mitigations, incident playbook
 - `infra/README.md` — Terraform module specifics
 - `.github/workflows/` — `ci.yml` (PR + push typecheck/test), `codeql.yml` (SAST on PR + push + weekly), `audit.yml` (weekly `pnpm audit`, auto-files an issue), three release-gated deploy workflows with skip-if-unchanged checks, `dependabot-lockfile.yml` (syncs root pnpm-lock.yaml on Dependabot PRs), `claude.yml` automation
