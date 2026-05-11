@@ -370,6 +370,10 @@ client, Resend SDK, esbuild, vitest, etc.) ships a CVE. We pick it up via
   packages with no published advisory pass through. Risk mitigated by
   `pnpm-lock.yaml` and only running `--frozen-lockfile` in CI/deploy
   workflows.
+- **Dependabot security updates** are enabled at the repo level, so
+  PRs for new advisories are opened as soon as GitHub picks them up —
+  outside the weekly Dependabot cadence configured in
+  `.github/dependabot.yml`.
 
 ---
 
@@ -407,6 +411,44 @@ amount, or forges an ITN callback to mark an unpaid order as paid.
 - PayFast's MD5 signature scheme is weaker than HMAC-SHA256 (used for
   Sanity webhooks). This is PayFast's standard protocol — not something
   we can change.
+
+---
+
+### 11. Vulnerabilities in our own code (SAST)
+
+| | |
+|---|---|
+| **Likelihood** | low–medium |
+| **Impact** | varies (XSS, SSRF, prototype pollution, hard-coded secrets) |
+
+**What could happen:** A handler we write contains a vulnerability that
+isn't a known dependency CVE — for example, untrusted input flowing into
+a render path that produces unescaped HTML, an unbounded outbound fetch
+in the contact form, or a credential accidentally committed to source.
+This is the same class of bug that hit `hono` in CVE-2026-44458 (CSS
+injection in JSX `style` rendering): no advisory until someone finds it.
+
+**Current mitigations:**
+- **CodeQL** (`.github/workflows/codeql.yml`) runs the
+  `security-and-quality` query suite on every PR to `main`, every push
+  to `main`, and on a weekly cron (Sunday 06:00 UTC). Findings surface
+  in the repo's Security tab under "Code scanning alerts" with line-
+  level annotations on the PR diff.
+- **GitHub-native secret scanning + push protection** are enabled at
+  the repo level — pushes containing recognised provider tokens
+  (AWS keys, GitHub PATs, etc.) are rejected at the API.
+- **Type-checking** via `pnpm check` (tsc + svelte-check) on every
+  PR catches whole classes of bug that would otherwise reach
+  CodeQL — type mismatches, null-deref, etc.
+
+**Residual risk:**
+- CodeQL's JS/TS queries are strong for Node and React but coverage
+  for `.svelte` files is best-effort. Logic that lives entirely inside
+  `<script>` blocks of components is scanned; template-only data flows
+  may not be. Most of our security-relevant code lives in the backend
+  (`backend/src/`), which is plain TypeScript and fully covered.
+- SAST finds patterns it knows. Novel vulnerabilities and logic bugs
+  (e.g. the ITN amount mismatch class in risk 10) need manual review.
 
 ---
 
