@@ -276,26 +276,40 @@ Page copy and the closing CTA reflect that — visitors are guided to
 
 ## Refund & returns policy (`/returns`)
 
-- **Client-supplied policy text** rendered verbatim: items are
-  manufactured to order, no refunds or cancellations after payment;
-  damaged-on-arrival packages are collected free of charge with a
-  same-day photo and a replacement is produced within 3–4 weeks.
-- **Statutory-rights hedge** — closes with "These terms do not affect
-  your statutory rights under the South African Consumer Protection
-  Act, 68 of 2008", which signals that CPA section 56 protections for
-  defective goods still apply even though the policy reads as
-  no-refunds. Added because a blanket no-refunds clause can't override
-  the CPA implied warranty of quality.
+- **Expanded policy covering eight distinct scenarios** — change-of-mind
+  cancellation, damaged-on-arrival packaging, defective item in intact
+  packaging, wrong item shipped, lost in transit / non-delivery,
+  significant late delivery, replacement that also has a problem, plus
+  the general refund / repair / replacement choice and shipping-cost
+  allocation. Originally a two-paragraph client-supplied draft; expanded
+  to address customer scenarios that will realistically occur and
+  South African consumer-law obligations.
+- **CPA framing throughout** — explicitly references section 19
+  (unreasonable delay), section 20 (cooling-off exemption for
+  specially-produced goods), and section 56 (six-month implied warranty
+  of quality with repair / replace / refund choice). Closes with a
+  full statutory-rights statement so the no-change-of-mind wording
+  can't be read as overriding CPA.
+- **ECT Act section 43 disclosure block** ("About Meryl Green
+  Designs") — required for online retailers in SA. Currently holds
+  placeholder fields for legal business name, physical address, and
+  registration number that Meryl must fill in before the page goes live.
+- **Consumer Goods and Services Ombud (CGSO) referral** — gives
+  customers an explicit external dispute-resolution path.
 - **How-to-claim block** — points customers to
-  `zagreenwoman@gmail.com` with an order reference and a photo.
+  `zagreenwoman@gmail.com` with order ref, the email used to place
+  the order, a description, and photos.
+- **Window defaults** — 48 hours for damage-on-arrival photos, 7 days
+  for defective / wrong-item notifications, 4 weeks before treating
+  an order as lost, 30 days for refund processing back to card. All
+  defaults; the source comment flags them for legal review.
 - Linked from the site footer between Privacy policy and Contact.
-- **Maintenance note:** the source file lists known legal gaps in a
-  comment at the top of the file (e.g. defective items in undamaged
-  packaging, lost-in-transit, made-to-order CPA framing) and reminds
-  whoever edits it that this is a legal document and should be
-  reviewed by a South African legal professional before going live
-  under the business name. The "Last updated" date must be bumped
-  whenever the wording changes.
+- **Maintenance note:** the source file's top comment distinguishes
+  what was added beyond the client's original wording from items still
+  open for legal review (window defaults, ECT Act s43 placeholders).
+  The "Last updated" date must be bumped whenever the wording changes,
+  and the page must be reviewed by a South African legal professional
+  under the business name before going live.
 
 ## Track order (`/track`)
 
