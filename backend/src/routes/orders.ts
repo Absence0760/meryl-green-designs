@@ -162,9 +162,8 @@ export function ordersRouter() {
 
 		const ref = generateOrderRef();
 
-		let sanityOrder;
 		try {
-			sanityOrder = await createOrder({
+			await createOrder({
 				orderRef: ref,
 				customerName: data.name,
 				customerEmail: data.email,
