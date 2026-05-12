@@ -1,0 +1,132 @@
+---
+description: Verify spend safeguards across AWS, Sanity, Resend, and PayFast — no single failure should produce a runaway bill
+---
+
+Audit every layer that bounds runaway spend across the stack. The realistic cost-vector accidents for this project: a leaked Resend / Sanity API token, an unauthenticated Lambda burst from a botnet, a CloudFront egress flood, a Sanity dataset overrun, a PayFast-volume spike (legit or otherwise). Each one should be capped by **at least one** independent ceiling — none should run unbounded for hours before someone notices.
+
+## Goal
+
+The baseline cost at launch is **~R380/month** (per `docs/architecture.md` cost analysis — AWS + Sanity Growth + domain). A finding is anything that lets the bill exceed that by an order of magnitude before any alarm fires. PayFast is per-transaction (no monthly subscription), so it doesn't have a runaway-cost path the way a token-billed AI service does — but it still has a real cost per legitimate order, which means a botnet hammering `POST /orders` indirectly hits PayFast volume too.
+
+## What to check
+
+### 1. Backend rate limiting
+
+`backend/src/rate-limit.ts` is the in-memory per-IP fixed-window limiter applied to:
+
+- `POST /orders`
+- `GET /orders/:ref`
+- `POST /webhooks/payfast-itn` (per-IP — but PayFast's IPs are well-known and stable)
+- `POST /webhooks/sanity-order` (per-IP — Sanity's IPs are stable too)
+
+Verify:
+- The limiter is wired into every public-facing route.
+- Limits are sane: 5 submissions per 15 minutes per IP for `POST /orders` is the documented value (see `docs/security.md § Risk 2`). The default for `GET /orders/:ref` is more permissive (60/15m) — that's correct because customers checking their order legitimately repeat-poll.
+- Webhook limiters should be permissive enough that a legitimate PayFast / Sanity retry burst isn't rate-limited.
+
+**Caveat**: the limiter is per-Lambda-instance (in-memory). API Gateway's throttling is the cross-instance cap — see check 4 below.
+
+### 2. API Gateway throttling
+
+`infra/api_gateway.tf` should declare `throttling_burst_limit` and `throttling_rate_limit` on the `$default` route. The per-Lambda-instance rate limiter doesn't catch a distributed attack across many fresh Lambda cold-starts; API Gateway is the global cap.
+
+- Limits set: green.
+- Unbounded throttling on `$default`: flag as High (this is the single most important cost-runaway gate for this project given how low the legitimate traffic is).
+
+### 3. AWS account budget
+
+`infra/budget.tf` should declare an `aws_budgets_budget`:
+
+- **`monthly_budget_limit_usd`** is reasonable — single-digit dollars/month given current scale. Anything over $50 without justification is suspicious for this project's traffic.
+- **Three notifications minimum**: `ACTUAL > 50 %`, `ACTUAL > 100 %`, `FORECASTED > 100 %`. Forecasted is the only one that catches a runaway *during* the month — actual lags by up to 24 h. Missing forecasted → High.
+- **`budget_alert_emails` non-empty** in `terraform.tfvars` (encrypted). A budget with zero subscribers is a no-op.
+
+### 4. CloudWatch log retention
+
+A static site with poor cache-hit ratio can be drained on egress; a chatty Lambda with infinite log retention bleeds money slowly. Check:
+
+- Every `aws_cloudwatch_log_group` in `infra/*.tf` has `retention_in_days` ≤ 90 (default = forever = $0.50/GB/month forever).
+- The Lambda log group specifically — `/aws/lambda/<function-name>` — has it set.
+- The `pii_cleanup` schedule's invocation logs are captured (so failures don't disappear silently) but capped.
+
+### 5. CloudFront cost guardrails
+
+- `price_class = "PriceClass_100"` or `_200` (not `_All`). PriceClass_All bills from every edge location regardless of where users actually live, and the site's audience is South African.
+- S3 lifecycle expiring non-current versions on the site bucket — missing = unbounded version growth at $0.023/GB/month forever.
+- No WAF needed at current scale (over-engineering for the traffic level) — but if one's been added, confirm it's attached and the scope-down filter doesn't accidentally rate-limit legitimate users.
+
+### 6. Resend quota
+
+Resend's free tier is 100 emails/day, 3,000/month. Customer-facing emails fire on:
+
+- Order creation → owner notification + customer pending-payment (2 emails/order).
+- ITN payment confirmation → customer "payment received" (1/order).
+- Status change in Sanity Studio → customer status email (1/transition; typically 2-3 transitions per order).
+
+At ~50 orders/month, that's ~250 emails/month — comfortable within free tier.
+
+Verify:
+- The Resend client (raw `fetch` in `backend/src/email.ts`, per `backend/CLAUDE.md`) handles 429 responses gracefully — doesn't bomb the user-facing request, doesn't auto-retry into a loop.
+- A burst of order failures (Sanity write error) doesn't cascade-email the owner — `backend/src/routes/orders.ts` sends the owner notification AFTER the Sanity write, so a Sanity outage means no spam, but verify.
+- If `RESEND_API_KEY` ever leaks, the daily/monthly cap on the Resend console is the only thing standing between the attacker and a giant bill. Surface as a manual check: "confirm the Resend project has its monthly send cap set to a value matching expected legitimate volume (e.g. 1,000/month, not unlimited)."
+
+### 7. Sanity dataset growth
+
+Sanity charges per-dataset row count and asset storage on paid plans. At current scale we're on Growth ($15/month, comfortable). The migration to Free (per `docs/orders-pii-split-plan.md`) caps things differently — Free is 2 datasets, 20 user seats. Neither is hit at current scale.
+
+Verify:
+- No automated process is hammering Sanity writes. The PII cleanup job (`backend/src/pii-cleanup.ts`) runs monthly — that's fine. Any other scheduled write? Read `infra/pii_cleanup.tf` and surrounding `.tf` files for EventBridge rules that target the Lambda.
+- The Sanity webhook on order changes fires per-mutation — bounded by Meryl's editing rate. Safe.
+- Customer-facing surfaces (`POST /orders`) write one Sanity doc per call. With backend rate limiting + API Gateway throttling in front of it, Sanity write volume is bounded.
+
+### 8. PayFast volume
+
+PayFast charges per-transaction (~2.9% + R2). Cost scales with legitimate orders. The denial-of-wallet path here is: attacker hits `POST /orders` thousands of times → backend creates Sanity order docs + PayFast redirect URLs → no real charges because the attacker doesn't complete the redirect, BUT we've burned Lambda invocations + Sanity rows + Resend emails.
+
+The protections:
+
+- Backend rate limiter (check 1) → caps per-IP per-window.
+- API Gateway throttling (check 2) → caps cross-instance globally.
+- PayFast-side ITN sig verification (check 4 below) → ensures we never confirm a fake payment.
+
+### 9. PayFast ITN-side checks
+
+If an attacker can fake an ITN callback, they can mark unpaid orders as `payment_received` and trigger downstream emails. Verify:
+
+- `backend/src/routes/payfast-itn.ts` verifies the MD5 signature over the **raw body** (per `backend/CLAUDE.md`).
+- `amount_gross` is cross-checked against the stored `amountZar` — mismatches rejected.
+- Status state machine is idempotent — replaying an ITN against an already-confirmed order is a no-op, not a duplicate email.
+
+### 10. Documentation matches reality
+
+This audit's value depends on the docs being honest:
+
+- `docs/security.md § Risk 8` (cost / spend) and `§ Risk 10` (PayFast integrity) match the current code.
+- `docs/architecture.md` cost table reflects the actual baseline (~R380/month or whatever the current configuration produces).
+- The proposed `docs/orders-pii-split-plan.md` cost table (R77/month post-migration) is internally consistent.
+
+## Report
+
+- **Critical** — `aws_budgets_budget` missing entirely, API Gateway throttling unbounded on `$default`, PayFast ITN signature not verified (already verified per code; flag if the diff weakens it), Resend API key in a path that auto-retries on 429.
+- **High** — log retention infinite, AWS budget exists but no `FORECASTED` notification (catches runaway only after the fact), `budget_alert_emails` empty / placeholder, CloudFront `PriceClass_All` without justification, no per-IP rate limit on `POST /orders`.
+- **Medium** — missing S3 lifecycle for non-current versions, Sanity webhook handler does anything non-idempotent on status change, PII cleanup logs not captured.
+- **Low** — doc drift between `docs/architecture.md` cost table and configured values, alarm exists but not subscribed to a real email, Resend console-side monthly cap unconfirmed.
+
+For each finding: file:line + the concrete change. Don't apply fixes without explicit confirmation.
+
+## Useful starting points
+
+- `backend/src/rate-limit.ts` — the in-memory limiter
+- `backend/src/routes/orders.ts`, `payfast-itn.ts`, `order-lookup.ts`, `sanity-webhook.ts` — wired routes
+- `infra/budget.tf` — account-wide spend ceiling
+- `infra/api_gateway.tf` — request-rate cap
+- `infra/lambda.tf` — log retention, runtime, reserved concurrency
+- `infra/s3_cloudfront.tf` — CDN cost levers
+- `docs/security.md § Risk 8` + `§ Risk 10` — risk register
+- `docs/architecture.md` — cost projection these guards defend
+
+## Delegate to
+
+`general-purpose` agent with this file as the prompt body. Cross-cuts code + IaC + docs + provider-console gaps, so it doesn't fit one of the specialised auditors.
+
+Read-only. Findings only. The audit must NOT mutate IaC, run `terraform plan`, hit AWS / Sanity / Resend APIs, or load-test the backend — a load test against `POST /orders` is itself a small spend event.

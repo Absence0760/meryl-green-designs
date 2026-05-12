@@ -93,8 +93,12 @@ Desktop.ini
 # Local agent / AI tooling state
 # ---------------------------------------------------------------------------
 # Most .claude/ contents are per-developer state (caches, transcripts, local
-# permission overrides) and stay out of git. The committed exception is
-# settings.json, which carries the project-wide deny-list of destructive
-# commands — see docs/security.md § Risk 8.
+# permission overrides) and stay out of git. Committed exceptions:
+#   - settings.json — project-wide deny-list of destructive commands
+#     (see docs/security.md § Risk 8)
+#   - agents/, commands/ — slash-command + subagent definitions shared
+#     with the team (see .claude/commands/audit/README.md)
 .claude/*
 !.claude/settings.json
+!.claude/agents/
+!.claude/commands/
