@@ -11,7 +11,11 @@ This repo uses SOPS-encrypted `*.sops` files for secrets at rest. The trust boun
 ## What to check
 
 1. **SOPS files are actually encrypted.**
-   - `backend/.env.sops`, `infra/terraform.tfvars.sops`: open and confirm each file contains `sops:` metadata at the bottom (`encrypted_regex`, `lastmodified`, `mac`) and that each value is `ENC[...]`, not plaintext. A SOPS file that's been edited without `sops <file>` (e.g. via `vim`) loses encryption.
+   - `backend/.env.sops`, `infra/terraform.tfvars.sops`: open and confirm each file matches the unstructured-JSON SOPS shape:
+     - A single top-level `"data": "ENC[AES256_GCM,data:...,iv:...,tag:...,type:str]"` blob holding the encrypted body.
+     - A `"sops"` metadata object with `kms` recipient ARNs, `mac` (`ENC[...]`), `unencrypted_suffix`, `version`.
+   - The whole-file blob shape is normal for SOPS-encrypted `.env` / `.tfvars` (unstructured input) — distinct from YAML SOPS where each value is individually `ENC[...]`. Either is fine; reject any file that's plaintext at the top level.
+   - A SOPS file that's been edited without `sops <file>` (e.g. via `vim` on the encrypted blob) loses encryption integrity — the `mac` won't validate. Flag if you can confirm a recent direct edit.
 
 2. **Plaintext SOPS siblings absent from git.**
    - `backend/.env`, `infra/terraform.tfvars`: confirmed gitignored.

@@ -38,8 +38,12 @@ All ten `.tf` files plus the encrypted tfvars + template:
    - Consider recommending migration to **S3-native locking** (`use_lockfile = true`, Terraform ≥ 1.10) as a future cleanup — drops the DynamoDB resource entirely, saves a few cents/month, simpler bootstrap. Not a current finding; surface as a Low / Note unless the user asks for the upgrade.
 
 2. **OIDC trust policy (`github_oidc.tf`).**
-   - `aws_iam_role.github_actions` has a `Condition` block that pins BOTH `:aud = "sts.amazonaws.com"` AND a `:sub` `StringLike` matching exactly the intended ref. The repo deploys on `release: published` events — the subject pattern needs to match `repo:Absence0760/meryl-green-designs:ref:refs/tags/*` or equivalent. Wildcards or missing `:sub` conditions are the canonical "fork PR can assume your role" footgun.
-   - `thumbprint_list` exists.
+   - `aws_iam_role.github_actions` has a trust policy (built by `data "aws_iam_policy_document" "github_actions_trust"`) with TWO `StringEquals` conditions:
+     - `token.actions.githubusercontent.com:aud = "sts.amazonaws.com"`
+     - `token.actions.githubusercontent.com:sub = "repo:${var.github_repo}:environment:production"`
+   - **This is environment-scoped, not branch-scoped.** Release-gated deploys run with `github.ref = refs/tags/<tag>`, so a `ref:refs/heads/main` or `ref:refs/tags/*` subject pattern would reject the actual deploy events. Workflows must declare `environment: production` to assume the role; the environment is created by `bin/setup.sh` and carries the deploy-related repo vars.
+   - If the `:sub` condition gets weakened to a wildcard (`StringLike` with `*`) or removed entirely, that's the canonical "fork PR can assume your role" footgun — Critical.
+   - `aws_iam_openid_connect_provider.github` has `client_id_list = ["sts.amazonaws.com"]` and a non-empty `thumbprint_list`. The provider is a one-per-account resource; if another project in the same AWS account already created it, this file imports it rather than duplicating (see the header comment in `github_oidc.tf`).
    - The role's attached policies (`aws_iam_role_policy` / `aws_iam_role_policy_attachment`) are scoped per-resource: S3 actions limited to the project's bucket ARN (no `*`), Lambda actions limited to the project's function ARN, CloudFront limited to `CreateInvalidation` on the project distribution. **No `iam:*` / `sts:AssumeRole` / `secretsmanager:*` on the deploy role.**
 
 3. **S3 buckets (`s3_cloudfront.tf`).** Every bucket:
