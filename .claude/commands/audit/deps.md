@@ -44,21 +44,26 @@ There's already a scheduled `audit.yml` workflow that runs `pnpm audit` weekly a
    - **No npm entry at `/`** — the root `package.json` only holds workspace orchestration + pnpm overrides; nothing for Dependabot to bump.
    - Flag any missing workspace entry, any non-weekly schedule, or any ungrouped flood of related packages.
 
-4. **GitHub Actions pinning.** Grep `.github/workflows/` for `uses: <action>@<ref>`.
+4. **Lockfile-sync workflow exists.** Dependabot edits `<workspace>/package.json` but never touches the root `pnpm-lock.yaml`, which breaks `ci.yml`'s `pnpm install --frozen-lockfile`. The compensating workflow is `.github/workflows/dependabot-lockfile.yml` — it regenerates the lockfile on every Dependabot PR and commits the result back so CI retriggers and the PR can go green without manual intervention. Verify:
+   - The workflow file exists.
+   - It uses `DEPENDABOT_LOCKFILE_PAT` (a fine-grained PAT with `Contents: Write`), not `GITHUB_TOKEN` — GitHub blocks the latter from retriggering `pull_request` events.
+   - The PAT is scoped to this repo and has an expiry. If it's stale or revoked, dep PRs pile up unmerged.
+
+5. **GitHub Actions pinning.** Grep `.github/workflows/` for `uses: <action>@<ref>`.
    - Floating refs (`@main`, `@v6`) are supply-chain risks for actions that can be force-pushed by the publisher.
    - SHA pins (`@<sha>`) are the safer default for workflows that touch `${{ secrets.* }}` or deploy.
    - Flag floating refs on `deploy-frontend.yml`, `deploy-backend.yml`, `deploy-studio.yml`, and `claude.yml` (which has access to project tokens). `ci.yml`, `codeql.yml`, `audit.yml` are lower-stakes but worth surfacing too.
 
-5. **Override hygiene.** Read the root `package.json` `pnpm.overrides` block. For each override:
+6. **Override hygiene.** Read the root `package.json` `pnpm.overrides` block. For each override:
    - Confirm it's still needed — has upstream shipped a fix that lets us drop the override? Pull the latest version of the package from npm and check.
    - Confirm the override range is tight (e.g. `^0.7.0` not `>=0.7.0` — see the cookie override discussion).
    - Confirm there's a comment or commit message explaining *why* (the original CVE).
 
-6. **Node engines.** Root `package.json` declares `"engines": { "node": ">=22" }`. Confirm:
+7. **Node engines.** Root `package.json` declares `"engines": { "node": ">=22" }`. Confirm:
    - CI workflows use `node-version: 22` (not `18`, not `20`, not unspecified).
    - Lambda runtime in `infra/lambda.tf` matches (`nodejs22.x` or newer; `nodejs20.x` deprecates 2026-Q2).
 
-7. **Local toolchain drift.** Optional but worth flagging if obvious: check the user's `~/.bashrc.d/` setup gives a recent enough pnpm + node. The `update-all` function in `~/.bashrc.d/32-functions-update.sh` covers system tools; if local node/pnpm versions are wildly out of sync with what CI uses, flag it.
+8. **Local toolchain drift.** Optional but worth flagging if obvious: check the user's `~/.bashrc.d/` setup gives a recent enough pnpm + node. The `update-all` function in `~/.bashrc.d/32-functions-update.sh` covers system tools; if local node/pnpm versions are wildly out of sync with what CI uses, flag it.
 
 ## Report
 

@@ -14,17 +14,21 @@ The baseline cost at launch is **~R380/month** (per `docs/architecture.md` cost 
 
 `backend/src/rate-limit.ts` is the in-memory per-IP fixed-window limiter applied to:
 
-- `POST /orders`
-- `GET /orders/:ref`
-- `POST /webhooks/payfast-itn` (per-IP — but PayFast's IPs are well-known and stable)
-- `POST /webhooks/sanity-order` (per-IP — Sanity's IPs are stable too)
+| Route | Window | Max per IP | Wired in |
+|---|---|---|---|
+| `POST /orders` | 15 min | 5 | `backend/src/routes/orders.ts` |
+| `POST /enquiries` | 15 min | 5 | `backend/src/routes/enquiries.ts` |
+| `GET /orders/:ref` | 1 min | 20 | `backend/src/routes/order-lookup.ts` |
+| `POST /webhooks/payfast-itn` | 1 min | 60 | `backend/src/routes/payfast-itn.ts` |
+| `POST /webhooks/sanity-order` | 1 min | 60 | `backend/src/routes/sanity-webhook.ts` |
 
 Verify:
-- The limiter is wired into every public-facing route.
-- Limits are sane: 5 submissions per 15 minutes per IP for `POST /orders` is the documented value (see `docs/security.md § Risk 2`). The default for `GET /orders/:ref` is more permissive (60/15m) — that's correct because customers checking their order legitimately repeat-poll.
-- Webhook limiters should be permissive enough that a legitimate PayFast / Sanity retry burst isn't rate-limited.
+- The limiter is wired into every public-facing route (`GET /products`, `/gallery`, `/testimonials`, and `/health` are intentionally unlimited — they're cacheable / unprivileged reads).
+- The 5/15min limits for `POST /orders` and `POST /enquiries` match the documented value in `docs/security.md § Risk 2`.
+- The 20/min limit on `GET /orders/:ref` lets a customer legitimately repeat-poll the tracking page without hitting the limit but caps a scripted enumeration attempt.
+- The 60/min webhook limits are permissive enough that a legitimate PayFast / Sanity retry burst isn't rate-limited (Sanity's IPs are stable; PayFast's are well-known) but still bound a runaway loop.
 
-**Caveat**: the limiter is per-Lambda-instance (in-memory). API Gateway's throttling is the cross-instance cap — see check 4 below.
+**Caveat**: the limiter is per-Lambda-instance (in-memory). API Gateway's throttling is the cross-instance cap — see check 2 below.
 
 ### 2. API Gateway throttling
 
