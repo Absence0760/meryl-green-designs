@@ -27,7 +27,15 @@ All ten `.tf` files plus the encrypted tfvars + template:
 
 ## What to check
 
-1. **State backend.** Confirm the state lives in S3 with `encrypt = true` and S3-native locking (`use_lockfile = true`, Terraform ≥ 1.10). No legacy `dynamodb_table = ...`. Reading: `docs/deployment.md § Terraform state` and `bin/setup.sh`.
+1. **State backend.** `infra/main.tf` declares `backend "s3"` with:
+   - `bucket = "meryl-green-designs-tfstate"`, `key = "prod/terraform.tfstate"`, `region = "af-south-1"`
+   - `encrypt = true`
+   - Locking via `dynamodb_table = "meryl-green-designs-tfstate-lock"` (the legacy DynamoDB pattern — `bin/setup.sh` bootstraps both bucket and lock table together).
+
+   **Audit calls:**
+   - Bucket exists + has versioning + has Public Access Block — confirm via the bootstrap script (not via TF since the bucket pre-exists the state). Flag if `bin/setup.sh` is missing any of these.
+   - DynamoDB lock table exists and has `LockID` as its hash key.
+   - Consider recommending migration to **S3-native locking** (`use_lockfile = true`, Terraform ≥ 1.10) as a future cleanup — drops the DynamoDB resource entirely, saves a few cents/month, simpler bootstrap. Not a current finding; surface as a Low / Note unless the user asks for the upgrade.
 
 2. **OIDC trust policy (`github_oidc.tf`).**
    - `aws_iam_role.github_actions` has a `Condition` block that pins BOTH `:aud = "sts.amazonaws.com"` AND a `:sub` `StringLike` matching exactly the intended ref. The repo deploys on `release: published` events — the subject pattern needs to match `repo:Absence0760/meryl-green-designs:ref:refs/tags/*` or equivalent. Wildcards or missing `:sub` conditions are the canonical "fork PR can assume your role" footgun.
@@ -47,7 +55,8 @@ All ten `.tf` files plus the encrypted tfvars + template:
    - `minimum_protocol_version = "TLSv1.2_2021"` or stricter
    - `origin_access_control_id` on the S3 origin (not the legacy `origin_access_identity`)
    - `response_headers_policy_id` attached to BOTH default and ordered behaviors
-   - The response-headers policy in `security_headers.tf` has `strict_transport_security` (max_age ≥ 1 year, `include_subdomains`, `preload`), `content_type_options`, `referrer_policy`, `frame_options = "DENY"`, and a `content_security_policy` that's at least `default-src 'self'` plus the few external origins we genuinely need (Sanity image CDN, PayFast checkout, fonts).
+   - The response-headers policy in `security_headers.tf` has `strict_transport_security` (max_age ≥ 1 year, `include_subdomains`, `preload`), `content_type_options` (nosniff), `referrer_policy` (`strict-origin-when-cross-origin`), and `frame_options = "DENY"`.
+   - **CSP is intentionally absent** — the file's header comment documents this as a deliberate choice ("the static site loads first-party JS plus Google Fonts and Sanity images; defining a watertight CSP for that without breaking things is more work than it's worth at this scale"). **Don't flag CSP-absent as a finding** unless the project has started accepting user-generated content (e.g. comments on products) — at that point CSP becomes worth the work. If you find the rationale comment is gone but CSP is still missing, that's a Low.
    - `price_class = "PriceClass_100"` or `PriceClass_200` (not `PriceClass_All` unless documented).
    - SPA fallback `custom_error_response` rewrites 404/403 → 200 + `/404.html` (per `frontend/CLAUDE.md` § SPA fallback). Don't break this — `/shop/[slug]` depends on it.
 
