@@ -541,11 +541,23 @@ SnapScan, Instant EFT, etc.) on its own page.
    amount, then updates the Sanity order to `payment_received`.
 10. The existing Sanity webhook fires and sends the "payment received" email.
 
+### Outgoing form signature
+
+The signature on the form we POST to `/eng/process` is also verified by PayFast
+using PHP's `urlencode`. `generateSignature()` therefore runs every field value
+through a small `phpUrlEncode()` helper that bridges the gap between JS's
+`encodeURIComponent` (which leaves `!*'()~` literal) and PHP's `urlencode`
+(which percent-encodes them). Without this, a customer named `O'Brien` or any
+value containing `~` produces a signature mismatch and PayFast's hosted page
+returns an error to the customer — the order is already in Sanity at
+`pending_payment` and never advances to `payment_received` because no ITN
+fires.
+
 ### ITN signature verification (raw-body)
 
 PayFast signs the ITN POST body using PHP's `urlencode` and **includes empty
 fields** (`item_description=&custom_str1=&name_last=&…`) in the signed string.
-JS's `encodeURIComponent` encodes a few characters differently (`!*'()`), and
+JS's `encodeURIComponent` encodes a few characters differently (`!*'()~`), and
 filtering empty fields changes the set being signed — so parsing the body and
 re-signing from the parsed values produces a signature that will never match.
 

@@ -62,6 +62,37 @@ describe('generateSignature', () => {
 		const sig = generateSignature({ amount: '100.00' }, null);
 		expect(sig).toMatch(/^[a-f0-9]{32}$/);
 	});
+
+	it("encodes !*'()~ the way PHP urlencode does (PayFast's verifier)", () => {
+		// PayFast verifies the signature using PHP's `urlencode()`. JS's
+		// `encodeURIComponent` leaves !*'()~ literal but PHP encodes them, so a
+		// customer named O'Brien used to break the signature. This test pins
+		// the encoding by checking each character is percent-encoded in the
+		// signed string. The signature itself is the MD5 of:
+		//   name_first=O%27Brien&passphrase=payfast
+		const sig = generateSignature({ name_first: "O'Brien" }, 'payfast');
+		const expected = createHash('md5')
+			.update('name_first=O%27Brien&passphrase=payfast')
+			.digest('hex');
+		expect(sig).toBe(expected);
+
+		// And the other four — same idea, all in one pass for brevity.
+		expect(generateSignature({ x: '!' }, null)).toBe(
+			createHash('md5').update('x=%21').digest('hex')
+		);
+		expect(generateSignature({ x: '*' }, null)).toBe(
+			createHash('md5').update('x=%2A').digest('hex')
+		);
+		expect(generateSignature({ x: '(' }, null)).toBe(
+			createHash('md5').update('x=%28').digest('hex')
+		);
+		expect(generateSignature({ x: ')' }, null)).toBe(
+			createHash('md5').update('x=%29').digest('hex')
+		);
+		expect(generateSignature({ x: '~' }, null)).toBe(
+			createHash('md5').update('x=%7E').digest('hex')
+		);
+	});
 });
 
 describe('buildPaymentFormData', () => {

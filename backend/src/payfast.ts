@@ -37,6 +37,28 @@ const PAYFAST_LIVE_URL = 'https://www.payfast.co.za/eng/process';
 const PAYFAST_SANDBOX_URL = 'https://sandbox.payfast.co.za/eng/process';
 
 /**
+ * Emulate PHP's `urlencode()`, which is what PayFast's signature verifier uses.
+ * Differs from JS `encodeURIComponent` on exactly these characters — JS leaves
+ * them literal, PHP encodes them:
+ *   `!` → `%21`, `*` → `%2A`, `'` → `%27`, `(` → `%28`, `)` → `%29`, `~` → `%7E`
+ * Both also encode spaces as `+` (this function) vs `%20` (encodeURIComponent).
+ *
+ * Without this, any field value containing those characters (e.g. a customer
+ * named `O'Brien`) produces a signature PayFast rejects, and PayFast's
+ * `/eng/process` page returns an error to the customer.
+ */
+function phpUrlEncode(value: string): string {
+	return encodeURIComponent(value)
+		.replace(/%20/g, '+')
+		.replace(/!/g, '%21')
+		.replace(/\*/g, '%2A')
+		.replace(/'/g, '%27')
+		.replace(/\(/g, '%28')
+		.replace(/\)/g, '%29')
+		.replace(/~/g, '%7E');
+}
+
+/**
  * Generate a PayFast signature (MD5 of URL-encoded key=value pairs with
  * passphrase appended). Keys are kept in insertion order per PayFast docs —
  * the signature string must follow their prescribed field order, not
@@ -48,10 +70,10 @@ export function generateSignature(
 ): string {
 	const pairs = Object.entries(data)
 		.filter(([, v]) => v !== '')
-		.map(([k, v]) => `${k}=${encodeURIComponent(v.trim()).replace(/%20/g, '+')}`);
+		.map(([k, v]) => `${k}=${phpUrlEncode(v.trim())}`);
 
 	const sigString = passphrase
-		? [...pairs, `passphrase=${encodeURIComponent(passphrase.trim()).replace(/%20/g, '+')}`].join('&')
+		? [...pairs, `passphrase=${phpUrlEncode(passphrase.trim())}`].join('&')
 		: pairs.join('&');
 
 	return createHash('md5').update(sigString).digest('hex');
@@ -120,7 +142,7 @@ export function validateItn(rawBody: string, passphrase: string | null): ItnResu
 	const stripped = rawBody.replace(/(^|&)signature=[^&]*/, '').replace(/^&/, '');
 
 	const sigString = passphrase
-		? `${stripped}&passphrase=${encodeURIComponent(passphrase.trim()).replace(/%20/g, '+')}`
+		? `${stripped}&passphrase=${phpUrlEncode(passphrase.trim())}`
 		: stripped;
 
 	const expectedSig = createHash('md5').update(sigString).digest('hex');
