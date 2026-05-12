@@ -10,12 +10,14 @@ The web app's blast radius runs through these stacks: a permissive OIDC trust po
 
 ## Files in scope (the whole `infra/` directory)
 
+All ten `.tf` files plus the encrypted tfvars + template:
+
 - `main.tf` — root module, providers
 - `variables.tf` — input variables, validation
-- `outputs.tf` — exported values (the GitHub Actions vars source)
+- `outputs.tf` — exported values (the source of the GitHub Actions repo vars)
 - `s3_cloudfront.tf` — static site hosting + distribution + ACM cert + Route 53 records
 - `api_gateway.tf` — backend API surface
-- `lambda.tf` — backend function + IAM role + log group + EventBridge schedule for pii-cleanup
+- `lambda.tf` — backend function + IAM role + log group + EventBridge dispatch for pii-cleanup
 - `pii_cleanup.tf` — EventBridge rule + target + Lambda permission for the monthly PII sweep
 - `security_headers.tf` — CloudFront response-headers policy (CSP, HSTS, frame-options, etc.)
 - `github_oidc.tf` — GitHub OIDC federation + deploy role
@@ -28,9 +30,9 @@ The web app's blast radius runs through these stacks: a permissive OIDC trust po
 1. **State backend.** Confirm the state lives in S3 with `encrypt = true` and S3-native locking (`use_lockfile = true`, Terraform ≥ 1.10). No legacy `dynamodb_table = ...`. Reading: `docs/deployment.md § Terraform state` and `bin/setup.sh`.
 
 2. **OIDC trust policy (`github_oidc.tf`).**
-   - `aws_iam_role.deploy_*` has a `Condition` block that pins BOTH `:aud = "sts.amazonaws.com"` AND a `:sub` `StringLike` matching exactly the intended ref. The repo deploys on `release: published` events — the subject pattern needs to match `repo:Absence0760/meryl-green-designs:ref:refs/tags/*` or equivalent. Wildcards or missing `:sub` conditions are the canonical "fork PR can assume your role" footgun.
+   - `aws_iam_role.github_actions` has a `Condition` block that pins BOTH `:aud = "sts.amazonaws.com"` AND a `:sub` `StringLike` matching exactly the intended ref. The repo deploys on `release: published` events — the subject pattern needs to match `repo:Absence0760/meryl-green-designs:ref:refs/tags/*` or equivalent. Wildcards or missing `:sub` conditions are the canonical "fork PR can assume your role" footgun.
    - `thumbprint_list` exists.
-   - The role's `aws_iam_role_policy` is scoped per-resource: S3 actions limited to the project's bucket ARN (no `*`), Lambda actions limited to the project's function ARN, CloudFront limited to `CreateInvalidation` on the project distribution. **No `iam:*` / `sts:AssumeRole` / `secretsmanager:*` on the deploy role.**
+   - The role's attached policies (`aws_iam_role_policy` / `aws_iam_role_policy_attachment`) are scoped per-resource: S3 actions limited to the project's bucket ARN (no `*`), Lambda actions limited to the project's function ARN, CloudFront limited to `CreateInvalidation` on the project distribution. **No `iam:*` / `sts:AssumeRole` / `secretsmanager:*` on the deploy role.**
 
 3. **S3 buckets (`s3_cloudfront.tf`).** Every bucket:
    - `aws_s3_bucket_public_access_block` with all four flags `true`

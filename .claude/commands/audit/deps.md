@@ -37,7 +37,12 @@ There's already a scheduled `audit.yml` workflow that runs `pnpm audit` weekly a
    ```
    If one exists, surface its title — that's the scheduled `audit.yml`'s most recent flagged set. Confirm whether the findings match what `pnpm audit` returns today.
 
-3. **Dependabot coverage.** Read `.github/dependabot.yml`. Confirm one entry per workspace (`/frontend`, `/backend`, `/studio`) and one for `/` (root) and one for `/.github/workflows` (GitHub Actions). Schedule should be weekly; grouped where it reduces PR churn (Svelte ecosystem, Sanity ecosystem, types, hono). Flag missing entries.
+3. **Dependabot coverage.** Read `.github/dependabot.yml`. The expected shape is:
+   - `package-ecosystem: "npm"` × 3 — one entry per workspace at `/frontend`, `/backend`, `/studio`.
+   - `package-ecosystem: "github-actions"` × 1 — `directory: "/"` (Dependabot scans `.github/workflows/` from this root).
+   - Schedule weekly; grouped where it reduces PR churn (svelte-ecosystem, sanity, types, hono).
+   - **No npm entry at `/`** — the root `package.json` only holds workspace orchestration + pnpm overrides; nothing for Dependabot to bump.
+   - Flag any missing workspace entry, any non-weekly schedule, or any ungrouped flood of related packages.
 
 4. **GitHub Actions pinning.** Grep `.github/workflows/` for `uses: <action>@<ref>`.
    - Floating refs (`@main`, `@v6`) are supply-chain risks for actions that can be force-pushed by the publisher.
