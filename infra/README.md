@@ -4,7 +4,8 @@ Terraform configuration for the Meryl Green Designs AWS resources.
 
 ## What it creates
 
-- **S3 bucket** hosting the prerendered SvelteKit site
+- **S3 bucket** hosting the prerendered SvelteKit site, with versioning
+  enabled and a lifecycle rule that expires noncurrent versions after 30 days
 - **CloudFront distribution** with Origin Access Control in front of the bucket
 - **CloudFront response headers policy** applying HSTS (1y, includeSubDomains,
   preload), X-Frame-Options DENY, X-Content-Type-Options nosniff, and
@@ -16,7 +17,10 @@ Terraform configuration for the Meryl Green Designs AWS resources.
   integration. CloudFront's `/api/*` behavior forwards to API Gateway, so
   the backend is reachable at `merylgreendesigns.com/api/*`. A CloudFront
   Function strips the `/api` prefix before forwarding, keeping Hono routes
-  at their natural paths (`/orders`, `/products`, etc.).
+  at their natural paths (`/orders`, `/products`, etc.). Stage-level
+  throttling (50 rps / 100 burst) caps global request rate as a
+  defence-in-depth complement to the per-IP limiter in
+  `backend/src/rate-limit.ts`.
 - **Lambda execution IAM role** + CloudWatch log group (30-day retention)
 - **GitHub OIDC provider** + IAM role for CI, trust-policied to the
   `production` GitHub Actions environment (environment-scoped rather than

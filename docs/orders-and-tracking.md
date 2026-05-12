@@ -472,8 +472,12 @@ trigger fake status emails.
 
 ### 4. Rate limiting on `/orders/:ref`
 
-Not implemented yet. Worth adding if enumeration becomes a concern — Hono has
-middleware for it, or we can use AWS API Gateway throttling. See the roadmap.
+Two layers in place. Per-IP fixed-window limit in `backend/src/rate-limit.ts`
+(20 lookups/minute) gates single-source enumeration; AWS API Gateway stage
+throttling (`infra/api_gateway.tf`, 50 rps / 100 burst) caps the global
+request rate across all callers, which is the defence against
+distributed-attacker (botnet) enumeration that the in-memory limiter can't
+see.
 
 ### 5. Sanity write token scope
 

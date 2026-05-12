@@ -62,8 +62,9 @@ resource "aws_lambda_function" "backend" {
   filename         = data.archive_file.lambda_stub.output_path
   source_code_hash = data.archive_file.lambda_stub.output_base64sha256
 
-  handler = "lambda.handler"
-  runtime = "nodejs22.x"
+  handler       = "lambda.handler"
+  runtime       = "nodejs22.x"
+  architectures = ["arm64"]
   # 30s accommodates the monthly PII cleanup sweep (~60 sequential Sanity
   # patches on the first run, ~5/month thereafter — see pii-cleanup.ts).
   # HTTP request handlers complete in well under a second; the longer
@@ -112,7 +113,6 @@ resource "aws_lambda_function" "backend" {
     ignore_changes = [
       filename,
       source_code_hash,
-      last_modified,
     ]
 
     # Guard against accidental teardown. The Lambda holds the live backend

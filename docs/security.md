@@ -114,9 +114,10 @@ inbox.
   cold-started instance starts with a fresh bucket; under heavy
   concurrency, the effective global limit is `max × instances`. For
   single-IP flooding this is still meaningfully restrictive; for
-  distributed-attacker mitigation (botnet), a shared store (DynamoDB,
-  Redis) or AWS WAF in front of CloudFront / API Gateway would be needed. Out of
-  scope at current volume.
+  distributed-attacker mitigation (botnet) the global cap is now AWS
+  API Gateway stage-level throttling (`infra/api_gateway.tf`,
+  50 rps / 100 burst). A shared store (DynamoDB, Redis) or AWS WAF would
+  give per-route or per-IP precision; out of scope at current volume.
 - Bots that run a headless browser and don't fill the honeypot can still
   succeed up to the rate-limit cap. Sanity is the backstop — Meryl sees
   every order and can mark obvious junk as `cancelled`.

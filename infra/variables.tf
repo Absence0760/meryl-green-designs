@@ -73,6 +73,7 @@ variable "site_url" {
 variable "payfast_merchant_id" {
   description = "PayFast merchant ID. Get this from your PayFast dashboard after registration."
   type        = string
+  sensitive   = true
   default     = ""
 }
 

@@ -42,6 +42,18 @@ resource "aws_apigatewayv2_stage" "default" {
   api_id      = aws_apigatewayv2_api.backend.id
   name        = "$default"
   auto_deploy = true
+
+  # Global stage-level throttling. The in-memory per-IP limiter in
+  # backend/src/rate-limit.ts caps single-source abuse but is bypassed by
+  # botnets spread across many IPs. These ceilings sit well above any
+  # plausible organic spike (the site handles a handful of orders per week)
+  # while capping a coordinated flood before it can fan out to the Lambda's
+  # reserved_concurrent_executions=20 floor and downstream Sanity/Resend
+  # quotas. Bump if a legitimate traffic event ever hits the limit.
+  default_route_settings {
+    throttling_rate_limit  = 50
+    throttling_burst_limit = 100
+  }
 }
 
 resource "aws_lambda_permission" "apigateway_invoke" {
