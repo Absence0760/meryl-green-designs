@@ -1,6 +1,6 @@
 # Orders PII split — proposal
 
-**Status: Phase 0 in progress.** Days 1–3 are landed:
+**Status: Phase 0 in progress.** Days 1–4 are landed:
 
 - Day 1 — Terraform scaffolding (empty DynamoDB table + Lambda IAM
   extension + `ORDERS_TABLE_NAME` env var). Applied.
@@ -12,15 +12,23 @@
   `STUDIO_ORIGINS`. New `orders-store.getOrderPii()` reads from DynamoDB
   so the Studio custom panels show the new source. PII-leak regression
   extended in `email.test.ts` to cover admin log lines.
+- Day 4 — Studio custom components (`studio/components/orderPii.tsx`)
+  with three field components (CustomerDetailsPanel, TrackingFields,
+  InternalNotesField) wired into the order schema. **Local dev was
+  reworked to use DynamoDB Local via docker-compose** (the plan's
+  original design hit prod from dev; the operator preferred strict
+  isolation). New `bin/dynamodb-local-up.sh` is idempotent and creates
+  the local table matching prod's schema; `DYNAMODB_ENDPOINT` in
+  `backend/.env` routes the SDK locally.
 
 **Outstanding before prod deploy** (Day 7): add `admin_api_token` and
 `studio_origins` to `infra/variables.tf`, the encrypted
 `infra/terraform.tfvars.sops`, and the Lambda env in `infra/lambda.tf`,
 then `terraform apply` again. Local dev uses the values in
-`backend/.env` (template in `backend/.env.example`).
+`backend/.env` and `studio/.env` (templates updated).
 
-Days 4–7 (Studio components, backfill + reverse-backfill, deploy) and
-the cutover (Phase 1) still require explicit go-ahead.
+Days 5–7 (backfill + reverse-backfill scripts, prod deploy) and the
+cutover (Phase 1) still require explicit go-ahead.
 
 ## Why this exists
 

@@ -21,6 +21,10 @@ For deploying to AWS, see [`deployment.md`](./deployment.md) instead.
   If you do, configure a profile per
   [`deployment.md § AWS profiles`](./deployment.md#aws-profiles-multi-project-setup)
   so credentials don't bleed across projects.
+- **Docker + Docker Compose** — for running DynamoDB Local. The backend's
+  order-PII path writes to a `meryl-green-designs-orders` table; locally
+  that's served by a `docker compose` container, never the prod table.
+  See [Setting up local DynamoDB](#setting-up-local-dynamodb) below.
 
 ## One-time setup
 
@@ -91,6 +95,46 @@ Edit `frontend/.env`:
 8. Refresh the shop and gallery pages in your browser — the new content
    appears immediately. (Shop and gallery fetch data client-side on every
    page load, so there's no rebuild required.)
+
+### Setting up local DynamoDB
+
+The backend writes customer order PII to a private DynamoDB table (see
+[`orders-pii-split-plan.md`](./orders-pii-split-plan.md) for the
+architecture). Local dev runs against a `docker compose` container —
+production hits the AWS-hosted table, and the two are isolated:
+**`bin/dynamodb-local-up.sh` will never touch the prod table**.
+
+```bash
+./bin/dynamodb-local-up.sh
+```
+
+This is idempotent. It:
+
+1. Starts the `dynamodb-local` service from `docker-compose.yml` if it
+   isn't already running (port `8000`, persistent volume).
+2. Waits for the port to accept connections.
+3. Creates the `meryl-green-designs-orders` table on first run with the
+   same schema as prod (`orderRef` hash key, `ttl` for auto-deletion).
+4. Enables TTL on the `ttl` attribute.
+
+The backend reads `DYNAMODB_ENDPOINT=http://localhost:8000` from
+`backend/.env` and routes the SDK there with dummy credentials. **If
+`DYNAMODB_ENDPOINT` is unset, the SDK falls back to the real AWS
+service** — only happens in prod, where the Lambda's IAM role provides
+real credentials.
+
+Container lifecycle:
+
+```bash
+docker compose down       # stop, keep data
+docker compose down -v    # stop and wipe local rows
+docker compose up -d      # start again (re-run bin/dynamodb-local-up.sh
+                          # if you used `-v`, to recreate the table)
+```
+
+Without local DynamoDB running, `POST /orders` still succeeds (the
+DynamoDB shadow write fails silently with a log line), but the admin
+routes used by the Studio's custom PII panels return errors.
 
 ## Running the site
 

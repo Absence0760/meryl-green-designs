@@ -35,6 +35,25 @@ When adding a new schema:
 - Studio reads `SANITY_STUDIO_PROJECT_ID` and `SANITY_STUDIO_DATASET` from `studio/.env`. These must point at the same Sanity project as the backend's `SANITY_PROJECT_ID`.
 - `studio/.env` only contains non-secret IDs, so it's a normal gitignored file (no SOPS).
 
+## Custom field components for order PII
+
+`studio/components/orderPii.tsx` defines three custom field components rendered on the order detail view:
+
+- `<CustomerDetailsPanel>` — read-only display of name/email/phone/address/items/notes
+- `<TrackingFields>` — three editable inputs (carrier, number, URL), save-on-blur
+- `<InternalNotesField>` — editable textarea, save-on-blur
+
+They fetch data from the backend's `/admin/orders/:ref` endpoint and write to `/admin/orders/:ref/tracking` and `/admin/orders/:ref/internal-notes` — bypassing Sanity entirely. The backend reads/writes a private DynamoDB table; the Sanity document only carries the join key (`orderRef`) and non-PII fields (status, amount, payment metadata).
+
+Required env vars (in `studio/.env`):
+
+- `SANITY_STUDIO_API_URL` — backend base URL the components fetch from
+- `SANITY_STUDIO_ADMIN_TOKEN` — bearer token, must match the backend's `ADMIN_API_TOKEN`
+
+The token is baked into the Studio JS bundle at build time, so it's visible to anyone who can load the Studio. CORS narrows admin access to the Studio's hosted origin, but the real auth gate is the bearer check on the backend. See `docs/orders-pii-split-plan.md § Admin auth` for the v2 hardening ideas (Sanity JWT verification, Cognito).
+
+Phase 0 keeps the native PII fields on the schema **and** renders these new panels — intentional duplication for parity validation. Phase 1 removes the native fields.
+
 ## Pointers
 
 - Order schema field semantics + status transitions: `docs/orders-and-tracking.md`

@@ -1,0 +1,30 @@
+# Local development services. Production runs on AWS — see infra/.
+#
+# Bring up: docker compose up -d
+# Tear down: docker compose down
+# One-shot table setup: bin/dynamodb-local-up.sh (idempotent — also starts
+# the container if it isn't running).
+#
+# Data persists in the dynamodb-local-data named volume across restarts.
+# `docker compose down -v` to wipe local order rows.
+
+services:
+  dynamodb-local:
+    image: amazon/dynamodb-local:2.5.4
+    container_name: meryl-dynamodb-local
+    ports:
+      - "8000:8000"
+    command:
+      - "-jar"
+      - "DynamoDBLocal.jar"
+      - "-sharedDb"
+      - "-dbPath"
+      - "/data"
+    volumes:
+      - dynamodb-local-data:/data
+    restart: unless-stopped
+    # No healthcheck — the dynamodb-local image is minimal (no curl/wget/nc).
+    # bin/dynamodb-local-up.sh polls the host port instead.
+
+volumes:
+  dynamodb-local-data:

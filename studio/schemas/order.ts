@@ -1,4 +1,9 @@
 import { defineField, defineType } from 'sanity';
+import {
+	CustomerDetailsPanel,
+	InternalNotesField,
+	TrackingFields
+} from '../components/orderPii';
 
 export const order = defineType({
 	name: 'order',
@@ -118,6 +123,32 @@ export const order = defineType({
 			title: 'Internal notes (never shown to customer)',
 			type: 'text',
 			rows: 3
+		}),
+
+		// --- DynamoDB-backed panels (Phase 0 dual-write validation) ---
+		// These placeholder string fields exist only to give the custom
+		// components a slot in the form layout — they never persist any
+		// value to the Sanity document. The components fetch their data
+		// from /admin/orders/:ref (DynamoDB). Native PII fields above stay
+		// until Phase 1 cutover so the operator can eyeball parity.
+		// See docs/orders-pii-split-plan.md.
+		defineField({
+			name: 'customerDetailsPanel',
+			title: 'Customer details (DynamoDB)',
+			type: 'string',
+			components: { field: CustomerDetailsPanel as never }
+		}),
+		defineField({
+			name: 'trackingPanel',
+			title: 'Tracking (DynamoDB)',
+			type: 'string',
+			components: { field: TrackingFields as never }
+		}),
+		defineField({
+			name: 'internalNotesPanel',
+			title: 'Internal notes (DynamoDB)',
+			type: 'string',
+			components: { field: InternalNotesField as never }
 		})
 	],
 	orderings: [
