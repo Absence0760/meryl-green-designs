@@ -1,6 +1,6 @@
 # Orders PII split — proposal
 
-**Status: Phase 0 in progress.** Days 1–4 are landed:
+**Status: Phase 0 in progress.** Days 1–5 are landed:
 
 - Day 1 — Terraform scaffolding (empty DynamoDB table + Lambda IAM
   extension + `ORDERS_TABLE_NAME` env var). Applied.
@@ -20,6 +20,15 @@
   isolation). New `bin/dynamodb-local-up.sh` is idempotent and creates
   the local table matching prod's schema; `DYNAMODB_ENDPOINT` in
   `backend/.env` routes the SDK locally.
+- Day 5 — Backfill script (`backend/src/scripts/backfill-orders.ts`,
+  runs via `pnpm backfill:orders[:dry]`). Idempotent: reads every
+  Sanity order doc, skips rows already in DynamoDB, writes the rest.
+  `--overwrite` forces a full re-import. Scrubbed orders (PII null in
+  Sanity) backfill with empty-string sentinels — TTL on
+  `createdAt + 365 days` handles their eventual deletion. Lives at
+  `src/scripts/` (slight deviation from the plan's `backend/scripts/`)
+  so tsc covers it. The pure mapping function has unit-test coverage
+  in `backfill-orders.test.ts`.
 
 **Outstanding before prod deploy** (Day 7):
 
@@ -35,8 +44,8 @@
 - Local dev uses the values in `backend/.env` and `studio/.env`
   (templates updated).
 
-Days 5–7 (backfill + reverse-backfill scripts, prod deploy) and the
-cutover (Phase 1) still require explicit go-ahead.
+Days 6–7 (reverse-backfill script, prod deploy) and the cutover
+(Phase 1) still require explicit go-ahead.
 
 ## Why this exists
 

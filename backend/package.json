@@ -10,7 +10,9 @@
 		"check": "tsc -p tsconfig.json --noEmit",
 		"test": "vitest run",
 		"test:watch": "vitest",
-		"start": "node dist/server.js"
+		"start": "node dist/server.js",
+		"backfill:orders": "tsx src/scripts/backfill-orders.ts",
+		"backfill:orders:dry": "tsx src/scripts/backfill-orders.ts --dry-run"
 	},
 	"dependencies": {
 		"@aws-sdk/client-dynamodb": "^3.1045.0",

@@ -141,6 +141,28 @@ Without local DynamoDB running, `POST /orders` still succeeds (the
 DynamoDB shadow write fails silently with a log line), but the admin
 routes used by the Studio's custom PII panels return errors.
 
+#### Backfilling local DynamoDB from Sanity
+
+If you want every existing Sanity order document to appear in the local
+DynamoDB (useful for testing the Studio PII panels against real
+historical data), run:
+
+```bash
+pnpm backfill:orders:dry   # report-only, no writes
+pnpm backfill:orders       # actually write
+```
+
+Idempotent — re-running skips rows already present. The script reads
+the same `SANITY_*` and `ORDERS_TABLE_NAME` / `DYNAMODB_ENDPOINT` env
+vars as the live backend, so by default it writes to whatever DynamoDB
+endpoint your `backend/.env` points at — meaning **the local
+`docker compose` container, not prod AWS**. Verify before running by
+glancing at the `DYNAMODB_ENDPOINT: http://localhost:8000` line in the
+script's startup banner.
+
+`--overwrite` forces an unconditional re-import (slower; only use if
+you suspect drift between Sanity and DynamoDB).
+
 ### Local email capture
 
 `backend/src/email.ts` has two backends, switched via `EMAIL_BACKEND`:
