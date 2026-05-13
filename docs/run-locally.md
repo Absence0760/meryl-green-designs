@@ -408,7 +408,7 @@ to transitions only.
   line and an email send log
 - Watch the ngrok terminal — same `POST /webhooks/sanity-order 200`
 - Check the customer inbox (use a plus-alias of your Resend signup email,
-  e.g. `jaredhoward0912+customer@gmail.com`, so Resend's sandbox sender
+  e.g. `you+customer@example.com`, so Resend's sandbox sender
   will actually deliver it)
 
 ### Troubleshooting
