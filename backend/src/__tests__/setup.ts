@@ -16,3 +16,6 @@ process.env.SANITY_WEBHOOK_SECRET = 'test-webhook-secret';
 
 process.env.AWS_REGION = 'af-south-1';
 process.env.ORDERS_TABLE_NAME = 'meryl-green-designs-orders-test';
+
+process.env.ADMIN_API_TOKEN = 'test-admin-token';
+process.env.STUDIO_ORIGINS = 'http://localhost:3333';

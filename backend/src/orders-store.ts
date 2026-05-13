@@ -4,7 +4,7 @@
 //
 // Read paths still go to Sanity; the join with DynamoDB lands in Phase 1.
 
-import { PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { GetCommand, PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { getDynamoClient, getOrdersTableName } from './dynamo.js';
 import {
 	createOrder as createSanityOrder,
@@ -89,6 +89,20 @@ export async function getOrderByRef(orderRef: string): Promise<SanityOrder | nul
 	// Phase 0: Sanity has every field. Phase 1 reads non-PII from Sanity and
 	// joins the PII from DynamoDB before returning a unified shape.
 	return getSanityOrderByRef(orderRef);
+}
+
+export async function getOrderPii(orderRef: string): Promise<OrderPii | null> {
+	// Read PII straight from DynamoDB. Used by the admin routes that power
+	// the Studio custom panels — they want the DynamoDB view so dual-write
+	// parity is observable to the operator during Phase 0.
+	const client = getDynamoClient();
+	const result = await client.send(
+		new GetCommand({
+			TableName: getOrdersTableName(),
+			Key: { orderRef }
+		})
+	);
+	return (result.Item as OrderPii | undefined) ?? null;
 }
 
 export async function updateOrderStatus(

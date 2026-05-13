@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mockClient } from 'aws-sdk-client-mock';
-import { DynamoDBDocumentClient, PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import {
+	DynamoDBDocumentClient,
+	GetCommand,
+	PutCommand,
+	UpdateCommand
+} from '@aws-sdk/lib-dynamodb';
 import type { SanityOrder } from '../sanity.js';
 
 vi.mock('../sanity.js', () => ({
@@ -164,6 +169,34 @@ describe('ordersStore.getOrderByRef', () => {
 
 		const result = await ordersStore.getOrderByRef('MG-000000-XXXX');
 
+		expect(result).toBeNull();
+	});
+});
+
+describe('ordersStore.getOrderPii', () => {
+	beforeEach(() => {
+		ddbMock.reset();
+	});
+
+	it('returns the DynamoDB item for an existing orderRef', async () => {
+		const item = {
+			orderRef: 'MG-260410-ABCD',
+			customerName: 'Jane Smith',
+			customerEmail: 'jane@example.com',
+			ttl: 123
+		};
+		ddbMock.on(GetCommand).resolves({ Item: item });
+
+		const result = await ordersStore.getOrderPii('MG-260410-ABCD');
+
+		expect(result).toEqual(item);
+		const call = ddbMock.commandCalls(GetCommand)[0]!.args[0].input;
+		expect(call.Key).toEqual({ orderRef: 'MG-260410-ABCD' });
+	});
+
+	it('returns null when no item exists', async () => {
+		ddbMock.on(GetCommand).resolves({});
+		const result = await ordersStore.getOrderPii('MG-000000-XXXX');
 		expect(result).toBeNull();
 	});
 });

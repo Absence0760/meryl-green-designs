@@ -1,10 +1,20 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+vi.mock('../orders-store.js', () => ({
+	getOrderPii: vi.fn(),
+	updateOrderTracking: vi.fn(),
+	updateOrderInternalNotes: vi.fn()
+}));
+
 import { escapeHtml, sendEmail } from '../email.js';
 import {
 	ownerNotification,
 	customerEmailForStatus
 } from '../email-templates.js';
 import type { SanityOrder } from '../sanity.js';
+import { createApp } from '../app.js';
+import * as ordersStore from '../orders-store.js';
+import type { OrderPii } from '../orders-store.js';
 
 describe('escapeHtml', () => {
 	it('escapes the five dangerous HTML characters', () => {
@@ -300,5 +310,112 @@ describe('sendEmail', () => {
 		await expect(
 			sendEmail({ to: 'a@b.c', subject: 's', html: '<p/>' })
 		).rejects.toThrow(/401/);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// PII-leak regression — same spirit as the banking-details-in-email test
+// above. CloudWatch logs go to anyone with `logs:GetLogEvents` on the log
+// group, which is a wider blast radius than the DynamoDB table itself.
+// The admin route handlers may only log `orderRef + action + result` — no
+// customer values. Fail loudly if a future edit slips PII into a log line.
+// ---------------------------------------------------------------------------
+describe('admin route logs do not leak PII', () => {
+	const piiSamples = {
+		customerName: 'Jane Smith-O\'Connor',
+		customerEmail: 'jane.oconnor@example.com',
+		customerPhone: '+27821234567',
+		shippingAddress: '1 Test Street, Cape Town 8001',
+		items: '1 x Small Screen — R 450.00',
+		customerNotes: 'Buzzer is broken — call 0821234567 on arrival',
+		trackingNumber: 'CG-LEAKY-NUMBER-12345',
+		trackingUrl: 'https://example.com/track/CG-LEAKY-NUMBER-12345',
+		shippingCarrier: 'Courier Guy',
+		internalNotes: 'Customer is the owner\'s aunt; deliver early'
+	};
+
+	function piiRow(): OrderPii {
+		return {
+			orderRef: 'MG-260410-ABCD',
+			customerName: piiSamples.customerName,
+			customerEmail: piiSamples.customerEmail,
+			customerPhone: piiSamples.customerPhone,
+			shippingAddress: piiSamples.shippingAddress,
+			items: piiSamples.items,
+			customerNotes: piiSamples.customerNotes,
+			trackingNumber: piiSamples.trackingNumber,
+			trackingUrl: piiSamples.trackingUrl,
+			shippingCarrier: piiSamples.shippingCarrier,
+			internalNotes: piiSamples.internalNotes,
+			createdAt: '2026-04-10T12:00:00Z',
+			ttl: 1_800_000_000
+		};
+	}
+
+	let logSpy: ReturnType<typeof vi.spyOn>;
+	let errSpy: ReturnType<typeof vi.spyOn>;
+
+	beforeEach(() => {
+		logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+		errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+		vi.mocked(ordersStore.getOrderPii).mockResolvedValue(piiRow());
+		vi.mocked(ordersStore.updateOrderTracking).mockResolvedValue();
+		vi.mocked(ordersStore.updateOrderInternalNotes).mockResolvedValue();
+	});
+
+	afterEach(() => {
+		logSpy.mockRestore();
+		errSpy.mockRestore();
+	});
+
+	function collectLogLines(): string {
+		const parts: string[] = [];
+		for (const call of logSpy.mock.calls) parts.push(call.map(String).join(' '));
+		for (const call of errSpy.mock.calls) parts.push(call.map(String).join(' '));
+		return parts.join('\n');
+	}
+
+	function assertNoPiiIn(text: string) {
+		for (const [field, value] of Object.entries(piiSamples)) {
+			expect(text, `${field} leaked into log output`).not.toContain(value);
+		}
+	}
+
+	it('GET /admin/orders/:ref logs nothing customer-identifying', async () => {
+		const app = createApp();
+		await app.request('/admin/orders/MG-260410-ABCD', {
+			headers: { Authorization: 'Bearer test-admin-token' }
+		});
+		assertNoPiiIn(collectLogLines());
+	});
+
+	it('PATCH /admin/orders/:ref/tracking logs nothing customer-identifying', async () => {
+		const app = createApp();
+		await app.request('/admin/orders/MG-260410-ABCD/tracking', {
+			method: 'PATCH',
+			headers: {
+				Authorization: 'Bearer test-admin-token',
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify({
+				trackingNumber: piiSamples.trackingNumber,
+				trackingUrl: piiSamples.trackingUrl,
+				shippingCarrier: piiSamples.shippingCarrier
+			})
+		});
+		assertNoPiiIn(collectLogLines());
+	});
+
+	it('PATCH /admin/orders/:ref/internal-notes logs nothing customer-identifying', async () => {
+		const app = createApp();
+		await app.request('/admin/orders/MG-260410-ABCD/internal-notes', {
+			method: 'PATCH',
+			headers: {
+				Authorization: 'Bearer test-admin-token',
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify({ internalNotes: piiSamples.internalNotes })
+		});
+		assertNoPiiIn(collectLogLines());
 	});
 });

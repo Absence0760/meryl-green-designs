@@ -36,6 +36,7 @@ Mounted in `src/app.ts`. Each route file lives under `src/routes/` and exports a
 - `GET /orders/:ref?email=` — email-verified track lookup. **Wrong email returns 404, not 403** (no enumeration).
 - `POST /webhooks/sanity-order` — verify HMAC-SHA256 over **raw body** before parsing, then dispatch status email
 - `POST /webhooks/payfast-itn` — verify MD5 sig **over the raw body** (PayFast signs with PHP `urlencode` and includes empty fields; re-encoding from the parsed body produces a mismatch) + amount, update order to `payment_received`
+- `GET /admin/orders/:ref`, `PATCH /admin/orders/:ref/tracking`, `PATCH /admin/orders/:ref/internal-notes` — Studio-only PII routes. Gated by `Authorization: Bearer <ADMIN_API_TOKEN>` (constant-time compare). CORS narrowed to `STUDIO_ORIGINS`. Handlers may only log `orderRef + action + result` — never PII values; regression-guarded in `email.test.ts`.
 
 ## Hard rules
 

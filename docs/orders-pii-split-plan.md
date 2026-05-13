@@ -1,15 +1,26 @@
 # Orders PII split — proposal
 
-**Status: Phase 0 in progress.** Days 1–2 are landed: Day 1 Terraform
-scaffolding (empty DynamoDB table + Lambda IAM extension +
-`ORDERS_TABLE_NAME` env var), Day 2 backend wiring (`backend/src/dynamo.ts`,
-`backend/src/orders-store.ts` in dual-write mode, `routes/orders.ts`
-switched to the store, full unit-test coverage in
-`backend/src/__tests__/orders-store.test.ts`). `terraform apply` pending —
-Day 2 code is safe to deploy locally because dual-write writes are
-shadow-only; production deploy waits for the apply. Days 3–7 (admin
-routes, Studio components, backfill, deploy) and the cutover (Phase 1)
-still require explicit go-ahead.
+**Status: Phase 0 in progress.** Days 1–3 are landed:
+
+- Day 1 — Terraform scaffolding (empty DynamoDB table + Lambda IAM
+  extension + `ORDERS_TABLE_NAME` env var). Applied.
+- Day 2 — Backend wiring (`backend/src/dynamo.ts`,
+  `backend/src/orders-store.ts` in dual-write mode, `routes/orders.ts`
+  switched to the store).
+- Day 3 — Admin routes (`backend/src/routes/admin.ts`) gated by
+  `Authorization: Bearer <ADMIN_API_TOKEN>` and CORS-scoped to
+  `STUDIO_ORIGINS`. New `orders-store.getOrderPii()` reads from DynamoDB
+  so the Studio custom panels show the new source. PII-leak regression
+  extended in `email.test.ts` to cover admin log lines.
+
+**Outstanding before prod deploy** (Day 7): add `admin_api_token` and
+`studio_origins` to `infra/variables.tf`, the encrypted
+`infra/terraform.tfvars.sops`, and the Lambda env in `infra/lambda.tf`,
+then `terraform apply` again. Local dev uses the values in
+`backend/.env` (template in `backend/.env.example`).
+
+Days 4–7 (Studio components, backfill + reverse-backfill, deploy) and
+the cutover (Phase 1) still require explicit go-ahead.
 
 ## Why this exists
 

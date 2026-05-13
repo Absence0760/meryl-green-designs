@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { cors } from 'hono/cors';
 import { gallery } from './routes/gallery.js';
 import { ordersRouter } from './routes/orders.js';
@@ -8,21 +8,33 @@ import { products } from './routes/products.js';
 import { testimonials } from './routes/testimonials.js';
 import { payfastItnRouter } from './routes/payfast-itn.js';
 import { sanityWebhookRouter } from './routes/sanity-webhook.js';
+import { adminRouter } from './routes/admin.js';
+
+function parseOrigins(value: string | undefined): string[] {
+	return (value ?? '')
+		.split(',')
+		.map((o) => o.trim())
+		.filter(Boolean);
+}
 
 export function createApp() {
 	const app = new Hono();
 
-	const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? 'http://localhost:7777')
-		.split(',')
-		.map((o) => o.trim())
-		.filter(Boolean);
+	const publicOrigins = parseOrigins(process.env.ALLOWED_ORIGINS ?? 'http://localhost:7777');
+	// Admin routes are CORS-scoped narrower than public routes: only the
+	// Studio's hosted origin should be able to PATCH order PII. The bearer
+	// token is the real gate; this is defence-in-depth.
+	const adminOrigins = parseOrigins(process.env.STUDIO_ORIGINS);
 
 	app.use(
 		'*',
 		cors({
-			origin: (origin) => (allowedOrigins.includes(origin) ? origin : null),
-			allowMethods: ['GET', 'POST', 'OPTIONS'],
-			allowHeaders: ['Content-Type'],
+			origin: (origin: string, c: Context) => {
+				const allowed = c.req.path.startsWith('/admin/') ? adminOrigins : publicOrigins;
+				return allowed.includes(origin) ? origin : null;
+			},
+			allowMethods: ['GET', 'POST', 'PATCH', 'OPTIONS'],
+			allowHeaders: ['Content-Type', 'Authorization'],
 			maxAge: 600
 		})
 	);
@@ -41,6 +53,7 @@ export function createApp() {
 	app.route('/enquiries', enquiriesRouter());
 	app.route('/webhooks', sanityWebhookRouter());
 	app.route('/webhooks/payfast-itn', payfastItnRouter());
+	app.route('/admin', adminRouter());
 
 	app.onError((err, c) => {
 		console.error('Unhandled error', err);
