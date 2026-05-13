@@ -106,10 +106,18 @@ describe('admin auth middleware', () => {
 	});
 
 	it('rejects an empty-after-trim Bearer token even when ADMIN_API_TOKEN is set', async () => {
-		// `Authorization: Bearer  ` (header trimmed to nothing) must not
-		// satisfy a real configured token via the zero-length-buffer
-		// path. The regex captures the trailing whitespace, then the
-		// post-trim empty check returns 401 before timingSafeEqual runs.
+		// Defence-in-depth coverage. `Authorization: Bearer  ` (header
+		// trimmed to nothing) is rejected by TWO independent layers:
+		//   1. the post-trim `if (!providedRaw)` guard in admin-auth.ts,
+		//      and
+		//   2. the subsequent `provided.length !== reference.length`
+		//      check (0 vs the real token's length).
+		// This test would still pass if layer (1) were removed — layer
+		// (2) catches it. The load-bearing test for layer (1) is
+		// "rejects an all-whitespace ADMIN_API_TOKEN" above, where both
+		// sides trim to empty and the length-check would NOT save us.
+		// Kept anyway to pin the externally observable behaviour
+		// (401 + handler not invoked) for empty Bearer values.
 		const app = createApp();
 		const res = await app.request('/admin/orders/MG-260410-ABCD', {
 			headers: { Authorization: 'Bearer   ' }
