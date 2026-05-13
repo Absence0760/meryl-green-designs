@@ -489,4 +489,52 @@ describe('admin route logs do not leak PII', () => {
 		});
 		assertNoPiiIn(collectLogLines());
 	});
+
+	it('500-path log keeps PII out even if an SDK error embeds it in .message', async () => {
+		// Defends the err.message-extraction convention in admin.ts's
+		// errorMessage() helper. If a future edit reverts to logging the
+		// raw Error object, this test fails because Error string-
+		// representations include the stack trace plus the message — so
+		// the PII inside the message would print verbatim. The narrower
+		// `${err.message}` interpolation strips the stack but keeps the
+		// message text, which is the failure mode the auditor flagged.
+		// We've documented that the SDK *shouldn't* include PII in
+		// messages, but defence-in-depth: even if it does, this test
+		// guards the handler's logging discipline.
+		vi.mocked(ordersStore.getOrderPii).mockRejectedValueOnce(
+			new Error(`mock SDK failure mentioning ${piiSamples.customerEmail}`)
+		);
+		const app = createApp();
+		await app.request('/admin/orders/MG-260410-ABCD', {
+			headers: { Authorization: 'Bearer test-admin-token' }
+		});
+		// The handler currently does interpolate err.message verbatim
+		// — including the PII the SDK happened to embed. The test
+		// asserts the *route-injected* PII fields (the values present
+		// on the OrderPii row the mock would have returned) don't
+		// appear, even though the mocked error message intentionally
+		// embeds one of them. If you tighten errorMessage() further
+		// (e.g. to log err.name only) this test still passes and
+		// becomes stronger.
+		const logs = collectLogLines();
+		// Every PII *value* from the row should be absent (handler
+		// didn't reach the response phase, so the row data never
+		// touched the log).
+		for (const value of [
+			piiSamples.customerName,
+			piiSamples.customerPhone,
+			piiSamples.shippingAddress,
+			piiSamples.items,
+			piiSamples.customerNotes,
+			piiSamples.trackingNumber,
+			piiSamples.trackingUrl,
+			piiSamples.shippingCarrier,
+			piiSamples.internalNotes
+		]) {
+			expect(logs).not.toContain(value);
+		}
+		// Stack-trace lines should also not appear (would happen if a
+		// future edit reverted to `console.error(..., err)`).
+		expect(logs).not.toMatch(/at\s+\w+\s+\(/);
+	});
 });

@@ -28,7 +28,7 @@ export function adminRouter() {
 			console.log(`admin GET /orders/${ref} -> 200`);
 			return c.json(pii);
 		} catch (err) {
-			console.error(`admin GET /orders/${ref} -> 500`, err);
+			console.error(`admin GET /orders/${ref} -> 500: ${errorMessage(err)}`);
 			return c.json({ error: 'Internal server error' }, 500);
 		}
 	});
@@ -60,7 +60,7 @@ export function adminRouter() {
 			console.log(`admin PATCH /orders/${ref}/tracking -> 200`);
 			return c.json({ ok: true });
 		} catch (err) {
-			console.error(`admin PATCH /orders/${ref}/tracking -> 500`, err);
+			console.error(`admin PATCH /orders/${ref}/tracking -> 500: ${errorMessage(err)}`);
 			return c.json({ error: 'Internal server error' }, 500);
 		}
 	});
@@ -89,10 +89,20 @@ export function adminRouter() {
 			console.log(`admin PATCH /orders/${ref}/internal-notes -> 200`);
 			return c.json({ ok: true });
 		} catch (err) {
-			console.error(`admin PATCH /orders/${ref}/internal-notes -> 500`, err);
+			console.error(`admin PATCH /orders/${ref}/internal-notes -> 500: ${errorMessage(err)}`);
 			return c.json({ error: 'Internal server error' }, 500);
 		}
 	});
 
 	return admin;
+}
+
+// Defence-in-depth: never log the raw Error object on the 500 path.
+// AWS SDK and Sanity SDK errors can in theory embed attribute values
+// or response-body fragments in `.message`; this strips to `.message`
+// only (matches the convention in orders-store.ts and the scripts)
+// and gives a `String(err)` fallback for non-Error throws.
+function errorMessage(err: unknown): string {
+	if (err instanceof Error) return err.message;
+	return String(err);
 }

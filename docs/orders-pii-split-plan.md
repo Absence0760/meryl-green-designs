@@ -379,14 +379,14 @@ The native Sanity field (`status`) and custom inputs (`trackingNumber`,
 `shippingCarrier`, `trackingUrl`) live in the same form but persist
 independently:
 
-- Custom inputs save on blur (debounced 300ms) via `PATCH /admin/orders/:ref/tracking`.
+- Custom inputs save on blur via `PATCH /admin/orders/:ref/tracking`. (The plan originally called for a 300ms keystroke debounce; the implementation in `orderPii.tsx` is simpler — one PATCH per blur. Add debouncing later if Meryl reports the blur-save is laggy.)
 - The native `status` field saves when Meryl hits Studio's Publish button.
 
 If she types a tracking number and then changes status to `shipped`
 without losing focus first, the order of writes is:
 1. Status save fires Sanity's mutation → publish; this completes when
    Studio shows the saved state.
-2. Tracking debounce fires on Publish-blur → DynamoDB write.
+2. Tracking save fires on Publish-blur → DynamoDB write.
 3. Sanity webhook arrives at the backend; backend reads DynamoDB
    (tracking may or may not yet be there).
 4. If tracking arrived in time, the status email includes it; if not,
@@ -498,8 +498,8 @@ Three components, all using `@sanity/ui` so they match Studio styling:
   Handles loading + error states.
 - `<TrackingFields>` — read + write. Fetches same as above; renders three
   text inputs (`trackingNumber`, `trackingUrl`, `shippingCarrier`); on blur,
-  `PATCH /admin/orders/:ref/tracking` with the changed values. Debounced
-  save (300ms) to avoid hammering on every keystroke.
+  `PATCH /admin/orders/:ref/tracking` with the changed values. Save fires
+  on field blur (one request per edited field, not per keystroke).
 - `<InternalNotesField>` — read + write. Single textarea, same save pattern.
 
 ### Admin auth
@@ -551,12 +551,12 @@ Future hardening (out of scope for v1, in priority order):
   flows.
 - `backend/src/__tests__/orders-store.test.ts` — split-store unit tests
   with mocked Sanity and DynamoDB clients.
-- `backend/scripts/backfill-orders.ts` — one-shot backfill for Phase 0.
+- `backend/src/scripts/backfill-orders.ts` — one-shot backfill for Phase 0.
   Reads all Sanity order docs, writes corresponding DynamoDB rows.
   Idempotent.
-- `backend/scripts/scrub-sanity-pii.ts` — one-shot Phase 1 step.
+- `backend/src/scripts/scrub-sanity-pii.ts` — one-shot Phase 1 step.
   Unsets PII fields on every existing Sanity order doc.
-- `backend/scripts/restore-sanity-pii.ts` — rollback-only. Re-imports
+- `backend/src/scripts/restore-sanity-pii.ts` — rollback-only. Re-imports
   PII from DynamoDB back into Sanity if Phase 1 has to be reversed.
   Written and tested in Phase 0 so it's available when needed.
 
@@ -661,14 +661,18 @@ resource "aws_dynamodb_table" "orders" {
     enabled = true
     # kms_key_arn omitted → uses the AWS-managed aws/dynamodb key.
   }
-
-  tags = local.common_tags
 }
 ```
 
+The provider-level `default_tags` in `main.tf` covers Project / ManagedBy
+/ Environment for every resource — no per-resource `tags` block is
+needed here. The actual `infra/dynamodb.tf` matches this shape.
+
 IAM: extend the Lambda execution role with `dynamodb:GetItem`, `PutItem`,
-`UpdateItem`, `DeleteItem`, and `Scan` (for the reconciler) on the table
-ARN. Keep the existing Sanity permissions.
+`UpdateItem`, `DeleteItem`. `Scan` is **not** granted in Phase 0
+because nothing reads via Scan; it'll be added back in the same change
+that introduces the reconciler cron (Days 10–11). Keep the existing
+Sanity permissions.
 
 No additional KMS permissions are needed on the Lambda role — SSE-KMS
 with the AWS-managed `aws/dynamodb` key is transparent to callers.
@@ -704,7 +708,7 @@ yet affect production.
    removes the native PII fields and leaves only the custom panel. Tell
    Meryl about this *before* she opens an order, otherwise the doubled
    view looks like a bug.
-5. Run a **backfill script** (`backend/scripts/backfill-orders.ts`):
+5. Run a **backfill script** (`backend/src/scripts/backfill-orders.ts`):
    - Fetch all existing Sanity order docs via the admin token.
    - For each, write a DynamoDB row with the PII fields.
    - Idempotent — re-runnable.
@@ -734,7 +738,7 @@ window.
 2. Deploy backend in **split-write mode**: writes to PII fields go only
    to DynamoDB, writes to non-PII fields go only to Sanity. Reads join
    both stores via `orders-store.ts`.
-3. Run a **scrub script** (`backend/scripts/scrub-sanity-pii.ts`): for each
+3. Run a **scrub script** (`backend/src/scripts/scrub-sanity-pii.ts`): for each
    existing Sanity order doc, write a patch that unsets the PII fields.
    Sanity history retains the old values for ~30 days unless we explicitly
    purge history.
@@ -794,7 +798,7 @@ The dual-write deploy from Phase 0 is the rollback anchor. If anything
 breaks post-cutover within the 2-week buffer window:
 
 1. Revert the Lambda to the Phase-0 dual-write build.
-2. Run `backend/scripts/restore-sanity-pii.ts` to re-import PII from
+2. Run `backend/src/scripts/restore-sanity-pii.ts` to re-import PII from
    DynamoDB back into Sanity. The script is written and tested in
    Phase 0 specifically so it's available when needed.
 3. Sanity history is now ahead of where it was; live with the noise or
