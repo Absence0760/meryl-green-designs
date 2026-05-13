@@ -3,15 +3,27 @@
 // dual-write deploy. Idempotent — re-running skips rows that are already
 // present.
 //
-// Run from backend/ with `pnpm backfill:orders [--dry-run] [--overwrite]`.
+// Run from backend/ with
+//   pnpm backfill:orders [--dry-run] [--overwrite] [--prod]
+//
 // Reads `backend/.env` for SANITY_* and ORDERS_TABLE_NAME / DYNAMODB_
 // ENDPOINT (the same env that drives the live backend), so by default a
 // local run writes to the docker-compose container, not prod AWS — see
 // docs/orders-pii-split-plan.md § Implementation sequencing.
 //
-// Production run: same script, with `backend/.env` populated from
-// terraform.tfvars.sops values (AWS creds via SSO, real DynamoDB
-// endpoint = unset).
+// Safety gates:
+//   --dry-run    No writes, just reports what would happen.
+//   --prod       Required when DYNAMODB_ENDPOINT is unset (= real AWS)
+//                and --dry-run is not set; refuses to run otherwise.
+//                Forces the operator to acknowledge they are targeting
+//                production rather than letting an unset env var
+//                silently promote a local-looking command into a prod
+//                write.
+//
+// ORDERS_TABLE_NAME is currently identical between local and prod (both
+// `meryl-green-designs-orders`). If that ever diverges, lean on the
+// startup banner output to confirm you're aimed at the right table —
+// there's no automated cross-check.
 
 import { config as loadDotenv } from 'dotenv';
 import { pathToFileURL } from 'node:url';
@@ -68,13 +80,36 @@ export function piiItemFromSanity(order: SanityOrderForBackfill): OrderPii {
 	};
 }
 
-type Args = { dryRun: boolean; overwrite: boolean };
+// True when an item's TTL is at or before `nowSec`. Writing such a row
+// is pointless — DynamoDB will reap it within ~48h — and misleading,
+// because the script's WROTE log would claim a row that quickly vanishes.
+export function isExpired(item: OrderPii, nowSec: number = Math.floor(Date.now() / 1000)): boolean {
+	return item.ttl <= nowSec;
+}
+
+export type Args = { dryRun: boolean; overwrite: boolean; prod: boolean };
 
 export function parseArgs(argv: readonly string[]): Args {
 	return {
 		dryRun: argv.includes('--dry-run'),
-		overwrite: argv.includes('--overwrite')
+		overwrite: argv.includes('--overwrite'),
+		prod: argv.includes('--prod')
 	};
+}
+
+// Returns a reason string when the script should refuse to write,
+// or null when it's safe to proceed. The intent: if you're writing
+// (non-dry) against real AWS (no DYNAMODB_ENDPOINT override) you must
+// have explicitly passed --prod. Local dev (with DYNAMODB_ENDPOINT set)
+// and dry-runs always proceed.
+export function shouldRefusePromoting(
+	args: Args,
+	env: { DYNAMODB_ENDPOINT?: string }
+): string | null {
+	if (args.dryRun) return null;
+	if (env.DYNAMODB_ENDPOINT && env.DYNAMODB_ENDPOINT.trim() !== '') return null;
+	if (args.prod) return null;
+	return 'DYNAMODB_ENDPOINT is unset (this run would write to real AWS). Pass --prod to confirm, or --dry-run to preview.';
 }
 
 function buildSanityClient(): SanityClient {
@@ -101,7 +136,11 @@ const ALL_ORDERS_QUERY = `*[_type == "order" && defined(orderRef)] | order(_crea
 	shippingCarrier, internalNotes
 }`;
 
-type Counters = { written: number; skipped: number; errors: number };
+type Counters = { written: number; skipped: number; expired: number; errors: number };
+
+function isConditionalCheckFailed(err: unknown): boolean {
+	return err instanceof Error && err.name === 'ConditionalCheckFailedException';
+}
 
 async function backfill(args: Args, sanity: SanityClient): Promise<Counters> {
 	const dynamo = getDynamoClient();
@@ -109,37 +148,71 @@ async function backfill(args: Args, sanity: SanityClient): Promise<Counters> {
 	const orders = await sanity.fetch<SanityOrderForBackfill[]>(ALL_ORDERS_QUERY);
 	console.log(`Fetched ${orders.length} order(s) from Sanity.`);
 
-	const counts: Counters = { written: 0, skipped: 0, errors: 0 };
+	const counts: Counters = { written: 0, skipped: 0, expired: 0, errors: 0 };
 	for (const order of orders) {
 		try {
-			if (!args.overwrite) {
+			const item = piiItemFromSanity(order);
+			if (isExpired(item)) {
+				counts.expired++;
+				console.log(`  EXPIRED ${order.orderRef} (past retention; not written)`);
+				continue;
+			}
+
+			if (args.dryRun) {
+				// In dry-run we still need to differentiate "would write"
+				// from "would skip"; a separate GetItem is fine here because
+				// no writes happen and the read is cheap. The race that
+				// motivated using a conditional Put on the real path
+				// doesn't matter for an advisory preview.
 				const existing = await dynamo.send(
 					new GetCommand({
 						TableName: tableName,
 						Key: { orderRef: order.orderRef },
-						// Only need to know whether the row exists.
 						ProjectionExpression: 'orderRef'
 					})
 				);
-				if (existing.Item) {
+				if (existing.Item && !args.overwrite) {
 					counts.skipped++;
-					console.log(`  SKIP ${order.orderRef} (already in DynamoDB)`);
-					continue;
+					console.log(`  DRY  ${order.orderRef} (would skip — exists)`);
+				} else {
+					counts.written++;
+					console.log(`  DRY  ${order.orderRef} (would write)`);
 				}
-			}
-
-			const item = piiItemFromSanity(order);
-			if (args.dryRun) {
-				counts.written++;
-				console.log(`  DRY  ${order.orderRef}`);
 				continue;
 			}
 
-			await dynamo.send(new PutCommand({ TableName: tableName, Item: item }));
-			counts.written++;
-			console.log(`  WROTE ${order.orderRef}`);
+			// Real write: use a conditional Put so the GetItem→PutItem
+			// check-then-act race against the live dual-write Lambda
+			// collapses into one atomic operation. Without this guard,
+			// the backfill could overwrite an order the Lambda just
+			// wrote with tracking from Studio.
+			try {
+				await dynamo.send(
+					new PutCommand({
+						TableName: tableName,
+						Item: item,
+						ConditionExpression: args.overwrite
+							? undefined
+							: 'attribute_not_exists(orderRef)'
+					})
+				);
+				counts.written++;
+				console.log(`  WROTE ${order.orderRef}`);
+			} catch (err) {
+				if (!args.overwrite && isConditionalCheckFailed(err)) {
+					counts.skipped++;
+					console.log(`  SKIP  ${order.orderRef} (already in DynamoDB)`);
+					continue;
+				}
+				throw err;
+			}
 		} catch (err) {
 			counts.errors++;
+			// Defence-in-depth: log err.message rather than the raw Error
+			// object (matches orders-store.ts). SDK errors can in theory
+			// embed request context; if a future SDK release starts
+			// including attribute values in messages, narrow to err.name
+			// only. The orderRef itself is not PII.
 			const message = err instanceof Error ? err.message : String(err);
 			console.error(`  ERROR ${order.orderRef}: ${message}`);
 		}
@@ -158,11 +231,19 @@ async function main(): Promise<void> {
 	console.log(`  DYNAMODB_ENDPOINT: ${process.env.DYNAMODB_ENDPOINT ?? '(unset — real AWS)'}`);
 	console.log('');
 
+	const refuseReason = shouldRefusePromoting(args, process.env);
+	if (refuseReason) {
+		console.error(refuseReason);
+		process.exit(1);
+	}
+
 	const sanity = buildSanityClient();
 	const counts = await backfill(args, sanity);
 
 	console.log('---');
-	console.log(`Done. written=${counts.written} skipped=${counts.skipped} errors=${counts.errors}`);
+	console.log(
+		`Done. written=${counts.written} skipped=${counts.skipped} expired=${counts.expired} errors=${counts.errors}`
+	);
 	if (counts.errors > 0) process.exitCode = 1;
 }
 

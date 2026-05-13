@@ -1,13 +1,20 @@
 import { describe, it, expect } from 'vitest';
 import {
 	buildPatchFromPii,
-	parseArgs
+	parseArgs,
+	shouldRefuse,
+	type Args
 } from '../scripts/restore-sanity-pii.js';
 import type { OrderPii } from '../orders-store.js';
 
 describe('parseArgs', () => {
-	it('defaults both flags to false', () => {
-		expect(parseArgs([])).toEqual({ dryRun: false, overwrite: false });
+	it('defaults all flags to false', () => {
+		expect(parseArgs([])).toEqual({
+			dryRun: false,
+			overwrite: false,
+			yes: false,
+			prod: false
+		});
 	});
 
 	it('detects --dry-run', () => {
@@ -18,11 +25,82 @@ describe('parseArgs', () => {
 		expect(parseArgs(['--overwrite']).overwrite).toBe(true);
 	});
 
-	it('detects both flags', () => {
-		expect(parseArgs(['--dry-run', '--overwrite'])).toEqual({
+	it('detects --yes', () => {
+		expect(parseArgs(['--yes']).yes).toBe(true);
+	});
+
+	it('detects --prod', () => {
+		expect(parseArgs(['--prod']).prod).toBe(true);
+	});
+
+	it('detects every flag in one go', () => {
+		expect(parseArgs(['--dry-run', '--overwrite', '--yes', '--prod'])).toEqual({
 			dryRun: true,
-			overwrite: true
+			overwrite: true,
+			yes: true,
+			prod: true
 		});
+	});
+});
+
+describe('shouldRefuse', () => {
+	const baseArgs: Args = { dryRun: false, overwrite: false, yes: false, prod: false };
+	const localEnv = { DYNAMODB_ENDPOINT: 'http://localhost:8000' };
+	const prodEnv = {};
+
+	it('allows ordinary local writes', () => {
+		expect(shouldRefuse(baseArgs, localEnv)).toBeNull();
+	});
+
+	it('always allows dry-run, regardless of flags or env', () => {
+		expect(
+			shouldRefuse(
+				{ ...baseArgs, dryRun: true, overwrite: true },
+				prodEnv
+			)
+		).toBeNull();
+	});
+
+	it('refuses --overwrite without --yes (local)', () => {
+		expect(shouldRefuse({ ...baseArgs, overwrite: true }, localEnv)).toMatch(/--yes/);
+	});
+
+	it('refuses --overwrite without --yes (prod)', () => {
+		expect(
+			shouldRefuse({ ...baseArgs, overwrite: true, prod: true }, prodEnv)
+		).toMatch(/--yes/);
+	});
+
+	it('allows --overwrite when --yes accompanies it (local)', () => {
+		expect(
+			shouldRefuse({ ...baseArgs, overwrite: true, yes: true }, localEnv)
+		).toBeNull();
+	});
+
+	it('refuses non-dry writes against real AWS without --prod', () => {
+		expect(shouldRefuse(baseArgs, prodEnv)).toMatch(/Pass --prod/);
+	});
+
+	it('allows prod writes when --prod is explicit', () => {
+		expect(shouldRefuse({ ...baseArgs, prod: true }, prodEnv)).toBeNull();
+	});
+
+	it('refuses prod overwrite when --yes is missing, even with --prod', () => {
+		expect(
+			shouldRefuse(
+				{ ...baseArgs, overwrite: true, prod: true },
+				prodEnv
+			)
+		).toMatch(/--yes/);
+	});
+
+	it('allows prod overwrite when --prod + --yes', () => {
+		expect(
+			shouldRefuse(
+				{ ...baseArgs, overwrite: true, yes: true, prod: true },
+				prodEnv
+			)
+		).toBeNull();
 	});
 });
 

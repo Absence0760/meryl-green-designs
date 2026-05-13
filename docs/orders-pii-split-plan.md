@@ -22,13 +22,17 @@
   `backend/.env` routes the SDK locally.
 - Day 5 — Backfill script (`backend/src/scripts/backfill-orders.ts`,
   runs via `pnpm backfill:orders[:dry]`). Idempotent: reads every
-  Sanity order doc, skips rows already in DynamoDB, writes the rest.
-  `--overwrite` forces a full re-import. Scrubbed orders (PII null in
-  Sanity) backfill with empty-string sentinels — TTL on
-  `createdAt + 365 days` handles their eventual deletion. Lives at
+  Sanity order doc, writes the rest via a **conditional Put**
+  (`attribute_not_exists(orderRef)`) so it can't race the live
+  dual-write Lambda. `--overwrite` switches to unconditional Put.
+  Already-expired orders (where `createdAt + 365 days` is in the past)
+  are skipped with a separate counter rather than written with a
+  past TTL that DynamoDB would silently reap. Scrubbed orders (PII
+  null in Sanity) backfill with empty-string sentinels. Lives at
   `src/scripts/` (slight deviation from the plan's `backend/scripts/`)
-  so tsc covers it. The pure mapping function has unit-test coverage
-  in `backfill-orders.test.ts`.
+  so tsc covers it. Pure helpers (`piiItemFromSanity`, `isExpired`,
+  `parseArgs`, `shouldRefusePromoting`) covered by
+  `backfill-orders.test.ts`.
 - Day 6 — Reverse-backfill script
   (`backend/src/scripts/restore-sanity-pii.ts`, runs via
   `pnpm restore:sanity-pii[:dry]`). Mirror image of the backfill:
@@ -38,7 +42,19 @@
   real Sanity data, even under `--overwrite`. Idempotent: re-runs
   during steady-state Phase 0 are no-ops because Sanity still has the
   PII. Written and tested now so Phase 1 rollback is one command away.
-  Pure helpers covered by `restore-sanity-pii.test.ts`.
+  Pure helpers (`buildPatchFromPii`, `parseArgs`, `shouldRefuse`)
+  covered by `restore-sanity-pii.test.ts`.
+
+Both scripts now share two safety gates beyond `--dry-run`:
+
+- `--prod` — required when `DYNAMODB_ENDPOINT` is unset (so the run
+  would write to real AWS). Forces the operator to acknowledge the
+  target rather than letting a missing local env var silently promote
+  a local-looking command into a prod write.
+- `--yes` (restore only) — required alongside `--overwrite` so a
+  mistyped command can't blow away Meryl's edits in Sanity.
+
+Dry-runs always bypass both gates so previewing is cheap.
 
 **Outstanding before prod deploy** (Day 7):
 

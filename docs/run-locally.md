@@ -166,14 +166,30 @@ you suspect drift between Sanity and DynamoDB).
 A reverse-backfill is also wired up for the Phase 1 rollback case:
 
 ```bash
-pnpm restore:sanity-pii:dry    # report-only
-pnpm restore:sanity-pii        # patch Sanity from DynamoDB
+pnpm restore:sanity-pii:dry                     # report-only
+pnpm restore:sanity-pii                         # patch Sanity from DynamoDB
+pnpm restore:sanity-pii -- --overwrite --yes    # rare; clobbers operator edits
 ```
 
 In Phase 0 it's a no-op because Sanity still has every PII field; the
 script only writes when a Sanity field is null/empty. Run the dry-run
 periodically to confirm the rollback path still works against real
 data — it should report `skipped` for every order until cutover.
+
+#### Safety gates on the backfill/restore scripts
+
+Both scripts refuse non-dry runs against real AWS unless `--prod` is
+passed (the absence of `DYNAMODB_ENDPOINT` is the signal). Pass `--prod`
+when you intentionally want to write to the production table; for local
+runs the env var stays set and the gate is invisible.
+
+`pnpm restore:sanity-pii --overwrite` additionally requires `--yes` —
+without it the script refuses to clobber existing Sanity values, since
+a typo would erase every PII edit Meryl has made. (Sanity history can
+recover, but it's manual work.)
+
+Both gates are bypassed when `--dry-run` is in effect, so previewing is
+always cheap.
 
 ### Local email capture
 

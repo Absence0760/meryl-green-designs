@@ -4,11 +4,33 @@
 // to be reversed. Strictly an emergency tool — running it during
 // normal operations is a no-op for fully-populated Sanity orders.
 //
-// Run from backend/ with `pnpm restore:sanity-pii [--dry-run] [--overwrite]`.
+// Run from backend/ with
+//   pnpm restore:sanity-pii [--dry-run] [--overwrite --yes] [--prod]
+//
 // Default behaviour patches only Sanity fields that are currently
 // null/empty — safe to re-run, never overwrites operator edits.
-// `--overwrite` forces every DynamoDB value into Sanity even if
-// Sanity already has a value; only use if you suspect Sanity drift.
+//
+// Safety gates:
+//   --dry-run    No writes, just reports what would happen.
+//   --overwrite  Replace non-null Sanity values too. Requires --yes
+//                because a mistyped command would clobber every
+//                customer-facing PII field Meryl has typed. Sanity
+//                history retains the prior revision, so recovery is
+//                possible via the Studio "Compare versions" panel —
+//                but it's manual work the gate is designed to avoid.
+//   --yes        Companion to --overwrite. Ignored otherwise.
+//   --prod       Required when DYNAMODB_ENDPOINT is unset and the run
+//                is non-dry, so a missing local env var doesn't
+//                silently promote a local-looking command into one
+//                that reads real-AWS DynamoDB and patches prod Sanity.
+//
+// TOCTOU note: this script fetches Sanity orders via GROQ and then
+// patches them in a separate API call. If Meryl edits the document
+// between the fetch and the patch, the patch silently overwrites her
+// edit for the fields in the patch object. Acceptable because (a)
+// restore is emergency-only and run under supervision, (b) Sanity is
+// effectively single-writer, and (c) Sanity history retains prior
+// values for recovery.
 //
 // Iterates from Sanity (which lists every order) and does GetItem per
 // row, mirroring the backfill direction. Avoids dynamodb:Scan so the
@@ -54,13 +76,37 @@ const ALL_ORDERS_QUERY = `*[_type == "order" && defined(orderRef)] | order(_crea
 	shippingCarrier, internalNotes
 }`;
 
-type Args = { dryRun: boolean; overwrite: boolean };
+export type Args = {
+	dryRun: boolean;
+	overwrite: boolean;
+	yes: boolean;
+	prod: boolean;
+};
 
 export function parseArgs(argv: readonly string[]): Args {
 	return {
 		dryRun: argv.includes('--dry-run'),
-		overwrite: argv.includes('--overwrite')
+		overwrite: argv.includes('--overwrite'),
+		yes: argv.includes('--yes'),
+		prod: argv.includes('--prod')
 	};
+}
+
+// Returns a reason string when the script should refuse to write,
+// or null when it's safe to proceed. Mirrors backfill-orders.ts but
+// also requires --yes alongside --overwrite (a guard against mistyped
+// commands that would clobber every Sanity PII field).
+export function shouldRefuse(
+	args: Args,
+	env: { DYNAMODB_ENDPOINT?: string }
+): string | null {
+	if (args.dryRun) return null;
+	if (args.overwrite && !args.yes) {
+		return '--overwrite without --yes refuses to write. Re-run with both flags to confirm you want to clobber existing Sanity values.';
+	}
+	if (env.DYNAMODB_ENDPOINT && env.DYNAMODB_ENDPOINT.trim() !== '') return null;
+	if (args.prod) return null;
+	return 'DYNAMODB_ENDPOINT is unset (this run would read real-AWS DynamoDB and patch prod Sanity). Pass --prod to confirm, or --dry-run to preview.';
 }
 
 // Decide what to write back to the Sanity doc given the DynamoDB PII row
@@ -146,6 +192,11 @@ async function restore(args: Args, sanity: SanityClient): Promise<Counters> {
 			);
 		} catch (err) {
 			counts.errors++;
+			// Defence-in-depth: same convention as orders-store.ts and
+			// backfill-orders.ts — log err.message, not the raw Error
+			// object. Sanity SDK errors can echo a portion of the
+			// rejected document body; if that becomes a PII concern,
+			// narrow this to err.name only.
 			const message = err instanceof Error ? err.message : String(err);
 			console.error(`  ERROR   ${order.orderRef}: ${message}`);
 		}
@@ -163,6 +214,12 @@ async function main(): Promise<void> {
 	console.log(`  ORDERS_TABLE_NAME: ${process.env.ORDERS_TABLE_NAME ?? '(unset)'}`);
 	console.log(`  DYNAMODB_ENDPOINT: ${process.env.DYNAMODB_ENDPOINT ?? '(unset — real AWS)'}`);
 	console.log('');
+
+	const refuseReason = shouldRefuse(args, process.env);
+	if (refuseReason) {
+		console.error(refuseReason);
+		process.exit(1);
+	}
 
 	const sanity = buildSanityClient();
 	const counts = await restore(args, sanity);

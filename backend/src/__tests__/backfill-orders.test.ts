@@ -1,9 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import { parseArgs, piiItemFromSanity } from '../scripts/backfill-orders.js';
+import {
+	isExpired,
+	parseArgs,
+	piiItemFromSanity,
+	shouldRefusePromoting,
+	type Args
+} from '../scripts/backfill-orders.js';
+import type { OrderPii } from '../orders-store.js';
 
 describe('parseArgs', () => {
-	it('returns false for both flags by default', () => {
-		expect(parseArgs([])).toEqual({ dryRun: false, overwrite: false });
+	it('returns false for all flags by default', () => {
+		expect(parseArgs([])).toEqual({ dryRun: false, overwrite: false, prod: false });
 	});
 
 	it('detects --dry-run', () => {
@@ -14,15 +21,80 @@ describe('parseArgs', () => {
 		expect(parseArgs(['--overwrite']).overwrite).toBe(true);
 	});
 
-	it('detects both flags regardless of order', () => {
-		expect(parseArgs(['--overwrite', '--dry-run'])).toEqual({
+	it('detects --prod', () => {
+		expect(parseArgs(['--prod']).prod).toBe(true);
+	});
+
+	it('detects multiple flags regardless of order', () => {
+		expect(parseArgs(['--overwrite', '--prod', '--dry-run'])).toEqual({
 			dryRun: true,
-			overwrite: true
+			overwrite: true,
+			prod: true
 		});
 	});
 
 	it('ignores unrelated argv entries', () => {
 		expect(parseArgs(['node', 'script.ts', '--verbose']).dryRun).toBe(false);
+	});
+});
+
+describe('shouldRefusePromoting', () => {
+	const baseArgs: Args = { dryRun: false, overwrite: false, prod: false };
+
+	it('allows local writes (DYNAMODB_ENDPOINT set)', () => {
+		expect(shouldRefusePromoting(baseArgs, { DYNAMODB_ENDPOINT: 'http://localhost:8000' })).toBeNull();
+	});
+
+	it('always allows dry-run, even against real AWS', () => {
+		expect(shouldRefusePromoting({ ...baseArgs, dryRun: true }, {})).toBeNull();
+	});
+
+	it('refuses non-dry writes against real AWS without --prod', () => {
+		expect(shouldRefusePromoting(baseArgs, {})).toMatch(/Pass --prod/);
+	});
+
+	it('allows non-dry writes against real AWS with --prod', () => {
+		expect(shouldRefusePromoting({ ...baseArgs, prod: true }, {})).toBeNull();
+	});
+
+	it('treats DYNAMODB_ENDPOINT="" as unset (whitespace-only env footgun)', () => {
+		expect(shouldRefusePromoting(baseArgs, { DYNAMODB_ENDPOINT: '   ' })).toMatch(/Pass --prod/);
+	});
+});
+
+describe('isExpired', () => {
+	function order(ttlOffsetSec: number): OrderPii {
+		const nowSec = Math.floor(Date.now() / 1000);
+		return {
+			orderRef: 'MG-X',
+			customerName: '',
+			customerEmail: '',
+			customerPhone: null,
+			shippingAddress: '',
+			items: '',
+			customerNotes: null,
+			trackingNumber: null,
+			trackingUrl: null,
+			shippingCarrier: null,
+			internalNotes: null,
+			createdAt: new Date(nowSec * 1000).toISOString(),
+			ttl: nowSec + ttlOffsetSec
+		};
+	}
+
+	it('returns false when TTL is in the future', () => {
+		expect(isExpired(order(86_400))).toBe(false);
+	});
+
+	it('returns true when TTL is already in the past', () => {
+		expect(isExpired(order(-86_400))).toBe(true);
+	});
+
+	it('returns true at the exact boundary (TTL equals now)', () => {
+		const nowSec = 1_800_000_000;
+		const item = order(0);
+		item.ttl = nowSec;
+		expect(isExpired(item, nowSec)).toBe(true);
 	});
 });
 
