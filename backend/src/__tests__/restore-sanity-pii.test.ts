@@ -45,62 +45,35 @@ describe('parseArgs', () => {
 
 describe('shouldRefuse', () => {
 	const baseArgs: Args = { dryRun: false, overwrite: false, yes: false, prod: false };
-	const localEnv = { DYNAMODB_ENDPOINT: 'http://localhost:8000' };
-	const prodEnv = {};
 
-	it('allows ordinary local writes', () => {
-		expect(shouldRefuse(baseArgs, localEnv)).toBeNull();
+	it('always allows dry-run, regardless of flags', () => {
+		expect(shouldRefuse({ ...baseArgs, dryRun: true })).toBeNull();
+		expect(shouldRefuse({ ...baseArgs, dryRun: true, overwrite: true })).toBeNull();
 	});
 
-	it('always allows dry-run, regardless of flags or env', () => {
+	it('refuses --overwrite without --yes', () => {
+		expect(shouldRefuse({ ...baseArgs, overwrite: true, prod: true })).toMatch(/--yes/);
+	});
+
+	it('allows --overwrite when --yes accompanies it (with --prod)', () => {
 		expect(
-			shouldRefuse(
-				{ ...baseArgs, dryRun: true, overwrite: true },
-				prodEnv
-			)
+			shouldRefuse({ ...baseArgs, overwrite: true, yes: true, prod: true })
 		).toBeNull();
 	});
 
-	it('refuses --overwrite without --yes (local)', () => {
-		expect(shouldRefuse({ ...baseArgs, overwrite: true }, localEnv)).toMatch(/--yes/);
+	it('refuses any non-dry run without --prod (Sanity writes always hit prod)', () => {
+		// Restore patches Sanity, which is a single-dataset prod resource
+		// regardless of DYNAMODB_ENDPOINT. Every non-dry run is a prod
+		// write and must be acknowledged.
+		expect(shouldRefuse(baseArgs)).toMatch(/Pass --prod/);
 	});
 
-	it('refuses --overwrite without --yes (prod)', () => {
-		expect(
-			shouldRefuse({ ...baseArgs, overwrite: true, prod: true }, prodEnv)
-		).toMatch(/--yes/);
+	it('allows non-dry writes once --prod is explicit', () => {
+		expect(shouldRefuse({ ...baseArgs, prod: true })).toBeNull();
 	});
 
-	it('allows --overwrite when --yes accompanies it (local)', () => {
-		expect(
-			shouldRefuse({ ...baseArgs, overwrite: true, yes: true }, localEnv)
-		).toBeNull();
-	});
-
-	it('refuses non-dry writes against real AWS without --prod', () => {
-		expect(shouldRefuse(baseArgs, prodEnv)).toMatch(/Pass --prod/);
-	});
-
-	it('allows prod writes when --prod is explicit', () => {
-		expect(shouldRefuse({ ...baseArgs, prod: true }, prodEnv)).toBeNull();
-	});
-
-	it('refuses prod overwrite when --yes is missing, even with --prod', () => {
-		expect(
-			shouldRefuse(
-				{ ...baseArgs, overwrite: true, prod: true },
-				prodEnv
-			)
-		).toMatch(/--yes/);
-	});
-
-	it('allows prod overwrite when --prod + --yes', () => {
-		expect(
-			shouldRefuse(
-				{ ...baseArgs, overwrite: true, yes: true, prod: true },
-				prodEnv
-			)
-		).toBeNull();
+	it('still requires --yes alongside --overwrite even with --prod', () => {
+		expect(shouldRefuse({ ...baseArgs, overwrite: true, prod: true })).toMatch(/--yes/);
 	});
 });
 

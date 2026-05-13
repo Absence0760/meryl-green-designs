@@ -45,7 +45,7 @@ site_url = ""
 payfast_merchant_id  = ""
 payfast_merchant_key = ""
 payfast_passphrase   = ""
-payfast_sandbox      = "false"
+payfast_sandbox      = "true"
 
 # Cap on concurrent Lambda invocations. Default 20 is far above expected
 # organic load and caps blast radius for traffic spikes / abuse attempts.

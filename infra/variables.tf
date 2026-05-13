@@ -92,9 +92,21 @@ variable "payfast_passphrase" {
 }
 
 variable "payfast_sandbox" {
-  description = "Set to 'true' to use PayFast's sandbox environment for testing."
+  description = <<-EOT
+    "true" routes the backend at PayFast's sandbox endpoint; "false"
+    goes live to the configured merchant. Default is "true" — to
+    accept real payments you must explicitly set this to "false" in
+    terraform.tfvars.sops. The conservative default prevents a stale
+    or partial tfvars file from silently flipping the Lambda into
+    live-payments mode after a `terraform apply`.
+  EOT
   type        = string
-  default     = "false"
+  default     = "true"
+
+  validation {
+    condition     = contains(["true", "false"], var.payfast_sandbox)
+    error_message = "payfast_sandbox must be the literal string \"true\" or \"false\"."
+  }
 }
 
 # --- Monthly budget alerts ---

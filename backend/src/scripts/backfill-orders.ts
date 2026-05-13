@@ -237,6 +237,13 @@ async function main(): Promise<void> {
 		process.exit(1);
 	}
 
+	// Once --prod has been acknowledged, opt into real-AWS DynamoDB
+	// writes from this non-Lambda process. Without this the dynamo.ts
+	// startup assertion refuses to construct the client.
+	if (args.prod && !process.env.DYNAMODB_ENDPOINT?.trim()) {
+		process.env.ALLOW_REAL_AWS = '1';
+	}
+
 	const sanity = buildSanityClient();
 	const counts = await backfill(args, sanity);
 

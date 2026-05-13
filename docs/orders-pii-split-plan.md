@@ -45,16 +45,28 @@
   Pure helpers (`buildPatchFromPii`, `parseArgs`, `shouldRefuse`)
   covered by `restore-sanity-pii.test.ts`.
 
-Both scripts now share two safety gates beyond `--dry-run`:
+Both scripts now share safety gates beyond `--dry-run`:
 
-- `--prod` — required when `DYNAMODB_ENDPOINT` is unset (so the run
-  would write to real AWS). Forces the operator to acknowledge the
-  target rather than letting a missing local env var silently promote
-  a local-looking command into a prod write.
+- `--prod` — for the backfill, required when `DYNAMODB_ENDPOINT` is
+  unset (the run would write to real AWS DynamoDB). For the restore,
+  required for **every** wet run because the Sanity write always
+  targets the single prod dataset regardless of where DynamoDB lives.
 - `--yes` (restore only) — required alongside `--overwrite` so a
   mistyped command can't blow away Meryl's edits in Sanity.
 
-Dry-runs always bypass both gates so previewing is cheap.
+The scripts opt into `ALLOW_REAL_AWS=1` after their gates clear; the
+backend's `dynamo.ts` startup assertion refuses to construct a client
+against real AWS without either that flag, `DYNAMODB_ENDPOINT`, or the
+Lambda runtime env. A developer who runs `pnpm backend dev` with a
+malformed `.env` fails fast instead of writing customer PII to the
+prod table.
+
+`payfast_sandbox` now defaults to `"true"` in `infra/variables.tf` —
+to take real payments the operator must explicitly set it to `"false"`
+in `terraform.tfvars.sops`. The Terraform variable has a `validation`
+block requiring one of those two literal strings.
+
+Dry-runs always bypass the script gates so previewing is cheap.
 
 **Outstanding before prod deploy** (Day 7):
 

@@ -178,17 +178,28 @@ data — it should report `skipped` for every order until cutover.
 
 #### Safety gates on the backfill/restore scripts
 
-Both scripts refuse non-dry runs against real AWS unless `--prod` is
-passed (the absence of `DYNAMODB_ENDPOINT` is the signal). Pass `--prod`
-when you intentionally want to write to the production table; for local
-runs the env var stays set and the gate is invisible.
+**Backfill** refuses non-dry writes against real AWS unless `--prod` is
+passed (the absence of `DYNAMODB_ENDPOINT` is the signal). Local runs
+keep the env var set and the gate is invisible.
 
-`pnpm restore:sanity-pii --overwrite` additionally requires `--yes` —
-without it the script refuses to clobber existing Sanity values, since
-a typo would erase every PII edit Meryl has made. (Sanity history can
-recover, but it's manual work.)
+**Restore** is stricter: because Sanity is a single-dataset prod-only
+resource, every non-dry restore is a prod Sanity write. `--prod` is
+**required for any wet restore**, even when reading from local
+DynamoDB. The dry-run preview still works without it.
 
-Both gates are bypassed when `--dry-run` is in effect, so previewing is
+**`--overwrite` on restore** additionally requires `--yes` so a typo
+can't clobber Meryl's edits.
+
+**Backend startup guard:** `backend/src/dynamo.ts` refuses to construct
+a client that would reach real AWS unless one of three conditions
+holds — `DYNAMODB_ENDPOINT` is set (local dev),
+`AWS_LAMBDA_FUNCTION_NAME` is set (running in the deployed Lambda), or
+`ALLOW_REAL_AWS=1` is set (scripts opt-in this themselves after their
+`--prod` gate clears). A misconfigured `backend/.env` that drops
+`DYNAMODB_ENDPOINT` while you have an active AWS SSO session will fail
+fast at server startup instead of silently writing to the prod table.
+
+All gates are bypassed when `--dry-run` is in effect, so previewing is
 always cheap.
 
 ### Local email capture

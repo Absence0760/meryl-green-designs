@@ -16,6 +16,10 @@ process.env.SANITY_WEBHOOK_SECRET = 'test-webhook-secret';
 
 process.env.AWS_REGION = 'af-south-1';
 process.env.ORDERS_TABLE_NAME = 'meryl-green-designs-orders-test';
+// Force the dynamo.ts safety assertion to treat tests as a local-dev
+// path — no real AWS endpoint is dialled because aws-sdk-client-mock
+// intercepts every .send() before the network call.
+process.env.DYNAMODB_ENDPOINT = 'http://localhost:8000';
 
 process.env.ADMIN_API_TOKEN = 'test-admin-token';
 process.env.STUDIO_ORIGINS = 'http://localhost:3333';

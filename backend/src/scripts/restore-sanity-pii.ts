@@ -93,20 +93,25 @@ export function parseArgs(argv: readonly string[]): Args {
 }
 
 // Returns a reason string when the script should refuse to write,
-// or null when it's safe to proceed. Mirrors backfill-orders.ts but
-// also requires --yes alongside --overwrite (a guard against mistyped
-// commands that would clobber every Sanity PII field).
-export function shouldRefuse(
-	args: Args,
-	env: { DYNAMODB_ENDPOINT?: string }
-): string | null {
+// or null when it's safe to proceed.
+//
+// Unlike backfill-orders.ts (which gates only on DYNAMODB_ENDPOINT
+// because its writes target DynamoDB), restore writes to **Sanity**,
+// which is a single-dataset prod-only resource regardless of where
+// DynamoDB is read from. So every non-dry restore is a prod write
+// and must be acknowledged with --prod.
+//
+// Also requires --yes alongside --overwrite — a guard against
+// mistyped commands that would clobber every Sanity PII field.
+export function shouldRefuse(args: Args): string | null {
 	if (args.dryRun) return null;
 	if (args.overwrite && !args.yes) {
 		return '--overwrite without --yes refuses to write. Re-run with both flags to confirm you want to clobber existing Sanity values.';
 	}
-	if (env.DYNAMODB_ENDPOINT && env.DYNAMODB_ENDPOINT.trim() !== '') return null;
-	if (args.prod) return null;
-	return 'DYNAMODB_ENDPOINT is unset (this run would read real-AWS DynamoDB and patch prod Sanity). Pass --prod to confirm, or --dry-run to preview.';
+	if (!args.prod) {
+		return 'Restore writes to prod Sanity (single-dataset design). Pass --prod to confirm, or --dry-run to preview.';
+	}
+	return null;
 }
 
 // Decide what to write back to the Sanity doc given the DynamoDB PII row
@@ -215,10 +220,19 @@ async function main(): Promise<void> {
 	console.log(`  DYNAMODB_ENDPOINT: ${process.env.DYNAMODB_ENDPOINT ?? '(unset — real AWS)'}`);
 	console.log('');
 
-	const refuseReason = shouldRefuse(args, process.env);
+	const refuseReason = shouldRefuse(args);
 	if (refuseReason) {
 		console.error(refuseReason);
 		process.exit(1);
+	}
+
+	// Once --prod has been acknowledged, opt into real-AWS DynamoDB
+	// reads from this non-Lambda process. The dynamo.ts safety
+	// assertion otherwise refuses to construct a client that would
+	// reach prod, so a developer who runs `pnpm backend dev` with a
+	// missing DYNAMODB_ENDPOINT can't accidentally hit the real table.
+	if (args.prod && !process.env.DYNAMODB_ENDPOINT?.trim()) {
+		process.env.ALLOW_REAL_AWS = '1';
 	}
 
 	const sanity = buildSanityClient();
