@@ -53,6 +53,12 @@ Edit `backend/.env` and set at minimum:
   sandbox address, or `orders@yourdomain.com` once the domain is verified)
 - `OWNER_EMAIL` — where order notifications go (your inbox while developing)
 
+> **Skip Resend entirely while developing**: set `EMAIL_BACKEND=file` in
+> `backend/.env`. Every `sendEmail()` call writes a self-contained HTML
+> file to `backend/.dev-emails/` (gitignored) with the `file://` URL
+> logged to stdout. No external traffic, no cost. See
+> [Local email capture](#local-email-capture) below.
+
 **For products + gallery + order storage (Sanity):**
 - `SANITY_PROJECT_ID` — your Sanity project ID
 - `SANITY_DATASET` — defaults to `production`
@@ -135,6 +141,35 @@ docker compose up -d      # start again (re-run bin/dynamodb-local-up.sh
 Without local DynamoDB running, `POST /orders` still succeeds (the
 DynamoDB shadow write fails silently with a log line), but the admin
 routes used by the Studio's custom PII panels return errors.
+
+### Local email capture
+
+`backend/src/email.ts` has two backends, switched via `EMAIL_BACKEND`:
+
+| Value | Behaviour |
+|---|---|
+| unset / `resend` (default) | Real HTTP call to `api.resend.com`; needs `RESEND_API_KEY` + `FROM_EMAIL`. |
+| `file` | Renders the email to disk; no external calls; works without Resend creds. |
+
+Set `EMAIL_BACKEND=file` in `backend/.env` and every `sendEmail()` call
+writes a self-contained HTML file to `backend/.dev-emails/` like
+`2026-05-13T15-30-00-000Z-your-order-mg-260513-ab12.html` with the
+recipient/subject/replyTo in HTML comments at the top. The backend logs
+the absolute `file://` URL to stdout — most terminals make it clickable:
+
+```
+[email:file] jane@example.com <- Your order MG-260513-AB12 -> file:///home/.../.dev-emails/...html
+```
+
+Open the newest file in a browser:
+
+```bash
+xdg-open backend/.dev-emails/$(ls -t backend/.dev-emails | head -1)
+```
+
+`backend/.dev-emails/` is gitignored. **Production must never set
+`EMAIL_BACKEND=file`** — leave it unset on the Lambda; Terraform
+doesn't pass it through.
 
 ## Running the site
 

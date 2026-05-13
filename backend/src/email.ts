@@ -1,3 +1,6 @@
+import { mkdir, writeFile } from 'node:fs/promises';
+import { resolve, join } from 'node:path';
+
 type SendEmailParams = {
 	to: string;
 	subject: string;
@@ -6,6 +9,14 @@ type SendEmailParams = {
 };
 
 export async function sendEmail(params: SendEmailParams): Promise<void> {
+	if ((process.env.EMAIL_BACKEND ?? 'resend').toLowerCase() === 'file') {
+		await sendViaFile(params);
+		return;
+	}
+	await sendViaResend(params);
+}
+
+async function sendViaResend(params: SendEmailParams): Promise<void> {
 	const apiKey = process.env.RESEND_API_KEY;
 	const from = process.env.FROM_EMAIL;
 	if (!apiKey || !from) {
@@ -31,6 +42,39 @@ export async function sendEmail(params: SendEmailParams): Promise<void> {
 		const body = await res.text();
 		throw new Error(`Resend API error (${res.status}): ${body}`);
 	}
+}
+
+// Local-dev capture backend. Writes the rendered email to disk so it
+// can be previewed in a browser without sending anything. Activated by
+// setting EMAIL_BACKEND=file in backend/.env. Strictly dev-only; not
+// reachable from the deployed Lambda (the env var stays unset there).
+async function sendViaFile(params: SendEmailParams): Promise<void> {
+	const dir = resolve(process.env.EMAIL_DEV_DIR ?? '.dev-emails');
+	await mkdir(dir, { recursive: true });
+
+	const now = new Date();
+	const ts = now.toISOString().replace(/[:.]/g, '-');
+	const slug =
+		params.subject
+			.toLowerCase()
+			.replace(/[^a-z0-9]+/g, '-')
+			.replace(/^-|-$/g, '')
+			.slice(0, 60) || 'email';
+	const file = join(dir, `${ts}-${slug}.html`);
+
+	const meta = [
+		'<!--',
+		`  to: ${params.to}`,
+		`  from: ${process.env.FROM_EMAIL ?? '(unset)'}`,
+		`  subject: ${params.subject}`,
+		`  replyTo: ${params.replyTo ?? '(none)'}`,
+		`  capturedAt: ${now.toISOString()}`,
+		'-->',
+		''
+	].join('\n');
+
+	await writeFile(file, meta + params.html);
+	console.log(`[email:file] ${params.to} <- ${params.subject} -> file://${file}`);
 }
 
 export function escapeHtml(input: string): string {

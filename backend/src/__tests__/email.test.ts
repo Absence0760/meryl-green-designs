@@ -233,6 +233,9 @@ describe('sendEmail', () => {
 	beforeEach(() => {
 		fetchMock.mockReset();
 		vi.stubGlobal('fetch', fetchMock);
+		// Defensive default — most tests assume the Resend path. Individual
+		// tests below opt into file-backend mode via stubEnv.
+		vi.stubEnv('EMAIL_BACKEND', 'resend');
 	});
 
 	afterEach(() => {
@@ -310,6 +313,64 @@ describe('sendEmail', () => {
 		await expect(
 			sendEmail({ to: 'a@b.c', subject: 's', html: '<p/>' })
 		).rejects.toThrow(/401/);
+	});
+
+	describe('file backend (EMAIL_BACKEND=file)', () => {
+		let tmpDir: string;
+
+		beforeEach(async () => {
+			const { mkdtemp } = await import('node:fs/promises');
+			const { tmpdir } = await import('node:os');
+			const { join } = await import('node:path');
+			tmpDir = await mkdtemp(join(tmpdir(), 'email-test-'));
+			vi.stubEnv('EMAIL_BACKEND', 'file');
+			vi.stubEnv('EMAIL_DEV_DIR', tmpDir);
+		});
+
+		afterEach(async () => {
+			const { rm } = await import('node:fs/promises');
+			await rm(tmpDir, { recursive: true, force: true });
+		});
+
+		it('writes the rendered email to disk and does not call Resend', async () => {
+			const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+			await sendEmail({
+				to: 'jane@example.com',
+				subject: 'Your order MG-260410-ABCD',
+				html: '<p>Thanks Jane.</p>',
+				replyTo: 'meryl@example.com'
+			});
+
+			expect(fetchMock).not.toHaveBeenCalled();
+
+			const { readdir, readFile } = await import('node:fs/promises');
+			const { join } = await import('node:path');
+			const files = await readdir(tmpDir);
+			expect(files).toHaveLength(1);
+			expect(files[0]).toMatch(/your-order-mg-260410-abcd\.html$/);
+
+			const contents = await readFile(join(tmpDir, files[0]!), 'utf8');
+			expect(contents).toContain('to: jane@example.com');
+			expect(contents).toContain('subject: Your order MG-260410-ABCD');
+			expect(contents).toContain('replyTo: meryl@example.com');
+			expect(contents).toContain('<p>Thanks Jane.</p>');
+
+			expect(logSpy).toHaveBeenCalledWith(expect.stringMatching(/file:\/\/.*\.html$/));
+			logSpy.mockRestore();
+		});
+
+		it('works without Resend credentials', async () => {
+			vi.stubEnv('RESEND_API_KEY', '');
+			vi.stubEnv('FROM_EMAIL', '');
+			vi.spyOn(console, 'log').mockImplementation(() => {});
+
+			await expect(
+				sendEmail({ to: 'a@b.c', subject: 'no creds', html: '<p/>' })
+			).resolves.toBeUndefined();
+
+			expect(fetchMock).not.toHaveBeenCalled();
+		});
 	});
 });
 

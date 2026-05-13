@@ -46,6 +46,7 @@ Mounted in `src/app.ts`. Each route file lives under `src/routes/` and exports a
 - **CORS: `ALLOWED_ORIGINS` is the only gate.** No CSRF token (no sessions).
 - **Don't send banking details in any automated email.** Regression-guarded by a test in `email.test.ts` — see `docs/security.md § Risk 1` for the impersonation rationale.
 - **Use raw `fetch` for Resend, not a SDK.** Keeps the Lambda bundle tiny and the dependency surface small.
+- **`email.ts` has two backends** switched by `EMAIL_BACKEND` (`resend` default, `file` for local dev). The file backend writes to `backend/.dev-emails/` and is gitignored. Production must never set `EMAIL_BACKEND=file` — Terraform doesn't pass it through.
 
 ## Testing
 
