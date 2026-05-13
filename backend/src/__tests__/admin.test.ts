@@ -35,7 +35,14 @@ function authHeader(token = 'test-admin-token'): Record<string, string> {
 
 describe('admin auth middleware', () => {
 	beforeEach(() => {
-		vi.mocked(ordersStore.getOrderPii).mockResolvedValue(piiRow());
+		// Reset call history between tests — the "allows through when token
+		// matches" case lets the mock fire, and subsequent tests assert the
+		// mock was NOT called, which fails if we don't clear here.
+		vi.mocked(ordersStore.getOrderPii).mockReset().mockResolvedValue(piiRow());
+	});
+
+	afterEach(() => {
+		vi.unstubAllEnvs();
 	});
 
 	it('returns 401 when the Authorization header is missing', async () => {
@@ -80,6 +87,35 @@ describe('admin auth middleware', () => {
 		});
 		expect(res.status).toBe(200);
 		vi.unstubAllEnvs();
+	});
+
+	it('rejects an all-whitespace ADMIN_API_TOKEN (closes empty-buffer bypass)', async () => {
+		// Without the trim-then-empty-check, a misconfigured token like "\n"
+		// would pass the `!expected` guard, trim to empty, and timingSafeEqual
+		// two zero-length buffers — granting access to any client sending an
+		// empty `Bearer  ` value. Now both sides are normalised before the
+		// emptiness check.
+		vi.stubEnv('ADMIN_API_TOKEN', '\n');
+		const app = createApp();
+		const res = await app.request('/admin/orders/MG-260410-ABCD', {
+			headers: { Authorization: 'Bearer   ' }
+		});
+		expect(res.status).toBe(500); // server-misconfig fail-closed
+		expect(ordersStore.getOrderPii).not.toHaveBeenCalled();
+		vi.unstubAllEnvs();
+	});
+
+	it('rejects an empty-after-trim Bearer token even when ADMIN_API_TOKEN is set', async () => {
+		// `Authorization: Bearer  ` (header trimmed to nothing) must not
+		// satisfy a real configured token via the zero-length-buffer
+		// path. The regex captures the trailing whitespace, then the
+		// post-trim empty check returns 401 before timingSafeEqual runs.
+		const app = createApp();
+		const res = await app.request('/admin/orders/MG-260410-ABCD', {
+			headers: { Authorization: 'Bearer   ' }
+		});
+		expect(res.status).toBe(401);
+		expect(ordersStore.getOrderPii).not.toHaveBeenCalled();
 	});
 
 	it('returns 500 when ADMIN_API_TOKEN is not configured', async () => {

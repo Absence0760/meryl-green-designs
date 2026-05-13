@@ -8,7 +8,14 @@ import { timingSafeEqual } from 'node:crypto';
 // 401 is intentionally generic so an attacker can't distinguish "wrong
 // token format" from "valid token format, wrong value" via the response.
 export const adminAuth = createMiddleware(async (c, next) => {
-	const expected = process.env.ADMIN_API_TOKEN;
+	// Trim the env value before the empty check: a misconfigured token
+	// of "\n" (whitespace-only) would otherwise be a truthy string here
+	// and then trim to "" downstream, making two zero-length buffers
+	// compare equal and granting access to any client sending an empty
+	// `Bearer  ` token. SOPS-decrypted values can carry a trailing
+	// newline, so the trim is necessary; the empty-after-trim check
+	// closes the bypass.
+	const expected = process.env.ADMIN_API_TOKEN?.trim();
 	if (!expected) {
 		console.error('admin auth: ADMIN_API_TOKEN is not configured');
 		return c.json({ error: 'Admin API is not configured.' }, 500);
@@ -20,12 +27,13 @@ export const adminAuth = createMiddleware(async (c, next) => {
 		return c.json({ error: 'Unauthorized' }, 401);
 	}
 
-	// Trim both sides: SOPS-decrypted env values can carry a trailing
-	// newline, and the Studio bundle's token may pick up whitespace from
-	// build-step injection. A token never legitimately contains leading
-	// or trailing whitespace, so this normalisation can't widen access.
-	const provided = Buffer.from(match[1]!.trim());
-	const reference = Buffer.from(expected.trim());
+	const providedRaw = match[1]!.trim();
+	if (!providedRaw) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+
+	const provided = Buffer.from(providedRaw);
+	const reference = Buffer.from(expected);
 	if (provided.length !== reference.length || !timingSafeEqual(provided, reference)) {
 		return c.json({ error: 'Unauthorized' }, 401);
 	}

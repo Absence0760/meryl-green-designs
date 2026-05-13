@@ -788,7 +788,7 @@ breaks post-cutover within the 2-week buffer window:
 |---|---|---|---|
 | `POST /orders` Sanity write succeeds, DynamoDB write fails | 0 | Order valid (Sanity holds full doc); DynamoDB row missing | Reconciler cron flags the gap; manual backfill |
 | `POST /orders` DynamoDB write succeeds, Sanity write fails | 1 | Orphaned PII row in DynamoDB | Compensating delete in handler; reconciler flags survivors |
-| `POST /orders` Sanity write succeeds, DynamoDB write fails | 1 | Order exists in Studio with no customer details panel data | Cannot occur by construction — Phase 1 writes DynamoDB first. The orders-store unit test asserts the call order and the compensating-delete behaviour. |
+| `POST /orders` Sanity write succeeds, DynamoDB write fails | 1 | Order exists in Studio with no customer details panel data | Cannot occur by construction — Phase 1 will write DynamoDB first. A Phase 1 orders-store unit test will assert the call order and the compensating-delete behaviour; today's tests cover Phase 0 only (Sanity-first call order). |
 | ITN status update: Sanity write succeeds, DynamoDB email read fails | 0/1 | Status updates but customer email doesn't fire | CloudWatch alarm; manual replay endpoint |
 | Sanity webhook arrives but DynamoDB row TTL'd already (very old order) | 1 | Status email handler 404s on email lookup | Soft-fail and log; old orders shouldn't be status-changing anyway |
 | Admin token leaks | 0/1 | Attacker reads all PII | CloudWatch on admin 401/403; rotate quarterly; consider Sanity JWT verification as a v2 hardening |
