@@ -29,6 +29,10 @@ Terraform configuration for the Meryl Green Designs AWS resources.
   monthly cap (default $30 — see `monthly_budget_usd` in `variables.tf`)
 - **EventBridge schedule** that invokes the backend Lambda monthly (04:00
   UTC on the 1st) for the POPIA retention sweep — see `pii_cleanup.tf`
+- **DynamoDB table** (`meryl-green-designs-orders`) for customer order PII,
+  joined to the Sanity order document by `orderRef`. Point-in-time recovery
+  on, TTL on, SSE with the AWS-managed `aws/dynamodb` key, `prevent_destroy`
+  on. See `dynamodb.tf` and `docs/orders-pii-split-plan.md`.
 
 For a full architectural picture see [`../docs/architecture.md`](../docs/architecture.md).
 For first-time deploy walkthrough see [`../docs/deployment.md`](../docs/deployment.md).

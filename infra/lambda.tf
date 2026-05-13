@@ -103,7 +103,8 @@ resource "aws_lambda_function" "backend" {
       # by the Hono app to build PayFast's notify_url. PayFast POSTs the
       # ITN callback to this URL, which reaches the Lambda through the
       # same /api/* path the browser uses.
-      API_URL = var.site_url != "" ? "${var.site_url}/api" : "https://${var.domain_name}/api"
+      API_URL           = var.site_url != "" ? "${var.site_url}/api" : "https://${var.domain_name}/api"
+      ORDERS_TABLE_NAME = aws_dynamodb_table.orders.name
     }
   }
 

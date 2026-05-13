@@ -1,8 +1,10 @@
 # Orders PII split — proposal
 
-**Status: proposed, not implemented.** No code or infrastructure work has
-started. This document captures the plan so it can be picked up later when
-the trade-off (~R3,400/year saved vs. ~7–11 days engineering) makes sense.
+**Status: Phase 0 in progress.** Day 1 (Terraform scaffolding — empty
+DynamoDB table + Lambda IAM extension + `ORDERS_TABLE_NAME` env var) is
+written and validated; `terraform apply` pending. No backend code, Studio
+component, or migration script work has started — those are Days 2–7 of
+the sequencing below. The cutover (Phase 1) requires explicit go-ahead.
 
 ## Why this exists
 
