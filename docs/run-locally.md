@@ -163,6 +163,18 @@ script's startup banner.
 `--overwrite` forces an unconditional re-import (slower; only use if
 you suspect drift between Sanity and DynamoDB).
 
+A reverse-backfill is also wired up for the Phase 1 rollback case:
+
+```bash
+pnpm restore:sanity-pii:dry    # report-only
+pnpm restore:sanity-pii        # patch Sanity from DynamoDB
+```
+
+In Phase 0 it's a no-op because Sanity still has every PII field; the
+script only writes when a Sanity field is null/empty. Run the dry-run
+periodically to confirm the rollback path still works against real
+data — it should report `skipped` for every order until cutover.
+
 ### Local email capture
 
 `backend/src/email.ts` has two backends, switched via `EMAIL_BACKEND`:

@@ -1,6 +1,6 @@
 # Orders PII split — proposal
 
-**Status: Phase 0 in progress.** Days 1–5 are landed:
+**Status: Phase 0 in progress.** Days 1–6 are landed:
 
 - Day 1 — Terraform scaffolding (empty DynamoDB table + Lambda IAM
   extension + `ORDERS_TABLE_NAME` env var). Applied.
@@ -29,6 +29,16 @@
   `src/scripts/` (slight deviation from the plan's `backend/scripts/`)
   so tsc covers it. The pure mapping function has unit-test coverage
   in `backfill-orders.test.ts`.
+- Day 6 — Reverse-backfill script
+  (`backend/src/scripts/restore-sanity-pii.ts`, runs via
+  `pnpm restore:sanity-pii[:dry]`). Mirror image of the backfill:
+  iterates from Sanity, does `GetItem` per row (no Scan needed),
+  patches the Sanity doc with PII fields that are null/empty. Skips
+  empty-string DynamoDB sentinels so a scrubbed row never overwrites
+  real Sanity data, even under `--overwrite`. Idempotent: re-runs
+  during steady-state Phase 0 are no-ops because Sanity still has the
+  PII. Written and tested now so Phase 1 rollback is one command away.
+  Pure helpers covered by `restore-sanity-pii.test.ts`.
 
 **Outstanding before prod deploy** (Day 7):
 
@@ -44,8 +54,8 @@
 - Local dev uses the values in `backend/.env` and `studio/.env`
   (templates updated).
 
-Days 6–7 (reverse-backfill script, prod deploy) and the cutover
-(Phase 1) still require explicit go-ahead.
+Day 7 (prod deploy) and the cutover (Phase 1) still require explicit
+go-ahead.
 
 ## Why this exists
 

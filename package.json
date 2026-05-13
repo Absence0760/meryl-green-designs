@@ -14,6 +14,8 @@
 		"dev:emails": "./bin/dev-emails-open.sh",
 		"backfill:orders": "pnpm --filter @meryl-green-designs/backend backfill:orders",
 		"backfill:orders:dry": "pnpm --filter @meryl-green-designs/backend backfill:orders:dry",
+		"restore:sanity-pii": "pnpm --filter @meryl-green-designs/backend restore:sanity-pii",
+		"restore:sanity-pii:dry": "pnpm --filter @meryl-green-designs/backend restore:sanity-pii:dry",
 		"build": "pnpm -r run build",
 		"check": "pnpm -r run check",
 		"test": "pnpm -r run test",
