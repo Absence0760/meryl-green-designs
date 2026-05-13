@@ -115,11 +115,13 @@ describe('ordersStore.createOrder (Phase 0 dual-write)', () => {
 		const result = await ordersStore.createOrder(newOrderInput);
 
 		expect(result).toEqual(order);
-		expect(errSpy).toHaveBeenCalledWith(
-			expect.stringContaining('shadow write failed'),
-			'MG-260410-ABCD',
-			expect.any(Error)
-		);
+		// Error log is intentionally scrubbed — only the orderRef and the
+		// error message survive, the raw Error object does not.
+		expect(errSpy).toHaveBeenCalledOnce();
+		const logged = errSpy.mock.calls[0]![0] as string;
+		expect(logged).toContain('shadow write failed');
+		expect(logged).toContain('MG-260410-ABCD');
+		expect(logged).toContain('throttled');
 		errSpy.mockRestore();
 	});
 

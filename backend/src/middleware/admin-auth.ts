@@ -20,8 +20,12 @@ export const adminAuth = createMiddleware(async (c, next) => {
 		return c.json({ error: 'Unauthorized' }, 401);
 	}
 
+	// Trim both sides: SOPS-decrypted env values can carry a trailing
+	// newline, and the Studio bundle's token may pick up whitespace from
+	// build-step injection. A token never legitimately contains leading
+	// or trailing whitespace, so this normalisation can't widen access.
 	const provided = Buffer.from(match[1]!.trim());
-	const reference = Buffer.from(expected);
+	const reference = Buffer.from(expected.trim());
 	if (provided.length !== reference.length || !timingSafeEqual(provided, reference)) {
 		return c.json({ error: 'Unauthorized' }, 401);
 	}

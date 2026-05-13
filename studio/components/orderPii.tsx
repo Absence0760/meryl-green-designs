@@ -32,8 +32,19 @@ type OrderPii = {
 	createdAt: string;
 };
 
-const API_URL = (process.env.SANITY_STUDIO_API_URL ?? 'http://localhost:3001').replace(/\/$/, '');
+const API_URL = validateApiUrl(process.env.SANITY_STUDIO_API_URL ?? 'http://localhost:3001');
 const TOKEN = process.env.SANITY_STUDIO_ADMIN_TOKEN ?? '';
+
+// Reject anything that isn't http(s) so a typo'd or malicious env value
+// can't redirect the Studio's authenticated admin requests to an
+// attacker-controlled endpoint. `URL` throws on unparseable input.
+function validateApiUrl(raw: string): string {
+	const url = new URL(raw);
+	if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+		throw new Error(`SANITY_STUDIO_API_URL must use http: or https:, got ${url.protocol}`);
+	}
+	return raw.replace(/\/$/, '');
+}
 
 function authHeaders(extra: Record<string, string> = {}): Record<string, string> {
 	return { Authorization: `Bearer ${TOKEN}`, ...extra };

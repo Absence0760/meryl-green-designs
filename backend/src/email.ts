@@ -1,4 +1,5 @@
 import { mkdir, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { resolve, join } from 'node:path';
 
 type SendEmailParams = {
@@ -49,7 +50,7 @@ async function sendViaResend(params: SendEmailParams): Promise<void> {
 // setting EMAIL_BACKEND=file in backend/.env. Strictly dev-only; not
 // reachable from the deployed Lambda (the env var stays unset there).
 async function sendViaFile(params: SendEmailParams): Promise<void> {
-	const dir = resolve(process.env.EMAIL_DEV_DIR ?? '.dev-emails');
+	const dir = resolveDevDir();
 	await mkdir(dir, { recursive: true });
 
 	const now = new Date();
@@ -75,6 +76,21 @@ async function sendViaFile(params: SendEmailParams): Promise<void> {
 
 	await writeFile(file, meta + params.html);
 	console.log(`[email:file] ${params.to} <- ${params.subject} -> file://${file}`);
+}
+
+// Confines the file backend to either the current working directory
+// (the project tree in normal dev) or the OS tmp dir (used by tests).
+// `EMAIL_DEV_DIR` is read from the env, but a malformed value should
+// not let us silently write to e.g. `$HOME` or `/etc`.
+function resolveDevDir(): string {
+	const dir = resolve(process.env.EMAIL_DEV_DIR ?? '.dev-emails');
+	const allowedRoots = [resolve(process.cwd()), resolve(tmpdir())];
+	if (!allowedRoots.some((root) => dir === root || dir.startsWith(root + '/'))) {
+		throw new Error(
+			`EMAIL_DEV_DIR must be under the project working directory or the OS tmp dir, got: ${dir}`
+		);
+	}
+	return dir;
 }
 
 export function escapeHtml(input: string): string {

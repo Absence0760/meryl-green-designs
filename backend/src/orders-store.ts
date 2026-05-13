@@ -80,7 +80,12 @@ export async function createOrder(input: NewOrderInput): Promise<SanityOrder> {
 	} catch (err) {
 		// Shadow write — log and continue. The reconciler cron (added later)
 		// flags orders missing from DynamoDB so we can backfill them.
-		console.error('DynamoDB shadow write failed for order', sanityOrder.orderRef, err);
+		// Stringify the error explicitly rather than passing the raw `err`
+		// object — defence-in-depth so a future SDK version that embeds
+		// request context in the error never lands customer values in
+		// CloudWatch.
+		const message = err instanceof Error ? err.message : String(err);
+		console.error(`DynamoDB shadow write failed for order ${sanityOrder.orderRef}: ${message}`);
 	}
 	return sanityOrder;
 }

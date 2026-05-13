@@ -70,6 +70,18 @@ describe('admin auth middleware', () => {
 		expect(res.status).toBe(401);
 	});
 
+	it('tolerates trailing whitespace on the configured token (SOPS / heredoc safety)', async () => {
+		// SOPS-decrypted values commonly carry a trailing newline. The
+		// middleware trims both sides so this does not become a silent 401.
+		vi.stubEnv('ADMIN_API_TOKEN', 'test-admin-token\n');
+		const app = createApp();
+		const res = await app.request('/admin/orders/MG-260410-ABCD', {
+			headers: authHeader('test-admin-token')
+		});
+		expect(res.status).toBe(200);
+		vi.unstubAllEnvs();
+	});
+
 	it('returns 500 when ADMIN_API_TOKEN is not configured', async () => {
 		vi.stubEnv('ADMIN_API_TOKEN', '');
 		const app = createApp();
@@ -283,5 +295,35 @@ describe('CORS scoping for /admin/*', () => {
 			}
 		});
 		expect(res.headers.get('access-control-allow-origin')).toBeNull();
+	});
+
+	it('uses admin-scope CORS for the bare /admin path (no trailing slash)', async () => {
+		// Defends against prefix-collision regressions where startsWith
+		// could fall through to the public-CORS origin list.
+		const app = createApp();
+		const res = await app.request('/admin', {
+			method: 'OPTIONS',
+			headers: {
+				Origin: 'http://localhost:3333',
+				'Access-Control-Request-Method': 'GET'
+			}
+		});
+		expect(res.headers.get('access-control-allow-origin')).toBe('http://localhost:3333');
+	});
+
+	it('does NOT treat a prefix-collision route like /admintools as admin-scope', async () => {
+		// Origin is allowed by the public-CORS list (localhost:7777) but
+		// not by the admin list. If the path check were `startsWith('/admin')`
+		// without the trailing-slash/end anchor, this preflight would be
+		// admin-scoped and rejected; we want it public-scoped and accepted.
+		const app = createApp();
+		const res = await app.request('/admintools/whatever', {
+			method: 'OPTIONS',
+			headers: {
+				Origin: 'http://localhost:7777',
+				'Access-Control-Request-Method': 'GET'
+			}
+		});
+		expect(res.headers.get('access-control-allow-origin')).toBe('http://localhost:7777');
 	});
 });

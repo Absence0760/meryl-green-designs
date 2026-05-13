@@ -26,11 +26,16 @@ export function createApp() {
 	// token is the real gate; this is defence-in-depth.
 	const adminOrigins = parseOrigins(process.env.STUDIO_ORIGINS);
 
+	// Matches `/admin` or `/admin/...` but not `/admintools` or other
+	// prefix collisions — keeps the narrow CORS scope from leaking onto
+	// unrelated future routes that happen to start with the same five
+	// letters.
+	const adminPathRe = /^\/admin(?:\/|$)/;
 	app.use(
 		'*',
 		cors({
 			origin: (origin: string, c: Context) => {
-				const allowed = c.req.path.startsWith('/admin/') ? adminOrigins : publicOrigins;
+				const allowed = adminPathRe.test(c.req.path) ? adminOrigins : publicOrigins;
 				return allowed.includes(origin) ? origin : null;
 			},
 			allowMethods: ['GET', 'POST', 'PATCH', 'OPTIONS'],

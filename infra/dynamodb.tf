@@ -50,8 +50,10 @@ resource "aws_dynamodb_table" "orders" {
 # ----------------------------------------------------------------------------
 # Lambda IAM extension — CRUD on the orders table
 #
-# Scan is required by the reconciler cron (orphan/gap detection); the HTTP
-# handlers only use GetItem / PutItem / UpdateItem / DeleteItem.
+# Scoped to the four actions the HTTP handlers actually use. The
+# reconciler cron (Days 10–11 of docs/orders-pii-split-plan.md) will need
+# dynamodb:Scan; re-add it in the same change that introduces the cron
+# rather than leaving the permission latent in the meantime.
 # No kms:* actions are needed because the AWS-managed aws/dynamodb key is
 # transparent to the calling principal.
 # ----------------------------------------------------------------------------
@@ -64,7 +66,6 @@ data "aws_iam_policy_document" "lambda_orders_dynamodb" {
       "dynamodb:PutItem",
       "dynamodb:UpdateItem",
       "dynamodb:DeleteItem",
-      "dynamodb:Scan",
     ]
     resources = [aws_dynamodb_table.orders.arn]
   }

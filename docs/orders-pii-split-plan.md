@@ -21,11 +21,19 @@
   the local table matching prod's schema; `DYNAMODB_ENDPOINT` in
   `backend/.env` routes the SDK locally.
 
-**Outstanding before prod deploy** (Day 7): add `admin_api_token` and
-`studio_origins` to `infra/variables.tf`, the encrypted
-`infra/terraform.tfvars.sops`, and the Lambda env in `infra/lambda.tf`,
-then `terraform apply` again. Local dev uses the values in
-`backend/.env` and `studio/.env` (templates updated).
+**Outstanding before prod deploy** (Day 7):
+
+- Add `admin_api_token` and `studio_origins` to `infra/variables.tf`,
+  the encrypted `infra/terraform.tfvars.sops`, and the Lambda env in
+  `infra/lambda.tf`, then `terraform apply` again.
+- The `production` GitHub Actions environment needs an `ADMIN_API_TOKEN`
+  secret and a `PUBLIC_API_URL` variable so `deploy-studio.yml` can
+  bake them into the Sanity Studio bundle.
+- The IAM-narrowing change (Scan removed) requires a fresh
+  `terraform apply` — the existing prod role still has Scan until that
+  runs. The change is benign in isolation (no caller uses Scan yet).
+- Local dev uses the values in `backend/.env` and `studio/.env`
+  (templates updated).
 
 Days 5–7 (backfill + reverse-backfill scripts, prod deploy) and the
 cutover (Phase 1) still require explicit go-ahead.
@@ -229,30 +237,56 @@ for the PII bucket.
 
 ### POST /orders — order creation
 
+The write order is **phase-dependent** because the source-of-truth
+inverts between Phase 0 and Phase 1.
+
+**Phase 0 (dual-write, Sanity is source of truth):**
+
 ```
 1. Backend validates request body (existing logic)
 2. Backend computes amountZar from Sanity products (existing logic)
 3. Backend generates orderRef
-4. Backend writes DynamoDB PutItem with PII fields
+4. Backend writes Sanity create() with the full doc (incl. PII fields,
+   since the schema still carries them)
+5. Backend writes DynamoDB PutItem with PII fields (shadow)
    • ConditionExpression: attribute_not_exists(orderRef) — duplicate guard
-5. Backend writes Sanity create() with non-PII fields
-6. If step 5 fails:
-   • Compensating delete on DynamoDB (best-effort)
-   • Return 500 to the client
+6. If step 5 fails: log and continue — the order is valid because
+   Sanity still holds every field. The reconciler cron flags rows
+   missing from DynamoDB so they can be backfilled.
 7. Backend sends owner notification email (existing logic)
 8. Backend returns PayFast redirect form data
 ```
 
-**Failure modes**:
+**Phase 1 (split-write, DynamoDB holds PII):**
+
+```
+1–3. Same as Phase 0.
+4. Backend writes DynamoDB PutItem with PII fields
+   • ConditionExpression: attribute_not_exists(orderRef) — duplicate guard
+5. Backend writes Sanity create() with **non-PII fields only**
+6. If step 5 fails:
+   • Compensating delete on DynamoDB (best-effort)
+   • Return 500 to the client
+7–8. Same as Phase 0.
+```
+
+**Failure modes** (Phase 0):
+
+- Step 4 fails → return 500, nothing created.
+- Step 5 (shadow) fails → order still succeeds. Reconciler cron flags
+  the gap; manual backfill closes it.
+
+**Failure modes** (Phase 1):
+
 - Step 4 fails → return 500, nothing created.
 - Step 5 fails after step 4 succeeded → compensating delete in step 6.
 - Compensating delete also fails → orphaned PII row. The daily
-  reconciler cron (below) flags it; operator runbook is "inspect via
-  the DynamoDB console, confirm it's an orphan (no matching Sanity
-  doc), `DeleteItem` it." For v1 we don't auto-delete because the
-  case is rare and a bad auto-delete is worse than a slow manual one.
-  If volume grows enough that orphans become a steady stream,
-  auto-delete after 7 days of orphan status with a CloudWatch metric.
+  reconciler cron flags it; operator runbook is "inspect via the
+  DynamoDB console, confirm it's an orphan (no matching Sanity doc),
+  `DeleteItem` it." We don't auto-delete because the case is rare and
+  a bad auto-delete is worse than a slow manual one. If volume grows
+  enough that orphans become a steady stream, auto-delete after 7
+  days of orphan status with a CloudWatch metric.
 
 ### POST /webhooks/payfast-itn — payment confirmed
 
@@ -750,13 +784,14 @@ breaks post-cutover within the 2-week buffer window:
 
 ### New failure modes
 
-| Failure | Impact | Mitigation |
-|---|---|---|
-| `POST /orders` DynamoDB write succeeds, Sanity write fails | Orphaned PII row in DynamoDB | Compensating delete in handler; daily reconciler cron flags survivors |
-| Sanity write succeeds, DynamoDB write fails | Order exists in Studio with no customer details panel data | Cannot occur by construction — DynamoDB write must complete before the Sanity create. The orders-store unit test asserts the call order and the compensating-delete behaviour. |
-| ITN status update: Sanity write succeeds, DynamoDB email read fails | Status updates but customer email doesn't fire | CloudWatch alarm; manual replay endpoint |
-| Sanity webhook arrives but DynamoDB row TTL'd already (very old order) | Status email handler 404s on email lookup | Soft-fail and log; old orders shouldn't be status-changing anyway |
-| Admin token leaks | Attacker reads all PII | CloudWatch on admin 401/403; rotate quarterly; consider Sanity JWT verification as a v2 hardening |
+| Failure | Phase | Impact | Mitigation |
+|---|---|---|---|
+| `POST /orders` Sanity write succeeds, DynamoDB write fails | 0 | Order valid (Sanity holds full doc); DynamoDB row missing | Reconciler cron flags the gap; manual backfill |
+| `POST /orders` DynamoDB write succeeds, Sanity write fails | 1 | Orphaned PII row in DynamoDB | Compensating delete in handler; reconciler flags survivors |
+| `POST /orders` Sanity write succeeds, DynamoDB write fails | 1 | Order exists in Studio with no customer details panel data | Cannot occur by construction — Phase 1 writes DynamoDB first. The orders-store unit test asserts the call order and the compensating-delete behaviour. |
+| ITN status update: Sanity write succeeds, DynamoDB email read fails | 0/1 | Status updates but customer email doesn't fire | CloudWatch alarm; manual replay endpoint |
+| Sanity webhook arrives but DynamoDB row TTL'd already (very old order) | 1 | Status email handler 404s on email lookup | Soft-fail and log; old orders shouldn't be status-changing anyway |
+| Admin token leaks | 0/1 | Attacker reads all PII | CloudWatch on admin 401/403; rotate quarterly; consider Sanity JWT verification as a v2 hardening |
 
 ### Reconciler cron
 

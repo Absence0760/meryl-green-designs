@@ -371,6 +371,16 @@ describe('sendEmail', () => {
 
 			expect(fetchMock).not.toHaveBeenCalled();
 		});
+
+		it('refuses an EMAIL_DEV_DIR outside cwd and tmpdir', async () => {
+			// Dev-only safeguard — a stray env value should not let writes
+			// escape into the operator's home or system paths.
+			vi.stubEnv('EMAIL_DEV_DIR', '/etc/meryl-test');
+			await expect(
+				sendEmail({ to: 'a@b.c', subject: 'escape', html: '<p/>' })
+			).rejects.toThrow(/EMAIL_DEV_DIR must be under/);
+			expect(fetchMock).not.toHaveBeenCalled();
+		});
 	});
 });
 

@@ -100,4 +100,12 @@ jobs:
           SANITY_STUDIO_PROJECT_ID: ${{ vars.PUBLIC_SANITY_PROJECT_ID }}
           SANITY_STUDIO_DATASET: ${{ vars.PUBLIC_SANITY_DATASET }}
           SANITY_AUTH_TOKEN: ${{ secrets.SANITY_AUTH_TOKEN }}
+          # Baked into the Studio JS bundle at build time. The token gates
+          # /admin/* on the backend (same value as the Lambda's
+          # ADMIN_API_TOKEN); the API URL is where the custom PII panels
+          # send their requests. Both are visible in the deployed bundle —
+          # the backend bearer check is the actual security gate.
+          # See docs/orders-pii-split-plan.md § Admin auth.
+          SANITY_STUDIO_ADMIN_TOKEN: ${{ secrets.ADMIN_API_TOKEN }}
+          SANITY_STUDIO_API_URL: ${{ vars.PUBLIC_API_URL }}
         run: pnpm exec sanity deploy
