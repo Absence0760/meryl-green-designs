@@ -94,6 +94,28 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Assert required production env is set
+        # Fail fast (before sanity deploy actually builds) if either of
+        # the Studio-bound prod vars is missing. The orderPii.tsx
+        # bundle throws on a missing/loopback API URL when NODE_ENV is
+        # production, but catching it here gives the operator a
+        # clearer error than a generic build crash.
+        env:
+          PUBLIC_API_URL: ${{ vars.PUBLIC_API_URL }}
+          ADMIN_API_TOKEN: ${{ secrets.ADMIN_API_TOKEN }}
+          PUBLIC_SANITY_PROJECT_ID: ${{ vars.PUBLIC_SANITY_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          missing=()
+          [ -n "${PUBLIC_API_URL}" ] || missing+=("vars.PUBLIC_API_URL")
+          [ -n "${ADMIN_API_TOKEN}" ] || missing+=("secrets.ADMIN_API_TOKEN")
+          [ -n "${PUBLIC_SANITY_PROJECT_ID}" ] || missing+=("vars.PUBLIC_SANITY_PROJECT_ID")
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "::error::Missing required values in the production environment: ${missing[*]}"
+            echo "Set them at https://github.com/<owner>/<repo>/settings/environments/production"
+            exit 1
+          fi
+
       - name: Deploy studio to Sanity
         working-directory: studio
         env:

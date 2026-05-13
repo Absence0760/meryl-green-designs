@@ -32,18 +32,57 @@ type OrderPii = {
 	createdAt: string;
 };
 
-const API_URL = validateApiUrl(process.env.SANITY_STUDIO_API_URL ?? 'http://localhost:3001');
+const API_URL = resolveApiUrl(process.env.SANITY_STUDIO_API_URL);
 const TOKEN = process.env.SANITY_STUDIO_ADMIN_TOKEN ?? '';
 
-// Reject anything that isn't http(s) so a typo'd or malicious env value
-// can't redirect the Studio's authenticated admin requests to an
-// attacker-controlled endpoint. `URL` throws on unparseable input.
-function validateApiUrl(raw: string): string {
-	const url = new URL(raw);
+// Resolve + validate SANITY_STUDIO_API_URL at module load (i.e. when
+// the Studio JS bundle boots in the browser). Three failure modes
+// surface here as loud throws rather than silent misbehaviour:
+//
+//   1. Production build with the env var missing → throw, because a
+//      bundle that fell back to localhost would either 404 forever
+//      or, worse, target whatever dev backend happens to share that
+//      host. Set vars.PUBLIC_API_URL in the production GHA
+//      environment so deploy-studio.yml bakes the real URL in.
+//   2. Any build with a non-http(s) protocol → throw, so a typo'd or
+//      malicious env value can't redirect the Studio's authenticated
+//      admin requests to an attacker-controlled endpoint.
+//   3. Production build with a localhost / 127.0.0.1 / 0.0.0.0 host →
+//      throw, defending against a misconfigured env that points the
+//      prod bundle at the operator's laptop.
+//
+// In a development build (NODE_ENV !== 'production') a missing env
+// falls back to http://localhost:3001 for ergonomic local dev.
+function resolveApiUrl(rawValue: string | undefined): string {
+	const isProductionBuild = process.env.NODE_ENV === 'production';
+	const trimmed = (rawValue ?? '').trim();
+
+	if (!trimmed) {
+		if (isProductionBuild) {
+			throw new Error(
+				'SANITY_STUDIO_API_URL is required for production Studio builds. ' +
+					'Set vars.PUBLIC_API_URL in the production GitHub Actions environment.'
+			);
+		}
+		return 'http://localhost:3001';
+	}
+
+	const url = new URL(trimmed);
 	if (url.protocol !== 'http:' && url.protocol !== 'https:') {
 		throw new Error(`SANITY_STUDIO_API_URL must use http: or https:, got ${url.protocol}`);
 	}
-	return raw.replace(/\/$/, '');
+
+	const isLoopback =
+		url.hostname === 'localhost' ||
+		url.hostname === '127.0.0.1' ||
+		url.hostname === '0.0.0.0';
+	if (isProductionBuild && isLoopback) {
+		throw new Error(
+			`SANITY_STUDIO_API_URL resolves to ${url.hostname} in a production build — that's the local backend, not the deployed API. Set vars.PUBLIC_API_URL to the production API origin.`
+		);
+	}
+
+	return trimmed.replace(/\/$/, '');
 }
 
 function authHeaders(extra: Record<string, string> = {}): Record<string, string> {
