@@ -1,7 +1,8 @@
 import { Hono, type Context } from 'hono';
 import { sendEmail } from '../email.js';
 import { ownerNotification } from '../email-templates.js';
-import { createOrder, getProductsByIds } from '../sanity.js';
+import { getProductsByIds } from '../sanity.js';
+import { createOrder } from '../orders-store.js';
 import { buildPaymentFormData, type PayFastConfig } from '../payfast.js';
 import { createRateLimiter } from '../rate-limit.js';
 

@@ -13,3 +13,6 @@ process.env.SANITY_PROJECT_ID = 'test-project';
 process.env.SANITY_DATASET = 'production';
 process.env.SANITY_API_TOKEN = 'test-sanity-token';
 process.env.SANITY_WEBHOOK_SECRET = 'test-webhook-secret';
+
+process.env.AWS_REGION = 'af-south-1';
+process.env.ORDERS_TABLE_NAME = 'meryl-green-designs-orders-test';

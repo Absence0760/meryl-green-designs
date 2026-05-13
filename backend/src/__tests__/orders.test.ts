@@ -16,10 +16,18 @@ vi.mock('../sanity.js', () => ({
 	getProductsByIds: vi.fn(),
 	updateOrderPayment: vi.fn()
 }));
+vi.mock('../orders-store.js', () => ({
+	createOrder: vi.fn(),
+	getOrderByRef: vi.fn(),
+	updateOrderStatus: vi.fn(),
+	updateOrderTracking: vi.fn(),
+	updateOrderInternalNotes: vi.fn()
+}));
 
 import { createApp } from '../app.js';
 import * as email from '../email.js';
 import * as sanity from '../sanity.js';
+import * as ordersStore from '../orders-store.js';
 
 function sanityOrder(overrides: Partial<SanityOrder> = {}): SanityOrder {
 	return {
@@ -83,7 +91,7 @@ describe('POST /orders', () => {
 		vi.stubEnv('PAYFAST_PASSPHRASE', 'payfast');
 		vi.stubEnv('PAYFAST_SANDBOX', 'true');
 		vi.mocked(email.sendEmail).mockClear().mockResolvedValue(undefined);
-		vi.mocked(sanity.createOrder).mockClear().mockResolvedValue(
+		vi.mocked(ordersStore.createOrder).mockClear().mockResolvedValue(
 			sanityOrder({ paymentMethod: 'payfast', amountZar: 450 })
 		);
 		vi.mocked(sanity.getProductsByIds).mockReset().mockResolvedValue([testProduct]);
@@ -91,7 +99,7 @@ describe('POST /orders', () => {
 
 	afterEach(() => vi.unstubAllEnvs());
 
-	it('creates a Sanity order and returns PayFast form data', async () => {
+	it('creates an order via the orders-store and returns PayFast form data', async () => {
 		const res = await postOrder(validOrderBody);
 		expect(res.status).toBe(200);
 		const data = (await res.json()) as any;
@@ -101,9 +109,9 @@ describe('POST /orders', () => {
 		expect(data.payfast.action).toContain('sandbox.payfast.co.za');
 		expect(data.payfast.fields.amount).toBe('450.00');
 		expect(data.payfast.fields.signature).toMatch(/^[a-f0-9]{32}$/);
-		expect(sanity.createOrder).toHaveBeenCalledOnce();
+		expect(ordersStore.createOrder).toHaveBeenCalledOnce();
 
-		const createArg = vi.mocked(sanity.createOrder).mock.calls[0]![0];
+		const createArg = vi.mocked(ordersStore.createOrder).mock.calls[0]![0];
 		expect(createArg.customerName).toBe('Jane Smith');
 		expect(createArg.customerEmail).toBe('jane@example.com');
 		expect(createArg.paymentMethod).toBe('payfast');
@@ -163,7 +171,7 @@ describe('POST /orders', () => {
 		expect(res.status).toBe(200);
 		const data = (await res.json()) as any;
 		expect(data.ref).toBe('SKIPPED');
-		expect(sanity.createOrder).not.toHaveBeenCalled();
+		expect(ordersStore.createOrder).not.toHaveBeenCalled();
 		expect(email.sendEmail).not.toHaveBeenCalled();
 	});
 
@@ -216,7 +224,7 @@ describe('POST /orders', () => {
 				expect(res.status).toBe(400);
 				const data = (await res.json()) as any;
 				expect(data.error).toMatch(message);
-				expect(sanity.createOrder).not.toHaveBeenCalled();
+				expect(ordersStore.createOrder).not.toHaveBeenCalled();
 				expect(email.sendEmail).not.toHaveBeenCalled();
 			});
 		}
@@ -225,7 +233,7 @@ describe('POST /orders', () => {
 	it('computes total from multiple cart items', async () => {
 		const product2 = { ...testProduct, _id: 'prod-2', name: 'Large Screen', priceZar: 900 };
 		vi.mocked(sanity.getProductsByIds).mockResolvedValueOnce([testProduct, product2]);
-		vi.mocked(sanity.createOrder).mockResolvedValueOnce(
+		vi.mocked(ordersStore.createOrder).mockResolvedValueOnce(
 			sanityOrder({ paymentMethod: 'payfast', amountZar: 1800 })
 		);
 
@@ -259,7 +267,7 @@ describe('POST /orders', () => {
 	});
 
 	it('returns 500 when Sanity create fails (no emails sent)', async () => {
-		vi.mocked(sanity.createOrder).mockRejectedValueOnce(new Error('sanity exploded'));
+		vi.mocked(ordersStore.createOrder).mockRejectedValueOnce(new Error('sanity exploded'));
 		const res = await postOrder(validOrderBody);
 		expect(res.status).toBe(500);
 		expect(email.sendEmail).not.toHaveBeenCalled();
@@ -272,7 +280,7 @@ describe('POST /orders', () => {
 		const data = (await res.json()) as any;
 		expect(data.success).toBe(true);
 		expect(data.warning).toBeDefined();
-		expect(sanity.createOrder).toHaveBeenCalledOnce();
+		expect(ordersStore.createOrder).toHaveBeenCalledOnce();
 	});
 
 	it('returns 500 when OWNER_EMAIL is not configured', async () => {
@@ -281,7 +289,7 @@ describe('POST /orders', () => {
 		expect(res.status).toBe(500);
 		const data = (await res.json()) as any;
 		expect(data.error).toMatch(/not configured/i);
-		expect(sanity.createOrder).not.toHaveBeenCalled();
+		expect(ordersStore.createOrder).not.toHaveBeenCalled();
 	});
 
 	it('returns 500 when PayFast config is missing', async () => {

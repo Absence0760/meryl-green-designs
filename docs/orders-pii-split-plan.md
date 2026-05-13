@@ -1,10 +1,15 @@
 # Orders PII split — proposal
 
-**Status: Phase 0 in progress.** Day 1 (Terraform scaffolding — empty
-DynamoDB table + Lambda IAM extension + `ORDERS_TABLE_NAME` env var) is
-written and validated; `terraform apply` pending. No backend code, Studio
-component, or migration script work has started — those are Days 2–7 of
-the sequencing below. The cutover (Phase 1) requires explicit go-ahead.
+**Status: Phase 0 in progress.** Days 1–2 are landed: Day 1 Terraform
+scaffolding (empty DynamoDB table + Lambda IAM extension +
+`ORDERS_TABLE_NAME` env var), Day 2 backend wiring (`backend/src/dynamo.ts`,
+`backend/src/orders-store.ts` in dual-write mode, `routes/orders.ts`
+switched to the store, full unit-test coverage in
+`backend/src/__tests__/orders-store.test.ts`). `terraform apply` pending —
+Day 2 code is safe to deploy locally because dual-write writes are
+shadow-only; production deploy waits for the apply. Days 3–7 (admin
+routes, Studio components, backfill, deploy) and the cutover (Phase 1)
+still require explicit go-ahead.
 
 ## Why this exists
 
