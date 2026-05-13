@@ -111,7 +111,7 @@ production hits the AWS-hosted table, and the two are isolated:
 **`bin/dynamodb-local-up.sh` will never touch the prod table**.
 
 ```bash
-./bin/dynamodb-local-up.sh
+pnpm dev:db:up    # or directly: ./bin/dynamodb-local-up.sh
 ```
 
 This is idempotent. It:
@@ -129,13 +129,12 @@ The backend reads `DYNAMODB_ENDPOINT=http://localhost:8000` from
 service** — only happens in prod, where the Lambda's IAM role provides
 real credentials.
 
-Container lifecycle:
+Container lifecycle (all run from repo root):
 
 ```bash
-docker compose down       # stop, keep data
-docker compose down -v    # stop and wipe local rows
-docker compose up -d      # start again (re-run bin/dynamodb-local-up.sh
-                          # if you used `-v`, to recreate the table)
+pnpm dev:db:down     # stop, keep data
+pnpm dev:db:reset    # stop, wipe volume, restart, recreate table
+pnpm dev:db:scan     # see what's currently in the local table
 ```
 
 Without local DynamoDB running, `POST /orders` still succeeds (the
@@ -164,7 +163,7 @@ the absolute `file://` URL to stdout — most terminals make it clickable:
 Open the newest file in a browser:
 
 ```bash
-xdg-open backend/.dev-emails/$(ls -t backend/.dev-emails | head -1)
+pnpm dev:emails   # or manually: xdg-open backend/.dev-emails/$(ls -t backend/.dev-emails | head -1)
 ```
 
 `backend/.dev-emails/` is gitignored. **Production must never set

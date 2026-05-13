@@ -21,6 +21,14 @@ Meryl Green Designs — website for a small South African studio selling handcra
 pnpm install                 # bootstrap
 pnpm dev                     # frontend + backend in parallel
 pnpm dev:all                 # + studio
+
+# Local dev infrastructure (no AWS, no Resend)
+pnpm dev:db:up               # start DynamoDB Local + create the orders table (idempotent)
+pnpm dev:db:down             # stop the container, keep data
+pnpm dev:db:reset            # wipe volume + bring back up fresh
+pnpm dev:db:scan             # scan the local orders table (quick view)
+pnpm dev:emails              # open the most recent captured email (EMAIL_BACKEND=file)
+
 pnpm build                   # build all workspaces
 pnpm check                   # typecheck all
 pnpm test                    # vitest run across workspaces (frontend + backend)
@@ -33,7 +41,7 @@ pnpm frontend|backend|studio <script>   # filter to one workspace
 2. `./bin/sops-init.sh` — provisions the project's KMS key (`alias/meryl-green-designs-sops` in `af-south-1`), wires it into `.sops.yaml`, seeds encrypted `infra/terraform.tfvars.sops` + `backend/.env.sops` from the examples. Idempotent.
 3. `sops backend/.env.sops` to fill in real secrets, then `sops -d backend/.env.sops > backend/.env` for local dev.
 4. `cp frontend/.env.example frontend/.env` and same for `studio/` (no secrets — `PUBLIC_*` only).
-5. `./bin/dynamodb-local-up.sh` — starts a local DynamoDB container and creates the orders table. Required for the order dual-write and the Studio's PII panels; without it the order create still succeeds but logs a shadow-write error and the Studio panels are inert.
+5. `pnpm dev:db:up` — starts a local DynamoDB container and creates the orders table. Required for the order dual-write and the Studio's PII panels; without it the order create still succeeds but logs a shadow-write error and the Studio panels are inert.
 6. `pnpm dev` (or `pnpm dev:all`).
 
 `bin/setup.sh` is the **production bootstrap** (Terraform state backend, apply, GitHub Actions vars, Sanity webhook). Decrypts tfvars to a scratch file at start and shreds it on exit. Don't run it for local dev.

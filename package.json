@@ -7,6 +7,11 @@
 	"scripts": {
 		"dev": "pnpm --filter @meryl-green-designs/frontend --filter @meryl-green-designs/backend --parallel run dev",
 		"dev:all": "pnpm -r --parallel run dev",
+		"dev:db:up": "./bin/dynamodb-local-up.sh",
+		"dev:db:down": "docker compose down",
+		"dev:db:reset": "docker compose down -v && ./bin/dynamodb-local-up.sh",
+		"dev:db:scan": "AWS_ACCESS_KEY_ID=local AWS_SECRET_ACCESS_KEY=local AWS_REGION=af-south-1 aws dynamodb scan --endpoint-url http://localhost:8000 --table-name meryl-green-designs-orders",
+		"dev:emails": "./bin/dev-emails-open.sh",
 		"build": "pnpm -r run build",
 		"check": "pnpm -r run check",
 		"test": "pnpm -r run test",
