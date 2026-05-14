@@ -212,9 +212,31 @@ describe('customerEmailForStatus', () => {
 		expect(mail!.html).toContain('hope you love it');
 	});
 
-	it('returns a cancelled template', () => {
-		const mail = customerEmailForStatus(makeOrder({ status: 'cancelled' }));
+	it('returns a cancelled template that omits the refund clause for unpaid orders', () => {
+		// Audit M-1: the daily auto-cancel Lambda flips abandoned
+		// pending_payment orders to cancelled. paymentId is null for
+		// those — the template must NOT promise a refund or customers
+		// will email asking about a refund that doesn't exist.
+		const mail = customerEmailForStatus(
+			makeOrder({ status: 'cancelled', paymentId: null })
+		);
 		expect(mail!.subject.toLowerCase()).toContain('cancelled');
+		expect(mail!.html).not.toMatch(/refund/i);
+		// Neutral "reply if questions" line covers all cases. Use a
+		// whitespace-tolerant regex because the template's line breaks
+		// can split the phrase across newlines.
+		expect(mail!.html).toMatch(/reply to this\s+email/i);
+	});
+
+	it('returns a cancelled template that promises a refund when a payment was received', () => {
+		// When the order was paid (Meryl cancels a paid order in the
+		// Studio), the customer needs to know a refund is coming.
+		// paymentId is non-null for any order that received a COMPLETE
+		// PayFast ITN.
+		const mail = customerEmailForStatus(
+			makeOrder({ status: 'cancelled', paymentId: 'pf-12345' })
+		);
+		expect(mail!.html).toMatch(/refund/i);
 	});
 
 	it('all customer emails include a tracking link using SITE_URL', () => {

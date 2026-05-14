@@ -183,14 +183,27 @@ export function paymentFailedTemplate(order: Order): { subject: string; html: st
 }
 
 function cancelledTemplate(order: Order): { subject: string; html: string } {
+	// Wording stays neutral on cause and on whether payment occurred —
+	// this template fires for three different cancellation paths:
+	//   1. Meryl cancels a paid order in the Studio.
+	//   2. Meryl cancels an unpaid order before production.
+	//   3. The daily auto-cancel Lambda flips an abandoned pending_payment
+	//      order that's been sitting >30 days.
+	// Promising a refund (which the earlier wording did) is wrong for
+	// case 3 — no payment was ever taken — and confused customers into
+	// emailing for a refund that doesn't exist (audit M-1). The "reply
+	// if you have questions" line covers all three cases without making
+	// claims the system can't keep.
+	const paymentReceived = order.status === 'cancelled' && order.paymentId !== null;
 	return {
 		subject: `Order ${order.orderRef} cancelled`,
 		html: `
 			<h2>Order cancelled</h2>
 			<p>Hi ${escapeHtml(order.customerName)},</p>
 			<p>Your order <strong>${escapeHtml(order.orderRef)}</strong> has been
-			cancelled. If you've already paid, we'll reach out separately to arrange
-			a refund. If you have any questions, just reply to this email.</p>
+			cancelled.${paymentReceived ? ` We'll reach out separately to arrange a refund for the payment we received.` : ''}
+			If you have any questions or this was unexpected, just reply to this
+			email.</p>
 			<p>— Meryl Green Designs</p>
 		`
 	};
