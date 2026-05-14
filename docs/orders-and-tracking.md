@@ -81,12 +81,20 @@ Backend queries Sanity, verifies email matches, returns sanitised order
 Frontend displays status, shipping info, tracking number (if present)
 ```
 
-## Data model — Sanity `order` schema
+## Data model — Sanity `order` schema (historical)
 
-A new document type alongside the existing `product`. Proposed shape:
+> **Historical** — this section captures the pre-cutover Sanity-only
+> design where every field including PII lived on the Sanity document.
+> Phase 1 (live 2026-05-13) removed every PII field below
+> (`customerName`, `customerEmail`, `customerPhone`, `shippingAddress`,
+> `items`, `customerNotes`, `trackingNumber`, `trackingUrl`,
+> `shippingCarrier`, `internalNotes`) from the Sanity schema. For the
+> current Sanity schema, read `studio/schemas/order.ts`; for the
+> matching DynamoDB PII shape, see
+> [`orders-pii-split-plan.md`](./orders-pii-split-plan.md).
 
 ```typescript
-// studio/schemas/order.ts  (PROPOSED — not yet created)
+// studio/schemas/order.ts — PRE-CUTOVER design, retained for context
 import { defineField, defineType } from 'sanity';
 
 export const order = defineType({
@@ -344,14 +352,18 @@ nature, no point prerendering).
        "ref": "MG-260410-ABCD",
        "status": "shipped",
        "customerName": "Jane Smith",
-       "items": "1 x Small screen — R 450",
+       "items": [
+         { "productId": "abc123", "name": "Small screen", "quantity": 1 }
+       ],
+       "amountZar": 450,
+       "paymentMethod": "payfast",
        "shipping": {
          "carrier": "Courier Guy",
          "trackingNumber": "CG123456",
          "trackingUrl": "https://www.courierguy.co.za/track/CG123456"
        },
        "createdAt": "2026-04-10T10:30:00Z",
-       "statusUpdatedAt": "2026-04-12T14:00:00Z"
+       "updatedAt": "2026-04-12T14:00:00Z"
      }
      ```
      Note the absence of `internalNotes`, `customerPhone`, `shippingAddress`.
@@ -385,7 +397,7 @@ Query params:
   email (required) — must match the order's customerEmail (case-insensitive)
 
 Response 200:
-  { ref, status, customerName, items, shipping, createdAt, statusUpdatedAt }
+  { ref, status, customerName, items, amountZar, paymentMethod, shipping, createdAt, updatedAt }
 
 Response 404:
   { error: "Order not found" }
@@ -422,6 +434,10 @@ Security:
 | `SANITY_DATASET` | no | Same as frontend's `PUBLIC_SANITY_DATASET` but server-side |
 | `SANITY_API_TOKEN` | **yes** | Write token for creating order documents. Scoped to the `order` type if possible. |
 | `SANITY_WEBHOOK_SECRET` | **yes** | Shared secret for verifying webhook signatures |
+| `ORDERS_TABLE_NAME` | no | DynamoDB PII table name (`meryl-green-designs-orders`). Added in Phase 1. |
+| `ADMIN_API_TOKEN` | **yes** | Bearer token gating `/admin/orders/:ref/*` routes consumed by Studio's PII panels. Added in Phase 1. |
+| `STUDIO_ORIGINS` | no | Comma-separated CORS allowlist for admin routes (the deployed Sanity Studio origin). Added in Phase 1. |
+| `DYNAMODB_ENDPOINT` | no | Local-dev only (`http://localhost:4566` for LocalStack); leave unset in production so the SDK uses real AWS. |
 
 Added to `infra/variables.tf` with `sensitive = true` on the secret ones, and
 to `backend/.env.example` and `backend/.env` for local development.
@@ -475,14 +491,19 @@ No new AWS resources — the Lambda already exists, we're just adding env vars.
 
 ## Email templates
 
-Extract to `backend/src/email-templates.ts`:
+Templates live in `backend/src/email-templates.ts`. Current names (post-cutover):
 
-- `orderCreatedOwner(order)` — notification to Meryl, unchanged from today
-- `orderCreatedCustomer(order)` — "thanks, here are bank details, awaiting payment"
-- `paymentReceivedCustomer(order)` — "thanks, we've got your payment, shipping soon"
-- `shippedCustomer(order)` — "your order is on the way, tracking X"
-- `deliveredCustomer(order)` — optional "hope you love it"
-- `cancelledCustomer(order)` — "your order was cancelled, refund in N days" or similar
+- `ownerNotification(order)` — notification to Meryl on every new order
+- `pendingPaymentTemplate(order)` — "order received, awaiting payment"
+  (only fires if Meryl manually resets an order's status; the normal
+  PayFast flow redirects straight to checkout)
+- `paymentReceivedTemplate(order)` — "order confirmed, shipping soon"
+- `shippedTemplate(order)` — "your order is on the way, tracking X"
+- `deliveredTemplate(order)` — optional "hope you love it"
+- `cancelledTemplate(order)` — "your order was cancelled"
+- `paymentFailedTemplate(order)` — "your payment didn't go through, here's
+  how to retry" (sent by the PayFast ITN handler on a failed payment,
+  dedup-guarded by `recordFailedItn` in DynamoDB)
 
 Status → template map lives in `sanity-webhook.ts`.
 
