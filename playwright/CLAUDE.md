@@ -17,7 +17,10 @@ the backend's DynamoDB state.
   GitHub Actions environment.
 - **All Sanity writes go to `test-e2e`.** The seed helper wipes + reseeds
   the dataset at the start of each run; if `SANITY_DATASET` is anything
-  else, the run aborts before any client is constructed.
+  else, the run aborts before any client is constructed. The test
+  dataset lives on a **separate Sanity account** from the production
+  project (the operator's chosen pattern) — stronger isolation than a
+  second project under the same login.
 - **No external HTTP in tests.** Stub PayFast's redirect target,
   signature-verify ITN posts locally, write emails to disk instead of
   Resend. The only network call the suite makes is to the test Sanity

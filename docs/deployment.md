@@ -843,11 +843,17 @@ can't accidentally point at real resources. Used by `.github/workflows/e2e.yml`
 on every PR and every push to `main`. Set under **Repository → Settings →
 Environments → New environment → `e2e`**.
 
+The Sanity values come from a **dedicated test Sanity account** (the
+operator's chosen pattern — see `playwright/README.md`), not a second
+project under the production login. This means the `SANITY_E2E_TOKEN`
+GitHub Actions secret has no path to the production dataset even if
+it leaks.
+
 | Kind | Name | Purpose |
 |---|---|---|
-| Variable | `SANITY_E2E_PROJECT_ID` | The **dedicated test** Sanity project's project ID. Must not equal `sanity_project_id` from prod. |
+| Variable | `SANITY_E2E_PROJECT_ID` | The test project's project ID (from the **separate** Sanity account). Must not equal `sanity_project_id` from prod. |
 | Variable | `SANITY_E2E_DATASET` | The test dataset name — convention is `test-e2e`. The env-guard refuses to run if this is `production`. |
-| Secret | `SANITY_E2E_TOKEN` | Editor token on the test project, scoped to the test-e2e dataset. Used by the seed script to wipe + reseed at the start of each run. |
+| Secret | `SANITY_E2E_TOKEN` | Editor token on the test project. Used by the seed script to wipe + reseed at the start of each run. |
 | Secret | `SANITY_E2E_WEBHOOK_SECRET` | 32-byte hex value. The suite signs simulated Sanity webhook posts with this; no actual Sanity webhook is configured against the test project. |
 | Secret | `E2E_ADMIN_API_TOKEN` | Bearer token for the admin routes in the test backend. Any high-entropy string is fine; not the same as the production `ADMIN_API_TOKEN`. |
 

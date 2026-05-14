@@ -25,10 +25,19 @@ If you ever add a new env var that could touch prod, extend the guard in
 
 ## One-time local setup
 
-1. **Create a separate test Sanity project** at
-   [sanity.io/manage](https://www.sanity.io/manage). Use the Free plan;
-   the dataset can stay public because no PII lives in Sanity post-Phase-1.
-   Note the project ID.
+1. **Create a separate Sanity account** for the e2e suite (the operator's
+   chosen pattern — register at
+   [sanity.io/manage](https://www.sanity.io/manage) with a dedicated
+   email like `<you>+sanity-e2e@…`). A separate *account* is stronger
+   isolation than a separate *project* under the production login:
+   compromise of the production account credentials can't expose the
+   test dataset and vice versa, and you can hand the test-account login
+   to a CI service without giving it any path to production. Use the
+   Free plan; the test dataset can stay public because no PII lives in
+   Sanity post-Phase-1.
+
+   Then in that account, create a project (e.g. `meryl-green-designs-e2e`)
+   with a `test-e2e` dataset, and note the project ID.
 
 2. **Create an Editor API token** on that project (Settings → API → Tokens).
    The seed helper uses it to wipe + reseed fixtures at the start of each
