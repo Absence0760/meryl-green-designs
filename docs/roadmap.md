@@ -149,9 +149,9 @@ traffic. Most are external, and each is documented with exact steps in
             class="contact-row">` with `<dt>Phone</dt><dd>…</dd>` back
             into the markup at the location flagged by the HTML
             comment.
-      - [ ] studio location/town (`TODO` in markup; current production
-            wording reads "Based in South Africa. Shipped nationwide."
-            — acceptable as-is, but a real town would be friendlier)
+      - [x] studio location — "Based in the Western Cape, South Africa.
+            Shipped nationwide." (confirmed by Meryl 2026-05-13). A
+            specific town would be friendlier but is not blocking.
 - [ ] Meryl populates the shop with real products via Sanity Studio
 - [ ] Meryl populates the gallery with real photos via Sanity Studio
 - [ ] **ECT Act s43 business identification** for the Returns page

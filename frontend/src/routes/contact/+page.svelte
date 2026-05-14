@@ -113,10 +113,9 @@
 			     Tracked in docs/roadmap.md. Add the row back here once a
 			     number is available. -->
 
-			<!-- TODO: replace [town] with Meryl's actual studio location. -->
 			<div class="contact-row">
 				<dt>Studio</dt>
-				<dd>Based in South Africa. Shipped nationwide.</dd>
+				<dd>Based in the Western Cape, South Africa. Shipped nationwide.</dd>
 			</div>
 
 			<div class="contact-row">
