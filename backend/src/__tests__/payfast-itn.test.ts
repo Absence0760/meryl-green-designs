@@ -226,6 +226,35 @@ describe('POST /webhooks/payfast-itn', () => {
 		expect(ordersStore.recordFailedItn).toHaveBeenCalledWith('MG-260413-AB12', '1234567');
 	});
 
+	it('sends the email but skips the marker write when pf_payment_id is empty', async () => {
+		// Audit M-X-2: PayFast normally always populates pf_payment_id
+		// but a sandbox quirk has been seen to omit it. Writing `''`
+		// as the marker would silently suppress every subsequent
+		// empty-id FAILED ITN. The fix is to email but skip the write
+		// so future empty-id failures still email the customer.
+		//
+		// Hand-built body (rather than buildItnBody with an override)
+		// because validateItn's signature check signs over the raw
+		// body bytes — including `pf_payment_id=` as an empty value
+		// would produce a signature mismatch with generateSignature's
+		// "filter empty values" behaviour, so the field has to be
+		// omitted entirely from the signed body.
+		vi.mocked(ordersStore.getOrderByRef).mockResolvedValueOnce(sanityOrder());
+		const body: Record<string, string> = {
+			m_payment_id: 'MG-260413-AB12',
+			payment_status: 'CANCELLED',
+			item_name: 'Meryl Green Designs order MG-260413-AB12',
+			amount_gross: '450.00',
+			amount_fee: '-14.40',
+			amount_net: '435.60',
+			merchant_id: '10004002'
+		};
+		body.signature = generateSignature(body, PASSPHRASE);
+		await postItn(urlEncode(body));
+		expect(email.sendEmail).toHaveBeenCalledOnce();
+		expect(ordersStore.recordFailedItn).not.toHaveBeenCalled();
+	});
+
 	it('returns 200 but does not update when order is not found', async () => {
 		vi.mocked(ordersStore.getOrderByRef).mockResolvedValueOnce(null);
 		const res = await postItn(urlEncode(buildItnBody()));

@@ -105,7 +105,22 @@ export function payfastItnRouter() {
 					// see no marker and double-send. PayFast retries
 					// serially (one ITN at a time per merchant pair),
 					// so this race is theoretical.
-					await recordFailedItn(result.orderRef, result.pfPaymentId);
+					//
+					// Skip the marker write if pf_payment_id is empty.
+					// PayFast normally always populates it, but the
+					// sandbox has been seen to omit it on rare FAILED
+					// callbacks. Writing `''` as the marker would
+					// silently suppress every *subsequent* empty-id
+					// FAILED ITN — turning a one-off sandbox quirk
+					// into a permanent dedup poison-pill (audit M-X-2).
+					// Skipping the write means the next genuine failed
+					// payment still emails the customer; the trade-off
+					// is that a real PayFast bug that consistently
+					// drops pf_payment_id would re-send the same email
+					// up to ~10 times in 24h, which is recoverable.
+					if (result.pfPaymentId) {
+						await recordFailedItn(result.orderRef, result.pfPaymentId);
+					}
 				} catch (err) {
 					// Best-effort for both the email AND the marker
 					// write. PayFast still gets a 200 — no point asking
