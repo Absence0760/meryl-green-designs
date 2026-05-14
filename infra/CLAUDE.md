@@ -6,7 +6,7 @@ Terraform module for the AWS resources backing Meryl Green Designs:
 - ACM + Route 53 for DNS/TLS (in `s3_cloudfront.tf`)
 - GitHub OIDC for CI auth (`github_oidc.tf`)
 - DynamoDB for order PII (`dynamodb.tf`)
-- **Auto-cancel Lambda + EventBridge daily cron** that flips stale `pending_payment` orders to `cancelled` (`auto_cancel.tf`). Separate Lambda function from the main backend, separate IAM role (Sanity write only — no DynamoDB / Resend / PayFast surface), separate CloudWatch log group. Carries its own CloudWatch alarms (Errors + no-recent-invocation) routed via an SNS topic to `owner_email`. Dropped EventBridge events land in an SQS DLQ.
+- **Auto-cancel Lambda + EventBridge daily cron** that flips stale `pending_payment` orders to `cancelled` (`auto_cancel.tf`). Separate Lambda function from the main backend, separate IAM role (Sanity write only — no DynamoDB / Resend / PayFast surface), separate CloudWatch log group. Carries its own CloudWatch alarms (Errors + no-recent-invocation) routed via an SNS topic to `ops_alerts_email` (falls back to `owner_email` when unset, so a separate operator inbox can absorb ops noise without changing the customer-facing owner address). Dropped EventBridge events land in an SQS DLQ.
 - CloudWatch budget with email alerts (`budget.tf`)
 - Security headers policy for CloudFront responses (`security_headers.tf`)
 
