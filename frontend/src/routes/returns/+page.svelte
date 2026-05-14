@@ -20,8 +20,9 @@
 	  - Shipping-cost allocation (who pays for what when)
 	  - Escalation cap when a replacement also fails
 	  - Consumer Goods and Services Ombud (CGSO) dispute-resolution path
-	  - ECT Act s43 business-identification section (with placeholders
-	    for Meryl to fill in — see below)
+	  - ECT Act s43 business-identification section (currently shows
+	    only the email — the rest needs to be added once Meryl
+	    provides her business details; see docs/roadmap.md)
 	  - Tighter "no refunds" wording that doesn't read as overriding
 	    statutory rights
 
@@ -37,8 +38,10 @@
 	    not statutorily mandated.
 	  - ECT Act s43 disclosure is INCOMPLETE — registered business name,
 	    legal status (sole trader / CC / Pty Ltd), physical address,
-	    telephone number, and any registration number need to be filled
-	    in by Meryl. See the "About Meryl Green Designs" section.
+	    telephone number, and any registration number must be added
+	    before launch. The page currently shows only the email contact
+	    so it doesn't read as "still developing", but the missing
+	    items are a launch blocker tracked in docs/roadmap.md.
 
 	Update the "Last updated" date whenever the policy text changes.
 -->
@@ -216,26 +219,23 @@
 		<p>
 			Meryl Green Designs is a South African studio handcrafting
 			screens and nature-inspired designs. For questions about this
-			policy, an order, or any other matter, please contact:
+			policy, an order, or any other matter, please email
+			<a href="mailto:zagreenwoman@gmail.com">zagreenwoman@gmail.com</a>.
 		</p>
 		<!--
-			ECT Act s43 requires online retailers to disclose business
-			identification. The fields below are placeholders Meryl must
-			fill in before this page goes live. Confirm: registered
-			business name, legal status (sole trader / CC / Pty Ltd),
-			physical address (or PO Box if appropriate for a home-studio
-			operation), telephone number, and any registration number
-			(e.g. CIPC). Cross-check with the /contact page so the two
-			pages don't drift.
+			ECT Act s43 also requires online retailers to disclose:
+			  - Registered business name + legal status (sole trader / CC
+			    / Pty Ltd)
+			  - Physical address (or PO Box if appropriate for a
+			    home-studio operation)
+			  - Telephone number
+			  - Any registration number (e.g. CIPC)
+			These details are not yet on the page because Meryl hasn't
+			provided them — tracked in docs/roadmap.md under "Content
+			(needs Meryl)". They must be added before launch for ECT s43
+			compliance. Cross-check the /contact page when filling in so
+			the two pages don't drift.
 		-->
-		<ul>
-			<li>
-				Email:
-				<a href="mailto:zagreenwoman@gmail.com">zagreenwoman@gmail.com</a>
-			</li>
-			<li>Studio location: <em>South Africa (full address to be added)</em></li>
-			<li>Business registration: <em>to be added</em></li>
-		</ul>
 	</div>
 </section>
 

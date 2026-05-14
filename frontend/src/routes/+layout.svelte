@@ -177,6 +177,8 @@
 				<span aria-hidden="true">·</span>
 				<a href="/returns">Returns</a>
 				<span aria-hidden="true">·</span>
+				<a href="/terms">Terms</a>
+				<span aria-hidden="true">·</span>
 				<a href="/contact">Contact</a>
 			</p>
 			<p class="muted">Meryl Green Designs — inspired by nature.</p>

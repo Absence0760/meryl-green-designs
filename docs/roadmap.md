@@ -150,6 +150,24 @@ traffic. Most are external, and each is documented with exact steps in
             reads "Based in South Africa. Shipped nationwide.")
 - [ ] Meryl populates the shop with real products via Sanity Studio
 - [ ] Meryl populates the gallery with real photos via Sanity Studio
+- [ ] **ECT Act s43 business identification** for the Returns page
+      (the section that satisfies ECT Act s43's disclosure
+      requirements for online retailers). Meryl needs to supply:
+      registered business name, legal status (sole trader / CC / Pty
+      Ltd), physical address (or PO Box if she prefers, for a
+      home-studio operation), telephone number, and any registration
+      number (e.g. CIPC). The page currently shows only her email so
+      it reads cleanly, but ECT s43 requires the full set before
+      launch. Insert into the "About Meryl Green Designs" section of
+      `frontend/src/routes/returns/+page.svelte`.
+- [ ] South African legal professional reviews the three policy pages
+      before they go live: `frontend/src/routes/privacy/+page.svelte`
+      (POPIA wording, cross-border transfer language, retention periods),
+      `frontend/src/routes/returns/+page.svelte` (CPA windows, courier
+      SLAs, the ECT s43 disclosure once Meryl fills it in), and
+      `frontend/src/routes/terms/+page.svelte` (governing-law clause,
+      lead-time numbers, CPA s51 limitation scope). Each page's header
+      comment lists the specific items the reviewer must confirm.
 
 ### External accounts
 - [ ] Resend account with verified sending domain (DNS propagation wait
