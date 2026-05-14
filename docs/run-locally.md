@@ -8,8 +8,10 @@ For deploying to AWS, see [`deployment.md`](./deployment.md) instead.
 ## Prerequisites
 
 - **Node.js 22 or later** — check with `node --version`
-- **pnpm 9 or later** — check with `pnpm --version`, install with
-  `npm install -g pnpm` if missing
+- **pnpm 9 or later** — check with `pnpm --version`. Install via Corepack
+  (`corepack enable && corepack prepare pnpm@latest --activate`) rather
+  than `npm install -g pnpm`, so the version is pinned per Node install
+  and you don't need a root npm global directory.
 - A **Resend API key** — free at [resend.com](https://resend.com). Not strictly
   required to run the servers, but the order form will fail to send emails
   without one.
@@ -21,10 +23,11 @@ For deploying to AWS, see [`deployment.md`](./deployment.md) instead.
   If you do, configure a profile per
   [`deployment.md § AWS profiles`](./deployment.md#aws-profiles-multi-project-setup)
   so credentials don't bleed across projects.
-- **Docker + Docker Compose** — for running DynamoDB Local. The backend's
-  order-PII path writes to a `meryl-green-designs-orders` table; locally
-  that's served by a `docker compose` container, never the prod table.
-  See [Setting up local DynamoDB](#setting-up-local-dynamodb) below.
+- **Docker + Docker Compose** — for running LocalStack (DynamoDB emulator).
+  The backend's order-PII path writes to a `meryl-green-designs-orders`
+  table; locally that's served by a `docker compose` LocalStack container
+  on `:4566`, never the prod table. See
+  [Setting up local DynamoDB](#setting-up-local-dynamodb) below.
 
 ## One-time setup
 
@@ -37,7 +40,30 @@ pnpm install
 This installs dependencies for all three workspace packages (`frontend/`,
 `backend/`, `studio/`) into a single hoisted `node_modules` at the root.
 
-Copy the example env files and fill them in:
+### Option A: SOPS-encrypted secrets (recommended)
+
+The repo ships a SOPS workflow (KMS-encrypted `*.sops` files) so the
+backend's real secrets don't live in plaintext on your disk. One-time
+bootstrap:
+
+```bash
+./bin/sops-init.sh                       # creates the KMS key + .sops.yaml + seeds *.sops files
+sops backend/.env.sops                   # edit secrets in $EDITOR; re-encrypts on save
+sops -d backend/.env.sops > backend/.env # decrypt to plaintext for pnpm dev
+```
+
+`backend/.env` is gitignored. Frontend and studio carry no secrets, so
+a plain copy is fine:
+
+```bash
+cp frontend/.env.example frontend/.env
+cp studio/.env.example studio/.env
+```
+
+### Option B: plain env files
+
+If you're just trying the site without an AWS account, skip the SOPS
+step and copy the examples directly:
 
 ```bash
 cp frontend/.env.example frontend/.env
@@ -65,6 +91,17 @@ Edit `backend/.env` and set at minimum:
 - `SANITY_API_TOKEN` — an Editor-scoped token from your Sanity project's
   API → Tokens tab. Required for the backend to read products and gallery
   photos and to write orders.
+
+**For the order PII split (DynamoDB + admin routes):**
+- `ORDERS_TABLE_NAME` — `meryl-green-designs-orders` (the table name
+  `bin/dynamodb-local-up.sh` creates locally; matches prod)
+- `DYNAMODB_ENDPOINT` — `http://localhost:4566` for local dev. Leave
+  **unset** in production so the SDK uses the real AWS endpoint.
+- `ADMIN_API_TOKEN` — bearer token guarding `/admin/orders/:ref/*`. The
+  Studio's PII panels (`studio/.env` → `SANITY_STUDIO_ADMIN_TOKEN`) must
+  match. Any high-entropy string is fine locally; rotate via SOPS in prod.
+- `STUDIO_ORIGINS` — comma-separated CORS allowlist for admin routes.
+  Locally `http://localhost:3333`; in prod the deployed Studio URL.
 
 **Optional but useful:**
 - `SANITY_WEBHOOK_SECRET` — only needed if you're testing the order-status
@@ -112,9 +149,14 @@ Edit `frontend/.env`:
 
 The backend writes customer order PII to a private DynamoDB table (see
 [`orders-pii-split-plan.md`](./orders-pii-split-plan.md) for the
-architecture). Local dev runs against a `docker compose` container —
+architecture). Local dev runs against a `docker compose` LocalStack
+container that emulates the DynamoDB API on `:4566` —
 production hits the AWS-hosted table, and the two are isolated:
 **`bin/dynamodb-local-up.sh` will never touch the prod table**.
+
+(Why LocalStack and not `amazon/dynamodb-local`: the Java/Jetty image
+reproducibly hangs the AWS SDK on Fedora 43 / kernel 6.19. See
+`docker-compose.yml` for the full note.)
 
 ```bash
 pnpm dev:db:up    # or directly: ./bin/dynamodb-local-up.sh
@@ -123,11 +165,13 @@ pnpm dev:db:up    # or directly: ./bin/dynamodb-local-up.sh
 This is idempotent. It:
 
 1. Starts the `localstack` service from `docker-compose.yml` if it
-   isn't already running (port `8000`, persistent volume).
-2. Waits for the port to accept connections.
+   isn't already running (edge gateway on port `4566`, persistent volume).
+2. Waits for LocalStack's `/_localstack/health` to report DynamoDB ready.
 3. Creates the `meryl-green-designs-orders` table on first run with the
    same schema as prod (`orderRef` hash key, `ttl` for auto-deletion).
-4. Enables TTL on the `ttl` attribute.
+4. Enables TTL on the `ttl` attribute (LocalStack accepts the API but
+   doesn't actually expire items — TTL behaviour is only verified against
+   real prod DynamoDB).
 
 The backend reads `DYNAMODB_ENDPOINT=http://localhost:4566` from
 `backend/.env` and routes the SDK there with dummy credentials. **If
@@ -169,7 +213,7 @@ script's startup banner.
 `--overwrite` forces an unconditional re-import (slower; only use if
 you suspect drift between Sanity and DynamoDB).
 
-A reverse-backfill is also wired up for the Phase 1 rollback case:
+A reverse-backfill is wired up for the Phase 1 rollback case:
 
 ```bash
 pnpm restore:sanity-pii:dry                     # report-only
@@ -177,10 +221,18 @@ pnpm restore:sanity-pii                         # patch Sanity from DynamoDB
 pnpm restore:sanity-pii -- --overwrite --yes    # rare; clobbers operator edits
 ```
 
-In Phase 0 it's a no-op because Sanity still has every PII field; the
-script only writes when a Sanity field is null/empty. Run the dry-run
-periodically to confirm the rollback path still works against real
-data — it should report `skipped` for every order until cutover.
+Post-cutover (Phase 1 live since 2026-05-13), this script writes the
+DynamoDB PII fields back onto the Sanity skeleton — only used in a
+genuine rollback. The dry-run is the safest way to verify the rollback
+path still works against real data.
+
+And `scrub:sanity-pii` deletes any historical PII fields still attached
+to old Sanity order documents (the cleanup step after the cutover):
+
+```bash
+pnpm scrub:sanity-pii:dry                       # report-only
+pnpm scrub:sanity-pii                           # actually delete
+```
 
 #### Safety gates on the backfill/restore scripts
 
@@ -265,7 +317,9 @@ pnpm studio dev
 
 This starts Sanity Studio on [http://localhost:3333](http://localhost:3333).
 Sign in with the Sanity account that owns the project. Any products you
-create/edit and publish become visible to the frontend on the next build.
+create/edit and publish become visible to the frontend within seconds —
+the shop and gallery pages fetch from the backend at runtime, so no
+rebuild is required.
 
 To publish the studio so Meryl can use it from anywhere:
 
@@ -329,8 +383,8 @@ A new document appears under **Orders** in the studio. Change its status
 
 **5. Open the tracking link**
 
-The customer email contains a `/track?token=…` link. Open it — the track
-page should show the current order status.
+The customer email contains a `/track?ref=…&email=…` link. Open it — the
+track page should show the current order status.
 
 **6. (Optional) Test the status-change email**
 
@@ -437,11 +491,17 @@ To close the loop, expose the backend with ngrok:
 
 **1. Install and authenticate** (one-time)
 
+ngrok has no dnf/apt package; download the official tarball and drop
+the binary on your `PATH` (e.g. `~/.local/bin/`):
+
 ```bash
-brew install ngrok
+curl -fsSL https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz \
+  | tar -xz -C ~/.local/bin/ ngrok
 # Grab your authtoken from https://dashboard.ngrok.com/get-started/your-authtoken
 ngrok config add-authtoken <YOUR_TOKEN>
 ```
+
+On macOS use `brew install ngrok` instead.
 
 **2. Start the tunnel** (leave running in its own terminal)
 
