@@ -22,7 +22,8 @@ vi.mock('../orders-store.js', () => ({
 	getOrderByRef: vi.fn(),
 	updateOrderStatus: vi.fn(),
 	updateOrderTracking: vi.fn(),
-	updateOrderInternalNotes: vi.fn()
+	updateOrderInternalNotes: vi.fn(),
+	recordFailedItn: vi.fn()
 }));
 
 import { createApp } from '../app.js';
@@ -103,6 +104,8 @@ describe('POST /webhooks/payfast-itn', () => {
 		vi.stubEnv('PAYFAST_PASSPHRASE', PASSPHRASE);
 		vi.mocked(ordersStore.getOrderByRef).mockReset();
 		vi.mocked(ordersStore.updateOrderStatus).mockReset();
+		vi.mocked(ordersStore.recordFailedItn).mockReset();
+		vi.mocked(ordersStore.recordFailedItn).mockResolvedValue();
 		vi.mocked(email.sendEmail).mockReset();
 		vi.mocked(email.sendEmail).mockResolvedValue(undefined);
 	});
@@ -183,6 +186,44 @@ describe('POST /webhooks/payfast-itn', () => {
 		const body = buildItnBody({ payment_status: 'CANCELLED' });
 		const res = await postItn(urlEncode(body));
 		expect(res.status).toBe(200);
+	});
+
+	it('records the pf_payment_id marker after sending the failed-payment email', async () => {
+		// Audit L-3: the marker is what suppresses retry deliveries of
+		// the same FAILED ITN. Without it, PayFast's 24h retry storm
+		// would email the customer once per retry.
+		vi.mocked(ordersStore.getOrderByRef).mockResolvedValueOnce(sanityOrder());
+		const body = buildItnBody({ payment_status: 'CANCELLED' });
+		await postItn(urlEncode(body));
+		expect(ordersStore.recordFailedItn).toHaveBeenCalledWith('MG-260413-AB12', '1234567');
+	});
+
+	it('does NOT re-send the failed-payment email if the marker matches the incoming pf_payment_id', async () => {
+		// PayFast retry of the same FAILED ITN: same orderRef, same
+		// pf_payment_id. The order row already carries the marker
+		// from the previous delivery — suppress the email + skip the
+		// marker rewrite.
+		vi.mocked(ordersStore.getOrderByRef).mockResolvedValueOnce(
+			sanityOrder({ lastFailedItnPaymentId: '1234567' } as Partial<Order>)
+		);
+		const body = buildItnBody({ payment_status: 'CANCELLED' });
+		await postItn(urlEncode(body));
+		expect(email.sendEmail).not.toHaveBeenCalled();
+		expect(ordersStore.recordFailedItn).not.toHaveBeenCalled();
+	});
+
+	it('sends a fresh failed-payment email if the marker is for a DIFFERENT pf_payment_id', async () => {
+		// Customer abandons attempt #1 → FAILED ITN #1 stored.
+		// Customer retries, abandons attempt #2 → FAILED ITN #2 has a
+		// different pf_payment_id, so this is a NEW failed-payment
+		// event and the customer should hear about it.
+		vi.mocked(ordersStore.getOrderByRef).mockResolvedValueOnce(
+			sanityOrder({ lastFailedItnPaymentId: 'previous-failed-id' } as Partial<Order>)
+		);
+		const body = buildItnBody({ payment_status: 'CANCELLED' });
+		await postItn(urlEncode(body));
+		expect(email.sendEmail).toHaveBeenCalledOnce();
+		expect(ordersStore.recordFailedItn).toHaveBeenCalledWith('MG-260413-AB12', '1234567');
 	});
 
 	it('returns 200 but does not update when order is not found', async () => {

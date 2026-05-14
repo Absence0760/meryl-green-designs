@@ -72,6 +72,13 @@ export type OrderPii = {
 	internalNotes: string | null;
 	createdAt: string;
 	ttl: number;
+	// Last PayFast `pf_payment_id` for which we sent the customer a
+	// "didn't go through" email. PayFast retries delivery of a failed
+	// ITN for up to 24h — without this marker the retry storm would
+	// re-fire the same email each retry. Set by recordFailedItn().
+	// `undefined` for rows pre-dating this feature; `null` for new
+	// rows that have not yet seen a failed payment.
+	lastFailedItnPaymentId?: string | null;
 };
 
 export type TrackingUpdate = {
@@ -93,6 +100,7 @@ export type Order = SanityOrder & {
 	trackingUrl: string | null;
 	shippingCarrier: string | null;
 	internalNotes: string | null;
+	lastFailedItnPaymentId?: string | null;
 };
 
 export type NewOrderInput = {
@@ -121,7 +129,8 @@ function buildPiiItem(input: NewOrderInput, createdAt: Date): OrderPii {
 		shippingCarrier: null,
 		internalNotes: null,
 		createdAt: createdAt.toISOString(),
-		ttl: Math.floor(createdAt.getTime() / 1000) + ONE_YEAR_SECONDS
+		ttl: Math.floor(createdAt.getTime() / 1000) + ONE_YEAR_SECONDS,
+		lastFailedItnPaymentId: null
 	};
 }
 
@@ -137,7 +146,8 @@ function mergeOrder(sanityOrder: SanityOrder, pii: OrderPii): Order {
 		trackingNumber: pii.trackingNumber,
 		trackingUrl: pii.trackingUrl,
 		shippingCarrier: pii.shippingCarrier,
-		internalNotes: pii.internalNotes
+		internalNotes: pii.internalNotes,
+		lastFailedItnPaymentId: pii.lastFailedItnPaymentId ?? null
 	};
 }
 
@@ -388,6 +398,31 @@ export async function incrementRetryAttempt(
 		}
 		throw err;
 	}
+}
+
+/**
+ * Idempotency marker for the failed-payment email path. The PayFast
+ * ITN handler calls this after sending the "didn't go through" email
+ * for a given `pf_payment_id`; subsequent retries of the same ITN
+ * read the marker via the existing order load and skip re-sending.
+ *
+ * `attribute_exists(orderRef)` keeps this write tied to a real PII
+ * row — phantom-row protection consistent with the rest of the file.
+ */
+export async function recordFailedItn(
+	orderRef: string,
+	pfPaymentId: string
+): Promise<void> {
+	const client = getDynamoClient();
+	await client.send(
+		new UpdateCommand({
+			TableName: getOrdersTableName(),
+			Key: { orderRef },
+			UpdateExpression: 'SET lastFailedItnPaymentId = :pid',
+			ExpressionAttributeValues: { ':pid': pfPaymentId },
+			ConditionExpression: 'attribute_exists(orderRef)'
+		})
+	);
 }
 
 export async function updateOrderInternalNotes(

@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { validateItn } from '../payfast.js';
-import { getOrderByRef, updateOrderStatus } from '../orders-store.js';
+import { getOrderByRef, recordFailedItn, updateOrderStatus } from '../orders-store.js';
 import { createRateLimiter } from '../rate-limit.js';
 import { sendEmail } from '../email.js';
 import { paymentFailedTemplate } from '../email-templates.js';
@@ -77,7 +77,20 @@ export function payfastItnRouter() {
 			// for up to 24h) must NOT email the customer — they've
 			// either succeeded on retry or moved on, and a "your payment
 			// didn't go through" email would be alarming.
-			if (order.status === 'pending_payment') {
+			//
+			// Audit L-3: PayFast retries delivery of the same failed
+			// ITN multiple times within 24h. Dedup on `pf_payment_id`
+			// so the customer only sees one "didn't go through" email
+			// per actual failed-payment event, not one per retry of
+			// that event. The marker is stored on the DynamoDB row by
+			// `recordFailedItn`; existing rows pre-dating this feature
+			// have `lastFailedItnPaymentId === undefined`, so the
+			// inequality below correctly triggers the first email +
+			// write after deploy.
+			if (
+				order.status === 'pending_payment' &&
+				order.lastFailedItnPaymentId !== result.pfPaymentId
+			) {
 				try {
 					const mail = paymentFailedTemplate(order);
 					await sendEmail({
@@ -85,14 +98,23 @@ export function payfastItnRouter() {
 						subject: mail.subject,
 						html: mail.html
 					});
+					// Marker write happens AFTER the send so we don't
+					// suppress the email if the previous run wrote the
+					// marker but Resend failed. Race: two concurrent
+					// FAILED ITNs for the same pf_payment_id might both
+					// see no marker and double-send. PayFast retries
+					// serially (one ITN at a time per merchant pair),
+					// so this race is theoretical.
+					await recordFailedItn(result.orderRef, result.pfPaymentId);
 				} catch (err) {
-					// Best-effort. PayFast still gets a 200 — no point
-					// asking PayFast to retry the ITN just because Resend
-					// hiccupped, and the customer can still retry via
-					// /track. Stringify the error to keep PII out of logs.
+					// Best-effort for both the email AND the marker
+					// write. PayFast still gets a 200 — no point asking
+					// PayFast to retry the ITN just because Resend or
+					// DynamoDB hiccupped, and the customer can still
+					// retry via /track.
 					const message = err instanceof Error ? err.message : String(err);
 					console.error(
-						`PayFast ITN: failed-payment email failed for ${result.orderRef}: ${message}`
+						`PayFast ITN: failed-payment email/marker failed for ${result.orderRef}: ${message}`
 					);
 				}
 			}
