@@ -46,8 +46,8 @@ anything in the repo) — see [`roadmap.md`](./roadmap.md).
   `ssr = false`.
 - **`theme-color` meta** — mobile browsers tint the address bar with the brand
   dark-green (`#2f4a25`).
-- **`robots.txt`** — allows all indexable routes, disallows `/track` (which
-  is per-order and useless to crawlers without query params).
+- **`robots.txt`** — allows all indexable routes, disallows `/track` and
+  `/payment` (both per-order and useless to crawlers without query params).
 - **Per-route SEO + Open Graph + Twitter Card tags** — every page has its own
   `<title>`, meta description, `og:title`, and `og:description` in
   `<svelte:head>`. Site-wide `og:type`, `og:site_name`, `og:image`, `og:url`,
@@ -355,18 +355,24 @@ Page copy and the closing CTA reflect that — visitors are guided to
 
 ## Content management (Sanity Studio)
 
-- **Studio package** (`studio/`) — a standalone Sanity Studio v3 app that the
+- **Studio package** (`studio/`) — a standalone Sanity Studio v5 (React 19) app that the
   shop owner logs into to manage products and orders. Runs locally during
   development and is deployed to a free `*.sanity.studio` URL for production
   use.
 - **Product schema** with fields: name, slug (auto-generated), blurb,
   description, price (ZAR), photos (with alt text and hotspot cropping),
   availability toggle, and display order.
-- **Order schema** with fields: order reference (read-only), status (radio:
-  pending payment → payment received → shipped → delivered → cancelled),
-  customer details, shipping address, items, tracking info, and private
-  internal notes. Meryl edits these; the backend creates them on order
-  submission.
+- **Order schema** (Phase 1 skeleton, post-PII-split — live since 2026-05-13):
+  order reference (read-only), status (radio: pending payment → payment
+  received → shipped → delivered → cancelled / payment failed), payment
+  method, amount in ZAR, payment ID. Customer details, shipping address,
+  cart items, tracking info, and internal notes are **not** stored on the
+  Sanity doc — they live in DynamoDB and surface in Studio via three
+  custom field components (`CustomerDetailsPanel`, `TrackingFields`,
+  `InternalNotesField`) that read/write the backend's `/admin/orders/:ref/*`
+  routes. Meryl edits status in Studio; the backend creates the
+  skeleton and DynamoDB row on order submission. See
+  [`orders-pii-split-plan.md`](./orders-pii-split-plan.md).
 - **Gallery photo schema** with fields: image (with alt text and hotspot
   cropping), caption, visible toggle, and display order. Meryl uploads
   photos here to populate the `/gallery` page.
@@ -410,24 +416,43 @@ Page copy and the closing CTA reflect that — visitors are guided to
   - `GET /testimonials` — list of visible testimonials from Sanity
     (called by the home page on hydration; section silently no-ops when
     empty)
+  - `POST /enquiries` — commission enquiry form (`/contact`), validates,
+    sends notification email to the owner, rate-limited per IP
   - `POST /orders` — create a new order (validates, looks up product
-    prices in Sanity, creates Sanity doc, sends owner notification, and
-    returns signed PayFast form data for redirect)
+    prices in Sanity, writes the PII row to DynamoDB, creates the Sanity
+    skeleton doc, sends owner notification, and returns signed PayFast
+    form data for redirect)
   - `GET /orders/:ref?email=…` — email-verified order lookup for the
-    customer-facing `/track` page
+    customer-facing `/track` page (joins DynamoDB PII + Sanity status)
+  - `POST /orders/:ref/retry-payment?email=…` — self-service retry for
+    failed/cancelled payments. Per-orderRef lifetime cap of 5, 7-day
+    window. See [`payment-retry-plan.md`](./payment-retry-plan.md).
+  - `GET /admin/orders/:ref`, `PATCH /admin/orders/:ref/tracking`,
+    `PATCH /admin/orders/:ref/internal-notes` — Studio-only PII routes
+    consumed by the Studio's custom field components. Gated by
+    `Authorization: Bearer <ADMIN_API_TOKEN>` (constant-time compare)
+    and CORS-narrowed to `STUDIO_ORIGINS`.
   - `POST /webhooks/sanity-order` — receives Sanity webhook on order update,
     verifies HMAC-SHA256 signature, sends the matching status email
   - `POST /webhooks/payfast-itn` — receives PayFast Instant Transaction
-    Notifications, validates the MD5 signature + amount, and updates the
-    order status to `payment_received` (which triggers the Sanity webhook
-    above)
-- **Validation**: required fields (name, email, address, items) must be present;
+    Notifications, validates the MD5 signature **over the raw body** and
+    the amount, and updates the order status to `payment_received` plus
+    `paymentId` (which triggers the Sanity webhook above). Failed-ITN
+    dedup marker in DynamoDB suppresses duplicate failure emails across
+    PayFast's 24h retry window.
+- **Validation**: required fields (name, email, address, `cart`) must be present;
   email must look like an email; fields have maximum lengths.
 - **Order reference**: generated server-side as `MG-{YY}{MM}{DD}-{4 random
-  alphanumerics}`. Stored on the Sanity order document as `orderRef`.
-- **Sanity-backed order storage**: every submitted order becomes a Sanity
-  document, visible in Studio. Meryl manages the order lifecycle by editing
-  the `status` field in Studio.
+  alphanumerics}`. Stored on the Sanity order document as `orderRef` and
+  used as the partition key on the DynamoDB PII row.
+- **Two-store order persistence**: every submitted order is split across
+  two stores — a DynamoDB row holds PII (customer name, email, phone,
+  shipping address, line items, internal notes, tracking info) and a
+  Sanity document holds the non-PII skeleton (status, payment method,
+  amount, payment ID). The dual-write goes through `orders-store.ts` with
+  a compensating delete if the Sanity write fails. Meryl manages the order
+  lifecycle by editing the `status` field in Studio; the PII panels read
+  and write the DynamoDB row via the backend's admin routes.
 - **Status-keyed email templates**: all customer emails live in
   `backend/src/email-templates.ts`, keyed by order status. Adding a new status
   or changing wording happens in one file.
