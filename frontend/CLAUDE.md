@@ -74,6 +74,17 @@ Both pages build the PayFast form via DOM API calls (no `{@html}`,
 no `innerHTML` assignment). The same pattern as `Cart.svelte`'s
 `redirectToPayFast` — preserve it when editing these pages.
 
+Both surfaces (plus `Cart.svelte`) render the shared
+`src/lib/PayFastRedirecting.svelte` spinner block once the retry POST
+returns signed form data, replacing the CTA before `form.submit()`
+triggers the cross-origin navigation. Without it a slow PayFast
+redirect looks identical to a hung click. If you add a fourth retry
+surface, render the same component the moment your `redirecting`
+flag flips. The e2e coverage lives in
+`playwright/tests/orders/payment-retry-spinner.spec.ts` and stubs
+`HTMLFormElement.prototype.submit` to freeze the page in the
+post-redirect-decision state for assertion.
+
 Full design + threat model: `docs/payment-retry-plan.md`.
 
 ## SPA fallback for dynamic routes
