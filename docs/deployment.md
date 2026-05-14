@@ -921,6 +921,16 @@ If you missed the confirmation email (spam, deleted, wrong address),
 go to the SNS console → Subscriptions, find the `ops-alerts`
 subscription, choose "Request confirmation", and re-click the link.
 
+**Expected first-deploy alarm.** The
+`meryl-green-designs-auto-cancel-no-recent-invocation` alarm uses
+`treat_missing_data = "breaching"` with a 24h window. Immediately after
+first apply there are no `Invocations` metrics yet, so the alarm flips
+to `ALARM` and triggers a notification within minutes — *before* the
+06:00 UTC cron has had a chance to run. This is expected and harmless.
+The alarm resolves to `OK` after the first successful daily invocation
+(at most 24h later). Don't chase the first-deploy alert as a real
+incident.
+
 ### Triggers summary
 
 | When this happens | What gets deployed | How it's triggered |

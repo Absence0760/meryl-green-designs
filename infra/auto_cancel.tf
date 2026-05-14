@@ -213,8 +213,17 @@ resource "aws_cloudwatch_metric_alarm" "auto_cancel_no_recent_invocation" {
 #
 # EventBridge's default retry policy for Lambda targets is two retries
 # over 24h; if both retries fail, the event is silently dropped. A DLQ
-# captures the dropped events so we can re-fire them (or at minimum
-# notice the drop via the CloudWatch alarms above).
+# captures the dropped events so the operator can notice and (rarely)
+# re-fire them.
+#
+# Recovery path: in practice, the CloudWatch alarm on Invocations < 1
+# fires before the DLQ becomes interesting; the right response is
+# "re-enable / re-target the EventBridge rule in the AWS console and
+# wait for the next 06:00 UTC tick", not "drain the DLQ". If you DO
+# need to inspect the DLQ contents, use the AWS console with your
+# admin credentials — the GitHub Actions deploy role intentionally
+# does NOT have sqs:ReceiveMessage on this queue because no automated
+# path needs to read it.
 # ----------------------------------------------------------------------------
 
 resource "aws_sqs_queue" "auto_cancel_dlq" {
