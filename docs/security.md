@@ -136,11 +136,24 @@ to look up strangers' orders on `/track`.
 
 **Current mitigations:**
 - `XXXXXX` is 6 random base-36 characters (~2.2 billion combinations per day).
-- `GET /orders/:ref` requires an email parameter that must match the order's
-  `customerEmail` (case-insensitive). Without the email, the endpoint
-  returns 404.
+- `GET /orders/:ref` and `POST /orders/:ref/retry-payment` both require an
+  email parameter that must match the order's `customerEmail`
+  (case-insensitive). Without the email, the endpoint returns 404.
 - A **wrong email** returns 404 (not 403), so an attacker can't distinguish
-  "real ref, wrong email" from "fake ref". Covered by tests.
+  "real ref, wrong email" from "fake ref". The retry endpoint extends this
+  to every fail state: malformed ref, missing email, wrong status, and
+  out-of-window all share a single 404 body. Covered by tests
+  (`payment-retry.test.ts § no-enumeration policy`).
+- Email comparison goes through a shared SHA-256 + `timingSafeEqual`
+  helper (`backend/src/email-match.ts`) so a timing oracle can't leak the
+  stored email one byte at a time. The helper hashes both sides before
+  comparing — `timingSafeEqual` operates on fixed-length digests, closing
+  the length-based side channel too.
+- The retry endpoint adds an **atomic per-orderRef lifetime cap** of 5
+  attempts, enforced by a DynamoDB `UpdateCommand` ConditionExpression
+  (`incrementRetryAttempt` in `orders-store.ts`). The counter only
+  increments AFTER auth + status + window checks pass, so a
+  wrong-email spray can't burn a legit customer's retry slots.
 
 **Residual risk:**
 - The 20/min lookup rate limit caps brute-force attempts at ~28k/day per
@@ -148,6 +161,11 @@ to look up strangers' orders on `/track`.
   verification, fully enumerating one day's refs from a single IP would
   take ~78,000 days; from 1,000 distributed IPs, ~78 days. Computationally
   infeasible at any realistic scale.
+- The retry endpoint accepts the customer email as a `?email=` URL query
+  parameter (POST). Email values won't reach CloudWatch (logs only
+  `orderRef + action + result`), but they may surface in API Gateway
+  access logs if those are ever enabled — neither is currently configured
+  to capture access logs.
 
 ---
 

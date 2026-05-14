@@ -34,6 +34,7 @@ Mounted in `src/app.ts`. Each route file lives under `src/routes/` and exports a
 - `GET /products`, `GET /products/:slug`, `GET /gallery`, `GET /testimonials` — Sanity reads
 - `POST /orders` — validate, look up prices in Sanity (server-side total — never trust client amount), create order doc, send owner email, return signed PayFast form data
 - `GET /orders/:ref?email=` — email-verified track lookup. **Wrong email returns 404, not 403** (no enumeration).
+- `POST /orders/:ref/retry-payment?email=` — self-service payment retry. Same no-enumeration policy (every fail path is 404). Atomic per-orderRef lifetime cap of 5 (DynamoDB `ConditionExpression`); cap placed AFTER auth checks so a wrong-email spray can't lock out a legit customer. 7-day window. See `docs/payment-retry-plan.md`.
 - `POST /webhooks/sanity-order` — verify HMAC-SHA256 over **raw body** before parsing, then dispatch status email
 - `POST /webhooks/payfast-itn` — verify MD5 sig **over the raw body** (PayFast signs with PHP `urlencode` and includes empty fields; re-encoding from the parsed body produces a mismatch) + amount, update order to `payment_received`
 - `GET /admin/orders/:ref`, `PATCH /admin/orders/:ref/tracking`, `PATCH /admin/orders/:ref/internal-notes` — Studio-only PII routes. Gated by `Authorization: Bearer <ADMIN_API_TOKEN>` (constant-time compare). CORS narrowed to `STUDIO_ORIGINS`. Handlers may only log `orderRef + action + result` — never PII values; regression-guarded in `email.test.ts`.

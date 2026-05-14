@@ -1,7 +1,43 @@
 # Payment retry flow — design proposal
 
-**Status:** proposed, not implemented.
+**Status:** implemented (2026-05-14).
 **Related:** `docs/orders-and-tracking.md`, `docs/security.md`.
+
+## Implementation notes (post-design)
+
+- **Endpoint** lives in `backend/src/routes/payment-retry.ts`. Mounted under
+  `/orders/:ref/retry-payment` in `backend/src/app.ts`.
+- **`emailsMatch`** was extracted from `order-lookup.ts` to a shared module
+  `backend/src/email-match.ts` so both lookup and retry use the same
+  constant-time helper rather than duplicating the SHA-256 + `timingSafeEqual`
+  pattern.
+- **Retry adapter** `getOrderForRetry` and the atomic counter
+  `incrementRetryAttempt` live in `backend/src/orders-store.ts`. The adapter
+  picks the DynamoDB `createdAt` (not Sanity's `_createdAt`) for retry-window
+  math — see § Phase compatibility for the rationale.
+- **Step 4 placement deviation.** The design's original step ordering put
+  the per-orderRef counter increment BEFORE the email + status + window
+  checks (so it was "cheap, before any DB read"). Implementing strictly that
+  way would let a distributed attacker burn the customer's 5 lifetime retry
+  slots by spraying wrong-email attempts against a known orderRef. The
+  implementation moved the counter AFTER the auth checks: only genuinely
+  authenticated retries count against the cap. Logged here so anyone who
+  reads the design wondering "why doesn't the code match step 4?" finds
+  the answer.
+- **Failed-payment email** uses an orderRef-only tracking link
+  (`/track?ref=X`, no email param). The design called for this; the existing
+  `trackingLink()` helper still injects email for non-failed-payment
+  templates (where the customer hasn't been told anything alarming), and
+  this template builds its own URL to honour the no-email-in-URL rule.
+- **Outstanding open question** from the pre-implementation list: PayFast
+  `m_payment_id` reuse semantics are still unverified against the public
+  sandbox. The implementation assumes reuse works (most ITN-driven systems
+  do allow it because the gateway treats `m_payment_id` as a merchant-side
+  reference, not a primary key). Verify before launch by running through
+  the cancelled-payment + retry flow against `sandbox.payfast.co.za`. If
+  PayFast deduplicates, the design's fallback is `MG-YYMMDD-XXXXXX.rN`
+  encoding with the ITN handler stripping `.rN` — a localized change to
+  this route + a tiny tweak to `payfast-itn.ts`.
 
 ## Pre-implementation requirements
 

@@ -3,6 +3,7 @@ import { cors } from 'hono/cors';
 import { gallery } from './routes/gallery.js';
 import { ordersRouter } from './routes/orders.js';
 import { orderLookupRouter } from './routes/order-lookup.js';
+import { paymentRetryRouter } from './routes/payment-retry.js';
 import { enquiriesRouter } from './routes/enquiries.js';
 import { products } from './routes/products.js';
 import { testimonials } from './routes/testimonials.js';
@@ -55,6 +56,7 @@ export function createApp() {
 	// also a cleaner pattern in general.
 	app.route('/orders', ordersRouter());
 	app.route('/orders', orderLookupRouter());
+	app.route('/orders', paymentRetryRouter());
 	app.route('/enquiries', enquiriesRouter());
 	app.route('/webhooks', sanityWebhookRouter());
 	app.route('/webhooks/payfast-itn', payfastItnRouter());

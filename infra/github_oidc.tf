@@ -84,7 +84,12 @@ data "aws_iam_policy_document" "github_actions_permissions" {
       "lambda:UpdateFunctionCode",
       "lambda:GetFunction",
     ]
-    resources = [aws_lambda_function.backend.arn]
+    # Both the main backend Lambda and the daily auto-cancel Lambda are
+    # code-deployed by the same workflow (deploy-backend.yml).
+    resources = [
+      aws_lambda_function.backend.arn,
+      aws_lambda_function.auto_cancel.arn,
+    ]
   }
 }
 

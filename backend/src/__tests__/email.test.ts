@@ -9,7 +9,8 @@ vi.mock('../orders-store.js', () => ({
 import { escapeHtml, sendEmail } from '../email.js';
 import {
 	ownerNotification,
-	customerEmailForStatus
+	customerEmailForStatus,
+	paymentFailedTemplate
 } from '../email-templates.js';
 import type { Order } from '../orders-store.js';
 import { createApp } from '../app.js';
@@ -150,9 +151,14 @@ describe('ownerNotification', () => {
 });
 
 describe('customerEmailForStatus', () => {
-	it('returns a pending-payment acknowledgement for a new order', () => {
+	it('returns a pending-payment acknowledgement matching the Terms wording', () => {
+		// The Terms describe the post-POST-/orders email as the "Order
+		// received" acknowledgement (an offer, not an acceptance). The
+		// subject must use that literal string so what the customer reads
+		// in /terms matches what arrives in their inbox.
 		const mail = customerEmailForStatus(makeOrder({ status: 'pending_payment' }));
 		expect(mail).not.toBeNull();
+		expect(mail!.subject).toContain('Order received');
 		expect(mail!.subject).toContain('MG-260410-ABCD');
 		expect(mail!.html).toContain('MG-260410-ABCD');
 		expect(mail!.html.toLowerCase()).toMatch(/received|thank/);
@@ -169,10 +175,15 @@ describe('customerEmailForStatus', () => {
 		expect(mail!.html).not.toMatch(/\[\s*to be provided\s*\]/i);
 	});
 
-	it('returns a payment-received template', () => {
+	it('returns a payment-received template whose subject + heading match the Terms', () => {
+		// The Terms commit to a contract-formation trigger labelled
+		// "Order confirmed" — the subject AND visible heading have to
+		// carry that exact wording, or the contract description on
+		// /terms stops matching what the customer actually receives.
 		const mail = customerEmailForStatus(makeOrder({ status: 'payment_received' }));
-		expect(mail!.subject.toLowerCase()).toContain('payment received');
-		expect(mail!.html).toContain('Payment received');
+		expect(mail!.subject).toContain('Order confirmed');
+		expect(mail!.subject).toContain('MG-260410-ABCD');
+		expect(mail!.html).toContain('<h2>Order confirmed</h2>');
 		expect(mail!.html).toContain("confirmed your payment");
 	});
 
@@ -225,6 +236,44 @@ describe('customerEmailForStatus', () => {
 		);
 		expect(mail!.html).not.toContain('<img src=x');
 		expect(mail!.html).toContain('&lt;img src=x onerror=alert(1)&gt;');
+	});
+});
+
+describe('paymentFailedTemplate', () => {
+	it('subject and body include the orderRef and a payment-failure cue', async () => {
+		const mail = paymentFailedTemplate(makeOrder());
+		expect(mail.subject).toContain("didn't go through");
+		expect(mail.subject).toContain('MG-260410-ABCD');
+		expect(mail.html).toContain('MG-260410-ABCD');
+	});
+
+	it('links to /track only — never to the retry endpoint or with the email in the URL', async () => {
+		// Phishing-shape guard: the email must not link directly to
+		// the retry endpoint (which would normalise customers to
+		// clicking a payment-action URL from an email), and must not
+		// include the email value in any URL (Referer-leak when the
+		// customer clicks through).
+		const mail = paymentFailedTemplate(makeOrder({ customerEmail: 'jane@example.com' }));
+		expect(mail.html).not.toContain('retry-payment');
+		expect(mail.html).not.toContain('jane%40example.com');
+		expect(mail.html).not.toContain('jane@example.com');
+	});
+
+	it('includes the victim-spam disregard footer', async () => {
+		// docs/payment-retry-plan.md flags victim spam (attacker
+		// places orders with a third party's email) as a known abuse
+		// vector. The footer gives the third party context to
+		// disregard the email instead of being alarmed.
+		const mail = paymentFailedTemplate(makeOrder());
+		expect(mail.html).toMatch(/didn't place this order/i);
+	});
+
+	it('escapes HTML in the customer name', () => {
+		const mail = paymentFailedTemplate(
+			makeOrder({ customerName: '<script>alert(1)</script>' })
+		);
+		expect(mail.html).not.toContain('<script>alert');
+		expect(mail.html).toContain('&lt;script&gt;');
 	});
 });
 

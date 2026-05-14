@@ -12,6 +12,11 @@
 	let address = '';
 	let notes = '';
 	let website = '';
+	// Clickwrap acceptance — the Terms (/terms) tell the customer that
+	// ticking this box is the act of agreement, so the box must default
+	// to unchecked and the submit must be gated on it. CPA s49 prefers
+	// affirmative clickwrap over implied browsewrap for material terms.
+	let acceptedTerms = false;
 	let submitting = false;
 	let redirecting = false;
 	let error: string | null = null;
@@ -47,6 +52,11 @@
 		}
 		if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
 			error = 'Please enter a valid email address.';
+			return;
+		}
+		if (!acceptedTerms) {
+			error =
+				'Please confirm you have read and accepted the Terms, Refund & Returns Policy, and Privacy Policy.';
 			return;
 		}
 
@@ -190,9 +200,29 @@
 
 					<label for="cart-notes">Notes <span class="optional">(optional)</span></label>
 					<textarea id="cart-notes" rows="2" placeholder="Any special requests…" bind:value={notes}></textarea>
+
+					<label class="terms-accept" for="cart-terms">
+						<input
+							id="cart-terms"
+							type="checkbox"
+							required
+							bind:checked={acceptedTerms}
+						/>
+						<span>
+							I have read and accept the
+							<a href="/terms" target="_blank" rel="noopener">Terms</a>,
+							<a href="/returns" target="_blank" rel="noopener">Refund &amp; Returns Policy</a>,
+							and <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a>.
+							<span class="req">*</span>
+						</span>
+					</label>
 				</div>
 
-				<button class="checkout-btn" on:click={handleCheckout} disabled={submitting}>
+				<button
+					class="checkout-btn"
+					on:click={handleCheckout}
+					disabled={submitting || !acceptedTerms}
+				>
 					{#if submitting}
 						Processing…
 					{:else}
@@ -453,6 +483,36 @@
 		padding: 8px 12px;
 		font-size: 0.85rem;
 		border-radius: 2px;
+	}
+
+	.terms-accept {
+		display: flex;
+		align-items: flex-start;
+		gap: 8px;
+		margin-top: 12px;
+		font-size: 0.8rem;
+		font-weight: 400;
+		text-transform: none;
+		letter-spacing: normal;
+		color: var(--color-ink);
+		line-height: 1.4;
+		cursor: pointer;
+	}
+
+	.terms-accept input[type='checkbox'] {
+		flex-shrink: 0;
+		margin-top: 2px;
+		width: auto;
+		accent-color: var(--color-leaf-dark);
+	}
+
+	.terms-accept a {
+		color: var(--color-leaf-dark);
+		text-decoration: underline;
+	}
+
+	.terms-accept a:hover {
+		text-decoration: none;
 	}
 
 	.hp {

@@ -1,21 +1,8 @@
 import { Hono } from 'hono';
-import { createHash, timingSafeEqual } from 'node:crypto';
 import { getOrderByRef, type Order } from '../orders-store.js';
 import { type OrderStatus } from '../sanity.js';
 import { createRateLimiter } from '../rate-limit.js';
-
-// Constant-time email equality. Plain `===` short-circuits at the first
-// differing byte, leaking the stored email one character at a time via
-// response-timing measurements. Hash both sides with SHA-256 first so
-// `timingSafeEqual` operates on fixed-length 32-byte digests, which
-// also closes the length-based side channel that would remain if we
-// compared raw buffers (real emails vary in length; a token-style
-// length-then-compare check would leak the email length).
-function emailsMatch(a: string, b: string): boolean {
-	const aDigest = createHash('sha256').update(a).digest();
-	const bDigest = createHash('sha256').update(b).digest();
-	return timingSafeEqual(aDigest, bDigest);
-}
+import { emailsMatch } from '../email-match.js';
 
 type TrackingResponse = {
 	ref: string;

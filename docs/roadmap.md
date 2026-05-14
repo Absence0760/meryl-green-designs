@@ -195,33 +195,30 @@ traffic. Most are external, and each is documented with exact steps in
       personal inbox and looks more professional to the Regulator and
       CGSO. Resend or Zoho Mail can host this against the same
       verified sending domain.
-- [ ] **Clickwrap acceptance checkbox at checkout.** The Terms &amp;
-      Conditions reads "when you place an order you confirm, by ticking
-      the confirmation box at checkout, that you have read and accepted
-      these terms…" — that tickbox is referred to but doesn't yet
-      exist in the order form. Add a required checkbox to the cart-
-      panel submit step linking to /terms, /returns, /privacy. CPA
-      s49 prefers clickwrap over browsewrap for material terms; the
-      Information Regulator's draft online-consent guidance agrees.
-- [ ] **Auto-cancel stale `pending_payment` orders.** The Privacy
-      Policy commits to: orders that stay in `pending_payment` for
-      more than 30 days are automatically cancelled, and the 12-month
-      PII deletion clock then starts from that cancellation date. The
-      existing cleanup job only deletes PII from terminal-state
-      orders, so abandoned checkouts currently never reach a state the
-      cleanup touches. Either ship a scheduled job (Lambda + EventBridge,
-      or a daily cron in the existing reconciler design) that flips
-      stale `pending_payment` rows to `cancelled`, or reword the
-      Privacy Policy before launch — the current wording is a promise
-      the code doesn't keep.
-- [ ] **Order-confirmation email subject-line audit.** The Terms
-      distinguishes the "Order received" acknowledgement email (sent
-      after POST /orders) from the "Order confirmed" acceptance email
-      (sent after the payment ITN). The two subject lines must match
-      those exact strings in `backend/src/email-templates.ts` because
-      the Terms tells the customer the contract forms on receipt of
-      the second email. Verify the templates and update if they
-      diverge.
+- [x] **Clickwrap acceptance checkbox at checkout.** Required
+      checkbox added to the cart submit step (`frontend/src/lib/Cart.svelte`)
+      linking to /terms, /returns, /privacy. The Pay button is
+      disabled until the box is ticked, and `handleCheckout` blocks
+      submit with an error message if it's empty — defence-in-depth
+      against the disabled-attribute being bypassed via DOM
+      manipulation.
+- [x] **Auto-cancel stale `pending_payment` orders.** Daily
+      EventBridge-scheduled Lambda (`backend/src/auto-cancel-lambda.ts`)
+      at 06:00 UTC scans Sanity for `pending_payment` orders older
+      than `AUTO_CANCEL_DAYS` (default 30) and patches them to
+      `cancelled`. The status patch trips the existing Sanity webhook
+      which then fires the cancellation email to the customer. Trust
+      boundary kept tight: Sanity write token only, no DynamoDB /
+      Resend / PayFast surface from this Lambda. Infra in
+      `infra/auto_cancel.tf`; logic + unit tests in
+      `backend/src/auto-cancel.ts` and `__tests__/auto-cancel.test.ts`.
+- [x] **Order-confirmation email subject-line audit.** Verified —
+      `pendingPaymentTemplate` already used "Order received" in its
+      subject; `paymentReceivedTemplate` subject + heading updated
+      from "Payment received" to "Order confirmed" so the email that
+      arrives after the ITN matches the contract-trigger wording the
+      Terms quote. Regression-guarded in `backend/src/__tests__/email.test.ts`
+      (asserts both literal strings).
 
 ### External accounts
 - [ ] Resend account with verified sending domain (DNS propagation wait
@@ -275,12 +272,18 @@ None are blocking; pick the ones that match observed pain.
 - [x] Rate limiting on `POST /orders`, `GET /orders/:ref`, and the two
       webhook endpoints — per-IP fixed-window in-memory limiter
       (`backend/src/rate-limit.ts`)
-- [ ] **Self-service payment retry** for orders left in `pending_payment`
-      after a failed PayFast attempt. Same `orderRef` re-submitted to
-      PayFast so the eventual ITN updates the original Sanity doc instead
-      of orphaning it. Requires per-orderRef rate limit, 7-day retry
-      window, status guard, and a failed-payment email after 24h with no
-      successful ITN. **Full proposal:**
+- [x] **Self-service payment retry.** `POST /orders/:ref/retry-payment`
+      re-signs a PayFast form for the same `orderRef`, gated by the
+      shared `emailsMatch` helper, a status guard, a 7-day window, and
+      an atomic DynamoDB lifetime cap of 5 attempts (the cap sits
+      AFTER the auth checks so a distributed attacker can't burn
+      slots with wrong-email attempts — documented deviation from the
+      design). A failed PayFast ITN triggers a "didn't go through"
+      email with retry instructions (Option A); the email links to
+      `/track?ref=X` without the email param to avoid Referer-leak on
+      forwarding. Frontend surfaces: `/payment/cancelled` retry form
+      and a retry CTA on `/track` for in-window pending orders.
+      **Full implementation notes:**
       [`docs/payment-retry-plan.md`](./payment-retry-plan.md).
 - [ ] Structured product picker on the order form (checkboxes + quantities
       per product) — only worth it once there are enough products that

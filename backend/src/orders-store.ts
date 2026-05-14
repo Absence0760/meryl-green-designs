@@ -270,6 +270,126 @@ export async function updateOrderTracking(orderRef: string, tracking: TrackingUp
 	);
 }
 
+// ----------------------------------------------------------------------------
+// Self-service payment retry
+//
+// `getOrderForRetry` is the *only* read path the retry handler should use.
+// It returns the minimal set of fields needed for the 12-step fail-closed
+// flow in docs/payment-retry-plan.md and ensures the field names match
+// across Phase 0 (Sanity-only) and Phase 1 (Sanity skeleton + DynamoDB PII).
+//
+// In Phase 1, Sanity exposes `_createdAt` (with underscore — the Sanity
+// system field) and DynamoDB stores `createdAt` (no underscore, set by
+// buildPiiItem). The DynamoDB value is the canonical one for retry-window
+// math because it's set at order creation by orders-store and never
+// touched after; the Sanity `_createdAt` is a sibling that says the same
+// thing. We pick the DynamoDB value to avoid two-source ambiguity.
+// ----------------------------------------------------------------------------
+
+export type RetryReadModel = {
+	status: OrderStatus;
+	amountZar: number;
+	createdAt: string;
+	customerEmail: string;
+	// First-name + last-name source for the re-signed PayFast form.
+	// Without this, the retry handler would have to substitute an
+	// empty string, which `buildPaymentFormData` puts into the form
+	// fields as `name_first=""` but excludes from the signature —
+	// PayFast may reject the signature mismatch (see audit M-3).
+	customerName: string;
+};
+
+export async function getOrderForRetry(orderRef: string): Promise<RetryReadModel | null> {
+	// Direct parallel join. Earlier versions called `getOrderByRef()`
+	// (which itself fetches both halves) AND a second `getOrderPii()`,
+	// duplicating the DynamoDB read on every retry. Reading both
+	// halves here once is identical in latency to `getOrderByRef`
+	// alone, and avoids the wasted read unit. See audit H-1.
+	const [sanityOrder, pii] = await Promise.all([
+		getSanityOrderByRef(orderRef),
+		getOrderPii(orderRef)
+	]);
+	if (!sanityOrder || !pii) return null;
+	// Fail-closed if the stored `amountZar` is null. The Sanity
+	// schema allows it; re-signing a PayFast form with no amount
+	// would either be rejected by PayFast or (worse) accepted as
+	// zero. Surfacing 404 here flags this as upstream data corruption
+	// rather than silently producing a broken payment form.
+	if (sanityOrder.amountZar == null) return null;
+	return {
+		status: sanityOrder.status,
+		amountZar: sanityOrder.amountZar,
+		// Both halves of the join carry the order's creation time. The
+		// DynamoDB `createdAt` was set by `buildPiiItem` at the same
+		// instant as the Sanity write, so it's a faithful proxy for
+		// "when the order existed". Picking it (not `_createdAt`)
+		// keeps the retry-window math monotonic if Sanity's clock
+		// skews relative to AWS.
+		createdAt: pii.createdAt,
+		customerEmail: pii.customerEmail,
+		customerName: pii.customerName
+	};
+}
+
+/**
+ * Atomic per-orderRef retry counter. Increments `retryAttempts` by one
+ * on the DynamoDB order row, gated by a `ConditionExpression` that
+ * caps lifetime attempts at `max` (default 5 — see
+ * docs/payment-retry-plan.md § Per-orderRef rate limit for the
+ * lifetime-vs-sliding-window rationale).
+ *
+ * Throws when the cap is exceeded (the DynamoDB SDK throws
+ * `ConditionalCheckFailedException`; we re-throw a typed error so the
+ * route handler can distinguish "rate limit" from "DynamoDB down").
+ *
+ * `lastRetryAt` is written for operator visibility (Meryl can see when
+ * the customer last tried), not for the enforcement logic. The
+ * condition only inspects `retryAttempts`.
+ */
+export class RetryLimitExceededError extends Error {
+	constructor(public readonly orderRef: string) {
+		super(`Retry limit exceeded for ${orderRef}`);
+		this.name = 'RetryLimitExceededError';
+	}
+}
+
+export async function incrementRetryAttempt(
+	orderRef: string,
+	max: number
+): Promise<void> {
+	const client = getDynamoClient();
+	try {
+		await client.send(
+			new UpdateCommand({
+				TableName: getOrdersTableName(),
+				Key: { orderRef },
+				UpdateExpression: 'ADD retryAttempts :one SET lastRetryAt = :now',
+				// The condition closes the TOCTOU window: two concurrent
+				// requests both attempt the update, but only the one whose
+				// pre-update `retryAttempts` value still satisfies the cap
+				// succeeds. The other gets ConditionalCheckFailedException.
+				ConditionExpression:
+					'attribute_not_exists(retryAttempts) OR retryAttempts < :max',
+				ExpressionAttributeValues: {
+					':one': 1,
+					':max': max,
+					':now': new Date().toISOString()
+				}
+			})
+		);
+	} catch (err: unknown) {
+		// AWS SDK v3 surfaces ConditionalCheckFailedException as a typed
+		// error whose `.name` carries the expected string. Re-throw a
+		// domain-specific error so the route handler can map it to 429
+		// without sniffing AWS-internal names.
+		const name = (err as { name?: string })?.name;
+		if (name === 'ConditionalCheckFailedException') {
+			throw new RetryLimitExceededError(orderRef);
+		}
+		throw err;
+	}
+}
+
 export async function updateOrderInternalNotes(
 	orderRef: string,
 	internalNotes: string | null

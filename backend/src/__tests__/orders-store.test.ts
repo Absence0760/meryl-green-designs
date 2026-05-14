@@ -395,3 +395,146 @@ describe('ordersStore.updateOrderInternalNotes', () => {
 		expect(call.ConditionExpression).toBe('attribute_exists(orderRef)');
 	});
 });
+
+// ---------------------------------------------------------------------------
+// Self-service payment retry adapter
+// ---------------------------------------------------------------------------
+
+function piiRow(overrides: Partial<{ customerEmail: string; createdAt: string }> = {}) {
+	return {
+		orderRef: 'MG-260410-ABCD',
+		customerName: 'Jane Smith',
+		customerEmail: 'jane@example.com',
+		customerPhone: '0123456789',
+		shippingAddress: '1 Test Street',
+		items: '1 x Small Screen',
+		customerNotes: null,
+		trackingNumber: null,
+		trackingUrl: null,
+		shippingCarrier: null,
+		internalNotes: null,
+		createdAt: '2026-04-10T12:00:00Z',
+		ttl: 1_800_000_000,
+		...overrides
+	};
+}
+
+describe('ordersStore.getOrderForRetry', () => {
+	beforeEach(() => {
+		ddbMock.reset();
+		vi.mocked(sanity.getOrderByRef).mockReset();
+	});
+
+	it('returns a model with status, amountZar, createdAt, email and name', async () => {
+		vi.mocked(sanity.getOrderByRef).mockResolvedValueOnce(
+			sanityOrder({ amountZar: 450, status: 'pending_payment' })
+		);
+		ddbMock.on(GetCommand).resolves({ Item: piiRow() });
+
+		const model = await ordersStore.getOrderForRetry('MG-260410-ABCD');
+		expect(model).toEqual({
+			status: 'pending_payment',
+			amountZar: 450,
+			createdAt: '2026-04-10T12:00:00Z',
+			customerEmail: 'jane@example.com',
+			customerName: 'Jane Smith'
+		});
+	});
+
+	it('issues exactly one DynamoDB GetCommand per call (no double-read)', async () => {
+		// Audit H-1: earlier version called getOrderByRef (which itself
+		// fetches PII) plus a second getOrderPii — burning two reads
+		// per retry. Single parallel join means exactly one PII read.
+		vi.mocked(sanity.getOrderByRef).mockResolvedValueOnce(sanityOrder());
+		ddbMock.on(GetCommand).resolves({ Item: piiRow() });
+		await ordersStore.getOrderForRetry('MG-260410-ABCD');
+		expect(ddbMock.commandCalls(GetCommand)).toHaveLength(1);
+	});
+
+	it('returns null when the Sanity skeleton is missing', async () => {
+		vi.mocked(sanity.getOrderByRef).mockResolvedValueOnce(null);
+		ddbMock.on(GetCommand).resolves({ Item: piiRow() });
+		const model = await ordersStore.getOrderForRetry('MG-260410-ABCD');
+		expect(model).toBeNull();
+	});
+
+	it('returns null when the DynamoDB PII row is missing', async () => {
+		vi.mocked(sanity.getOrderByRef).mockResolvedValueOnce(sanityOrder());
+		ddbMock.on(GetCommand).resolves({});
+		const model = await ordersStore.getOrderForRetry('MG-260410-ABCD');
+		expect(model).toBeNull();
+	});
+
+	it('returns null when amountZar is null (fail-closed)', async () => {
+		// Sanity's schema allows null amountZar. Re-signing a PayFast form
+		// with no amount would either be rejected by PayFast or charge $0;
+		// either way we don't want it. Fail-closed so the retry route
+		// returns 404 instead of producing a broken form.
+		vi.mocked(sanity.getOrderByRef).mockResolvedValueOnce(
+			sanityOrder({ amountZar: null })
+		);
+		ddbMock.on(GetCommand).resolves({ Item: piiRow() });
+		const model = await ordersStore.getOrderForRetry('MG-260410-ABCD');
+		expect(model).toBeNull();
+	});
+
+	it('prefers the DynamoDB createdAt over Sanity._createdAt for retry-window math', async () => {
+		// Both sides carry a creation timestamp. Picking the DynamoDB
+		// value is monotonic with respect to PII insertion; Sanity's
+		// _createdAt could drift if Sanity's clock skews relative to AWS.
+		vi.mocked(sanity.getOrderByRef).mockResolvedValueOnce(
+			sanityOrder({ _createdAt: '2026-01-01T00:00:00Z' })
+		);
+		ddbMock.on(GetCommand).resolves({
+			Item: piiRow({ createdAt: '2026-04-10T12:00:00Z' })
+		});
+		const model = await ordersStore.getOrderForRetry('MG-260410-ABCD');
+		expect(model?.createdAt).toBe('2026-04-10T12:00:00Z');
+	});
+});
+
+describe('ordersStore.incrementRetryAttempt', () => {
+	beforeEach(() => {
+		ddbMock.reset();
+	});
+
+	it('sends an UpdateCommand with an atomic ADD + condition', async () => {
+		ddbMock.on(UpdateCommand).resolves({});
+
+		await ordersStore.incrementRetryAttempt('MG-260410-ABCD', 5);
+
+		const call = ddbMock.commandCalls(UpdateCommand)[0]!.args[0].input;
+		expect(call.Key).toEqual({ orderRef: 'MG-260410-ABCD' });
+		expect(call.UpdateExpression).toBe('ADD retryAttempts :one SET lastRetryAt = :now');
+		// The cap closes the concurrency window — verified by inspection
+		// of the ConditionExpression. The condition only inspects
+		// retryAttempts; no `attribute_exists(orderRef)` guard because
+		// the route handler ensures the order exists before calling this.
+		expect(call.ConditionExpression).toBe(
+			'attribute_not_exists(retryAttempts) OR retryAttempts < :max'
+		);
+		expect(call.ExpressionAttributeValues).toMatchObject({
+			':one': 1,
+			':max': 5
+		});
+		expect(typeof call.ExpressionAttributeValues![':now']).toBe('string');
+	});
+
+	it('throws RetryLimitExceededError when the cap is hit', async () => {
+		const err = new Error('cond fail') as Error & { name: string };
+		err.name = 'ConditionalCheckFailedException';
+		ddbMock.on(UpdateCommand).rejects(err);
+
+		await expect(
+			ordersStore.incrementRetryAttempt('MG-260410-ABCD', 5)
+		).rejects.toBeInstanceOf(ordersStore.RetryLimitExceededError);
+	});
+
+	it('rethrows non-condition errors as-is so the route logs them', async () => {
+		ddbMock.on(UpdateCommand).rejects(new Error('throttled'));
+
+		await expect(
+			ordersStore.incrementRetryAttempt('MG-260410-ABCD', 5)
+		).rejects.toThrow(/throttled/);
+	});
+});

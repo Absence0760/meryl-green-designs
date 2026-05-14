@@ -31,6 +31,16 @@
 	let loading = false;
 	let error: string | null = null;
 	let order: OrderResponse | null = null;
+	let retrying = false;
+	let retryError: string | null = null;
+
+	const RETRY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
+	$: canRetry =
+		order != null &&
+		order.status === 'pending_payment' &&
+		Number.isFinite(Date.parse(order.createdAt)) &&
+		Date.now() - Date.parse(order.createdAt) < RETRY_WINDOW_MS;
 
 	const STATUS_STEPS: Array<{ value: OrderResponse['status']; label: string }> = [
 		{ value: 'pending_payment', label: 'Pending payment' },
@@ -85,6 +95,60 @@
 	function handleSubmit(event: SubmitEvent) {
 		event.preventDefault();
 		void lookupOrder();
+	}
+
+	function submitToPayFast(payfast: { action: string; fields: Record<string, string> }) {
+		// DOM-built form, mirror of Cart.svelte:redirectToPayFast.
+		const form = document.createElement('form');
+		form.method = 'POST';
+		form.action = payfast.action;
+		for (const [name, value] of Object.entries(payfast.fields)) {
+			const input = document.createElement('input');
+			input.type = 'hidden';
+			input.name = name;
+			input.value = value;
+			form.appendChild(input);
+		}
+		document.body.appendChild(form);
+		form.submit();
+	}
+
+	async function handleRetry(event: SubmitEvent) {
+		// Form submit (not an <a href>) so the email isn't placed in a
+		// URL that PayFast would receive via the Referer header on the
+		// cross-origin redirect. Email is read from the in-memory
+		// `email` state, NOT from URL params on a click.
+		event.preventDefault();
+		if (!order || !canRetry) return;
+		retrying = true;
+		retryError = null;
+		try {
+			const url = `${apiUrl}/orders/${encodeURIComponent(order.ref)}/retry-payment?email=${encodeURIComponent(email.trim())}`;
+			const res = await fetch(url, { method: 'POST' });
+			if (res.status === 429) {
+				retryError =
+					"We've had too many retry attempts for this order in a short window. Please wait a few minutes, or contact us if it keeps failing.";
+				return;
+			}
+			if (!res.ok) {
+				retryError =
+					"We couldn't retry that order. Please contact us if the issue persists.";
+				return;
+			}
+			const data = (await res.json()) as {
+				payfast?: { action: string; fields: Record<string, string> };
+			};
+			if (data.payfast) {
+				submitToPayFast(data.payfast);
+				return;
+			}
+			retryError = "Couldn't reach PayFast. Please try again in a moment.";
+		} catch (e) {
+			console.error(e);
+			retryError = 'Could not reach the order service. Please try again.';
+		} finally {
+			retrying = false;
+		}
 	}
 
 	onMount(() => {
@@ -183,6 +247,25 @@
 							</li>
 						{/each}
 					</ol>
+				{/if}
+
+				{#if canRetry}
+					<section class="retry-section">
+						<h3>Payment hasn't gone through yet</h3>
+						<p>
+							Cards sometimes get declined for routine reasons. You can
+							retry payment for this order — you'll be redirected back to
+							PayFast.
+						</p>
+						<form on:submit={handleRetry}>
+							<button class="retry-btn" type="submit" disabled={retrying}>
+								{#if retrying}Retrying…{:else}Retry payment{/if}
+							</button>
+						</form>
+						{#if retryError}
+							<div class="alert alert--error">{retryError}</div>
+						{/if}
+					</section>
 				{/if}
 
 				<section class="order-section">
@@ -386,6 +469,47 @@
 
 	.status-step--current .status-step__marker {
 		background: var(--color-leaf-dark);
+	}
+
+	.retry-section {
+		padding: var(--space-2);
+		margin: var(--space-2) 0;
+		background: #fdf4e8;
+		border-left: 4px solid #c6952c;
+		border-radius: 2px;
+	}
+
+	.retry-section h3 {
+		margin: 0 0 var(--space-1);
+		font-size: 1rem;
+	}
+
+	.retry-section p {
+		margin: 0 0 var(--space-2);
+		font-size: 0.9rem;
+		line-height: 1.5;
+	}
+
+	.retry-btn {
+		background: var(--color-leaf-dark);
+		color: #f6f4ee;
+		border: none;
+		padding: 0.55rem var(--space-2);
+		font: inherit;
+		font-size: 0.85rem;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		cursor: pointer;
+		border-radius: 2px;
+	}
+
+	.retry-btn:hover {
+		background: #244019;
+	}
+
+	.retry-btn:disabled {
+		background: #a8afa0;
+		cursor: not-allowed;
 	}
 
 	.order-section {

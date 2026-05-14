@@ -203,6 +203,49 @@ There is no validation preventing "illegal" transitions (e.g. `shipped` back to
 Trying to enforce transitions adds UX friction for a small site where she may
 legitimately need to correct a mistake.
 
+#### Self-service payment retry
+
+When a PayFast payment fails (declined card, 3DS timeout, customer
+clicks "Cancel"), the order stays in `pending_payment`. The customer
+can retry without losing the order via either:
+
+1. The retry form on `/payment/cancelled?ref=X` (the page PayFast
+   redirects to on Cancel).
+2. The "Retry payment" CTA on `/track?ref=X&email=Y` (visible only
+   when status is `pending_payment` AND the order is within 7 days
+   of creation).
+
+Both call `POST /orders/:ref/retry-payment?email=...`. The handler
+re-signs a fresh PayFast form using the **same** `orderRef`, so the
+eventual successful ITN updates the original Sanity document
+(no duplicate `pending_payment` rows). Implementation in
+`backend/src/routes/payment-retry.ts`. Threat model + 12-step
+fail-closed flow in [`payment-retry-plan.md`](./payment-retry-plan.md).
+
+Per-orderRef lifetime cap of 5 retry attempts is enforced atomically
+on the DynamoDB row via a `ConditionExpression`. The cap is placed
+AFTER auth + status + window guards so a wrong-email spray attack
+can't lock out a legitimate customer's retries.
+
+A "Your payment didn't go through" email fires from the ITN handler
+on the non-COMPLETE branch when the order is still `pending_payment`
+— giving the customer immediate, actionable feedback. Late
+non-COMPLETE ITN duplicates for an already-paid order do NOT
+re-send the email (PayFast retries delivery for up to 24h).
+
+#### Auto-cancellation of abandoned `pending_payment` orders
+
+A daily EventBridge-scheduled Lambda
+(`backend/src/auto-cancel-lambda.ts`, infra `infra/auto_cancel.tf`)
+sweeps Sanity at 06:00 UTC for orders left in `pending_payment` for
+longer than `AUTO_CANCEL_DAYS` (default 30) and patches each one to
+`cancelled`. The status patch trips the existing `sanity-order` webhook,
+which dispatches the standard cancellation email to the customer
+(joining DynamoDB for the customer email along the way). Side effects
+are intentionally limited to flipping the Sanity status — DynamoDB PII
+is untouched, and its 365-day TTL continues to govern PII retention
+regardless of which terminal state the order reached.
+
 ## Flows
 
 ### 1. Creating an order

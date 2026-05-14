@@ -745,6 +745,21 @@ environment block. Update by editing tfvars and re-running `terraform apply`.
 | `ADMIN_API_TOKEN` | tfvars `admin_api_token` | Bearer token gating `/admin/*` routes that power the Studio's custom PII panels. Constant-time compared in `middleware/admin-auth.ts`. Must match the `ADMIN_API_TOKEN` GHA secret in the `production` environment (which `deploy-studio.yml` re-exports as `SANITY_STUDIO_ADMIN_TOKEN` at build time so the Studio bundle can call this Lambda). |
 | `STUDIO_ORIGINS` | tfvars `studio_origins` | Comma-separated origins permitted to call `/admin/*` (CORS scope, defence-in-depth alongside the bearer token). Empty disables the Studio's browser-side admin access without disabling direct API calls. |
 
+### Auto-cancel Lambda runtime env
+
+A separate Lambda function (`meryl-green-designs-auto-cancel`) runs on
+a daily EventBridge schedule and cancels stale `pending_payment` orders.
+Its environment is a strict subset of the main backend Lambda — Sanity
+write only, no DynamoDB / Resend / PayFast / admin surface. See
+`infra/auto_cancel.tf`.
+
+| Variable | Source | Purpose |
+|---|---|---|
+| `SANITY_PROJECT_ID` | tfvars `sanity_project_id` | Which Sanity project to patch |
+| `SANITY_DATASET` | tfvars `sanity_dataset` | Which dataset |
+| `SANITY_API_TOKEN` | tfvars `sanity_api_token` | Editor scope — needed to patch order status |
+| `AUTO_CANCEL_DAYS` | hardcoded `"30"` in `infra/auto_cancel.tf` | Days an order may sit in `pending_payment` before it's cancelled. Falls back to 30 if unparseable. |
+
 ### Frontend build-time env
 
 Set by GitHub Actions from the `production` environment → populated by

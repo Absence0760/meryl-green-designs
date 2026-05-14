@@ -316,6 +316,14 @@
 			fulfilment and respond to questions about your order.
 		</p>
 		<p>
+			If an order is left unpaid for more than <strong>30 days</strong>,
+			a scheduled job automatically cancels it. You receive a
+			cancellation email when this happens. The 365-day deletion
+			window above is unchanged — the personal details on a
+			cancelled order continue to expire on the original
+			schedule.
+		</p>
+		<p>
 			Application logs from our serverless backend are retained
 			for <strong>30 days</strong>. We do not currently capture
 			access logs from CloudFront or S3, so the only PII that

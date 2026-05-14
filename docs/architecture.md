@@ -90,6 +90,7 @@ meryl-green-designs/
 │           ├── testimonials.ts     GET /testimonials — list visible testimonials from Sanity
 │           ├── orders.ts           POST /orders — validate + create Sanity doc + PayFast/email
 │           ├── order-lookup.ts     GET /orders/:ref?email= — track page lookup
+│           ├── payment-retry.ts    POST /orders/:ref/retry-payment?email= — self-service retry
 │           ├── enquiries.ts        POST /enquiries — commission enquiry form → owner email
 │           ├── payfast-itn.ts      POST /webhooks/payfast-itn — PayFast payment confirmation
 │           └── sanity-webhook.ts   POST /webhooks/sanity-order — verify sig + dispatch email
@@ -110,7 +111,8 @@ meryl-green-designs/
 │   ├── variables.tf
 │   ├── outputs.tf            Values CI reads (bucket, distribution id, role ARN, etc.)
 │   ├── s3_cloudfront.tf      Bucket + OAC + cert + CloudFront (incl. /api/* → API Gateway behavior) + Route 53 records
-│   ├── lambda.tf             Function + exec role + log group
+│   ├── lambda.tf             Backend HTTP function + exec role + log group
+│   ├── auto_cancel.tf        Daily Lambda (EventBridge cron) that cancels stale pending_payment orders
 │   ├── api_gateway.tf        HTTP API + AWS_PROXY integration + default stage + invoke permission
 │   ├── github_oidc.tf        GitHub OIDC provider + CI role (trust-policied to `production` env) + scoped policy
 │   └── terraform.tfvars.example

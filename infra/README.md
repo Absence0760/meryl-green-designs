@@ -32,6 +32,11 @@ Terraform configuration for the Meryl Green Designs AWS resources.
   on, TTL on (drives POPIA retention — each row is deleted 365 days after
   creation), SSE with the AWS-managed `aws/dynamodb` key, `prevent_destroy`
   on. See `dynamodb.tf` and `docs/orders-pii-split-plan.md`.
+- **Daily auto-cancel Lambda + EventBridge schedule rule**
+  (`meryl-green-designs-auto-cancel`, 06:00 UTC daily) that flips
+  `pending_payment` Sanity orders older than 30 days to `cancelled`.
+  Honors the abandoned-checkout commitment in `/privacy`. Code in
+  `backend/src/auto-cancel-lambda.ts`; infra in `auto_cancel.tf`.
 
 For a full architectural picture see [`../docs/architecture.md`](../docs/architecture.md).
 For first-time deploy walkthrough see [`../docs/deployment.md`](../docs/deployment.md).

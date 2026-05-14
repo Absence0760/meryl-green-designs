@@ -27,6 +27,7 @@ vi.mock('../orders-store.js', () => ({
 
 import { createApp } from '../app.js';
 import * as ordersStore from '../orders-store.js';
+import * as email from '../email.js';
 
 const PASSPHRASE = 'test-passphrase';
 
@@ -102,6 +103,8 @@ describe('POST /webhooks/payfast-itn', () => {
 		vi.stubEnv('PAYFAST_PASSPHRASE', PASSPHRASE);
 		vi.mocked(ordersStore.getOrderByRef).mockReset();
 		vi.mocked(ordersStore.updateOrderStatus).mockReset();
+		vi.mocked(email.sendEmail).mockReset();
+		vi.mocked(email.sendEmail).mockResolvedValue(undefined);
 	});
 
 	afterEach(() => {
@@ -138,10 +141,48 @@ describe('POST /webhooks/payfast-itn', () => {
 	});
 
 	it('returns 200 but does not update for non-COMPLETE status', async () => {
+		// Order is loaded so we can decide whether to send a
+		// failed-payment email; on FAILED + pending we fire one.
+		vi.mocked(ordersStore.getOrderByRef).mockResolvedValueOnce(sanityOrder());
 		const body = buildItnBody({ payment_status: 'CANCELLED' });
 		const res = await postItn(urlEncode(body));
 		expect(res.status).toBe(200);
 		expect(ordersStore.updateOrderStatus).not.toHaveBeenCalled();
+		// FAILED + still-pending: customer gets a "didn't go through"
+		// email with retry guidance (docs/payment-retry-plan.md Option A).
+		expect(email.sendEmail).toHaveBeenCalledOnce();
+		const arg = vi.mocked(email.sendEmail).mock.calls[0]![0];
+		expect(arg.to).toBe('itn-test-placeholder@invalid');
+		expect(arg.subject).toContain("didn't go through");
+		expect(arg.subject).toContain('MG-260413-AB12');
+	});
+
+	it('does NOT send a failed-payment email on a late non-COMPLETE ITN for an already-paid order', async () => {
+		// PayFast retries ITN delivery for up to 24h. If a customer
+		// succeeds on retry between the first FAILED ITN and a late
+		// duplicate, the duplicate must not surprise them with a
+		// "didn't go through" email after they've already been
+		// charged. Guarded by the `status === 'pending_payment'`
+		// check inside the non-COMPLETE branch.
+		vi.mocked(ordersStore.getOrderByRef).mockResolvedValueOnce(
+			sanityOrder({ status: 'payment_received' })
+		);
+		const body = buildItnBody({ payment_status: 'CANCELLED' });
+		const res = await postItn(urlEncode(body));
+		expect(res.status).toBe(200);
+		expect(email.sendEmail).not.toHaveBeenCalled();
+	});
+
+	it('still acks PayFast 200 if the failed-payment email send throws', async () => {
+		// Best-effort: a Resend hiccup must not cause PayFast to
+		// re-deliver the ITN (which would retry the email storm).
+		// The customer can still retry via /track even without the
+		// email.
+		vi.mocked(ordersStore.getOrderByRef).mockResolvedValueOnce(sanityOrder());
+		vi.mocked(email.sendEmail).mockRejectedValueOnce(new Error('resend down'));
+		const body = buildItnBody({ payment_status: 'CANCELLED' });
+		const res = await postItn(urlEncode(body));
+		expect(res.status).toBe(200);
 	});
 
 	it('returns 200 but does not update when order is not found', async () => {

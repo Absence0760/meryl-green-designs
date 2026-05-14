@@ -78,14 +78,22 @@ function pendingPaymentTemplate(order: Order): { subject: string; html: string }
 }
 
 function paymentReceivedTemplate(order: Order): { subject: string; html: string } {
+	// The Terms (/terms § Placing an order) tell the customer that a
+	// contract forms only on receipt of the "Order confirmed" email
+	// — this template is that email. Both the subject and the heading
+	// have to use the literal "Order confirmed" string the Terms quote,
+	// or the customer-facing wording stops matching the contract trigger.
 	return {
-		subject: `Payment received — order ${order.orderRef}`,
+		subject: `Order confirmed ${order.orderRef} — Meryl Green Designs`,
 		html: `
-			<h2>Payment received</h2>
+			<h2>Order confirmed</h2>
 			<p>Hi ${escapeHtml(order.customerName)},</p>
 			<p>Thank you — we've confirmed your payment for order
-			<strong>${escapeHtml(order.orderRef)}</strong>. We'll be shipping your items
-			shortly and will send another email once they're on their way.</p>
+			<strong>${escapeHtml(order.orderRef)}</strong>. This email is our
+			acceptance of your order; a contract now exists between you and
+			Meryl Green Designs on the terms you accepted at checkout.</p>
+			<p>We'll start production and send another email once your
+			items are on their way.</p>
 			<p>You can check the status of your order at any time here:</p>
 			<p><a href="${trackingLink(order)}">${trackingLink(order)}</a></p>
 			<p>— Meryl Green Designs</p>
@@ -129,6 +137,47 @@ function deliveredTemplate(order: Order): { subject: string; html: string } {
 			marked as delivered. We hope you love it!</p>
 			<p>If anything isn't right, just reply to this email.</p>
 			<p>— Meryl Green Designs</p>
+		`
+	};
+}
+
+// Not status-driven (a failed PayFast attempt doesn't move the order
+// out of pending_payment — the customer can still retry). Fired
+// imperatively from payfast-itn.ts on the non-COMPLETE branch when
+// the order is found AND still pending. See docs/payment-retry-plan.md
+// § Payment-failed email for the Option A rationale + the
+// victim-spam mitigation footer required at the bottom.
+//
+// Uses a no-email tracking link (orderRef only). The customer types
+// their email fresh on /track — the email value never appears in the
+// email body, so a forwarded "your payment didn't go through" email
+// can't be turned into a credential leak by the recipient.
+export function paymentFailedTemplate(order: Order): { subject: string; html: string } {
+	const base = siteUrl().replace(/\/$/, '');
+	const refOnlyTrackingLink = `${base}/track?ref=${encodeURIComponent(order.orderRef)}`;
+	return {
+		subject: `Payment didn't go through — order ${order.orderRef}`,
+		html: `
+			<h2>Your payment didn't go through</h2>
+			<p>Hi ${escapeHtml(order.customerName)},</p>
+			<p>We weren't able to confirm payment for your order
+			<strong>${escapeHtml(order.orderRef)}</strong> this time. Cards sometimes
+			get declined for routine reasons — insufficient funds, a 3-D Secure
+			timeout, or a mistyped CVV — and a fresh attempt usually
+			succeeds.</p>
+			<p>You can try the payment again from the order tracking page:</p>
+			<p><a href="${refOnlyTrackingLink}">${refOnlyTrackingLink}</a></p>
+			<p>You'll need your email address to look up the order.
+			Retries are limited to 5 attempts per order; if none succeed
+			within 7 days, the order is cancelled automatically and we'll
+			let you know.</p>
+			<p>— Meryl Green Designs</p>
+			<hr style="border: none; border-top: 1px solid #ddd; margin: 1.5rem 0;">
+			<p style="font-size: 0.85rem; color: #666;">
+				Didn't place this order? Someone else may have used your
+				email by mistake. You can safely ignore this message —
+				no charge has been made and no account exists.
+			</p>
 		`
 	};
 }

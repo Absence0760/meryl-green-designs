@@ -105,16 +105,21 @@ jobs:
         working-directory: backend
         run: pnpm check
 
-      - name: Build Lambda bundle
+      - name: Build Lambda bundles (HTTP + auto-cancel)
         working-directory: backend
+        # `pnpm build` runs both `build:lambda` (dist/lambda.mjs — the
+        # main HTTP handler) and `build:auto-cancel` (dist/auto-cancel.mjs
+        # — the daily EventBridge-scheduled Sanity sweep). Two separate
+        # Lambda functions, two separate code uploads below.
         run: pnpm build
 
-      - name: Package Lambda zip
+      - name: Package Lambda zips
         working-directory: backend
         run: |
           cd dist
           zip -9 lambda.zip lambda.mjs
-          ls -lh lambda.zip
+          zip -9 auto-cancel.zip auto-cancel.mjs
+          ls -lh lambda.zip auto-cancel.zip
 
       - name: Configure AWS credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v6
@@ -122,9 +127,20 @@ jobs:
           role-to-assume: ${{ vars.AWS_ROLE_TO_ASSUME }}
           aws-region: ${{ vars.AWS_REGION }}
 
-      - name: Update Lambda function code
+      - name: Update main backend Lambda code
         run: |
           aws lambda update-function-code \
             --function-name "${{ vars.LAMBDA_FUNCTION_NAME }}" \
             --zip-file "fileb://backend/dist/lambda.zip" \
+            --publish
+
+      - name: Update auto-cancel Lambda code
+        # Function name is fixed by Terraform (`${local.project}-auto-cancel`
+        # in infra/auto_cancel.tf), so this is hardcoded rather than pulled
+        # from a GitHub Actions variable. If the project local renames, both
+        # sides update together.
+        run: |
+          aws lambda update-function-code \
+            --function-name "meryl-green-designs-auto-cancel" \
+            --zip-file "fileb://backend/dist/auto-cancel.zip" \
             --publish
