@@ -15,6 +15,14 @@ data "aws_iam_policy_document" "lambda_assume_role" {
 resource "aws_iam_role" "lambda" {
   name               = "${local.project}-backend-lambda"
   assume_role_policy = data.aws_iam_policy_document.lambda_assume_role.json
+
+  # Symmetric guard with the Lambda function + DynamoDB table — destroying
+  # the role would lock the running Lambda out of DynamoDB without removing
+  # the customer-PII table. Trip the flag deliberately if the role needs
+  # to be recreated.
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "lambda_basic" {

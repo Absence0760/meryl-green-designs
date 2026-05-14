@@ -156,6 +156,27 @@ propagate). After it finishes, Terraform prints the outputs — copy
 `github_actions_role_arn`, `api_url`, and `cloudfront_distribution_id`
 into your GitHub Actions workflow secrets/variables (see `docs/deployment.md`).
 
+## Post-apply checklist (don't skip)
+
+The first apply creates SNS topics and an email subscription for ops
+alerts (`meryl-green-designs-ops-alerts`). The subscription stays in
+**pending-confirmation** state until the recipient clicks the link
+in the "AWS Notification — Subscription Confirmation" email AWS
+sends to the configured `ops_alerts_email` (falls back to
+`owner_email` when unset).
+
+If the confirmation step is skipped, the auto-cancel Lambda's
+CloudWatch alarms (Errors > 0 and Invocations < 1 / 24h) fire
+silently — the topic publishes, but no notification reaches a
+human inbox.
+
+```bash
+# Verify the subscription is confirmed (not 'PendingConfirmation'):
+aws sns list-subscriptions-by-topic \
+  --topic-arn "$(terraform output -raw ops_alerts_topic_arn)" \
+  --region af-south-1
+```
+
 ## Rotating secrets
 
 To rotate `resend_api_key` (or `admin_api_token`, PayFast credentials,

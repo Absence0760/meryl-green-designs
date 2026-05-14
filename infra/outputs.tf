@@ -37,3 +37,8 @@ output "github_actions_role_arn" {
   description = "IAM role ARN that GitHub Actions assumes via OIDC. Copy this into the deploy workflows as AWS_ROLE_TO_ASSUME."
   value       = aws_iam_role.github_actions.arn
 }
+
+output "ops_alerts_topic_arn" {
+  description = "SNS topic ARN that auto-cancel + budget alarms publish to. Use to verify the post-apply email subscription is confirmed (not PendingConfirmation)."
+  value       = aws_sns_topic.ops_alerts.arn
+}

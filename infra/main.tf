@@ -10,6 +10,22 @@ terraform {
   # by bin/setup.sh on first run — if you run `terraform init` before the
   # script, you'll see a "bucket does not exist" error, which is the hint
   # to run the setup script instead.
+  #
+  # bin/setup.sh provisions the state bucket with the following hardening
+  # (not codified in this module because the bucket has to exist before
+  # `terraform init` can run against it):
+  #
+  #   - versioning enabled (so a botched apply can be rolled back)
+  #   - SSE-AES256 default encryption
+  #   - public access blocked (all four flags: BlockPublicAcls,
+  #     IgnorePublicAcls, BlockPublicPolicy, RestrictPublicBuckets)
+  #   - lifecycle rule expiring noncurrent versions after 30 days
+  #
+  # If you need to verify or repair the bucket settings, see
+  # bin/setup.sh's `bootstrap_state_backend` function. To codify them
+  # later, import the bucket + table into Terraform with `terraform
+  # import` before adding `aws_s3_bucket` / `aws_dynamodb_table`
+  # resources; until then the script is the source of truth.
   backend "s3" {
     bucket         = "meryl-green-designs-tfstate"
     key            = "prod/terraform.tfstate"
