@@ -28,22 +28,42 @@
 	    Returns until Meryl provides real business details)
 
 	Items the legal reviewer must specifically confirm or fill in:
-	  - The governing-law clause names "the courts of the Western Cape
-	    Division" as default; substitute Meryl's actual provincial
-	    jurisdiction once known.
-	  - Lead times in the made-to-order section are deliberately vague
-	    ("typically 2-6 weeks"); replace with Meryl's actual production
-	    window once she's confirmed it.
-	  - The 14-day window for accepting price-error corrections is a
-	    reasonable default but should be confirmed against current CPA
-	    pricing guidance (s23 and s30).
+	  - The governing-law clause is split into two limbs: consumer-
+	    initiated proceedings may be brought in the consumer's local
+	    Magistrates' Court / High Court division, while supplier-
+	    initiated proceedings are brought in the consumer's local
+	    division (with optional Western Cape consent). This structure
+	    respects CPA s48 and Magistrates' Courts Act s28; reviewer to
+	    confirm.
+	  - Lead times are stated as a hard upper bound ("each piece is
+	    produced within 6 weeks of payment unless we contact you to
+	    agree a longer time"). Reviewer to confirm 6 weeks matches
+	    Meryl's actual production window.
+	  - The 14-day window for accepting price-error corrections is
+	    paired explicitly with CPA s23(9)'s "reasonable consumer would
+	    have realised it was an error" test; reviewer to confirm
+	    against current CGSO pricing-correction guidance.
 	  - The age-of-majority clause (18) matches SA's Children's Act and
 	    Contractual Capacity rules; reviewer should confirm no need for
 	    a stricter age gate.
-	  - Limitation-of-liability section is deliberately narrow because
-	    CPA s51 voids broad exclusions of statutory remedies — a
-	    reviewer may want to expand around non-statutory damages
-	    (consequential / indirect) which CPA does permit limiting.
+	  - The limitation-of-liability clause carves out explicitly:
+	    death/personal injury, CPA s61 strict liability, gross
+	    negligence, and any liability that cannot lawfully be limited.
+	    Reviewer may want to extend or tighten further but should not
+	    weaken the carve-outs.
+	  - The order-formation language distinguishes two emails: the
+	    "Order received" acknowledgement (post-POST /orders) and the
+	    "Order confirmed" acceptance (post-payment ITN). The email
+	    templates must use exactly those two subject lines; verify in
+	    backend/src/email-templates.ts before launch.
+	  - The IP clause carves out the first-sale doctrine (Copyright
+	    Act s23) so buyers can resell the physical screen they bought.
+	    Social-media sharing is framed as a limited non-commercial
+	    licence with credit requested. Reviewer to confirm scope.
+	  - Acceptance of terms is framed as clickwrap at checkout (NOT
+	    browsewrap on page load). The checkout form must include a
+	    required tickbox linking to Terms/Returns/Privacy before
+	    launch; tracked in docs/roadmap.md.
 
 	Update the "Last updated" date whenever the terms text changes.
 -->
@@ -93,9 +113,13 @@
 
 		<h2>Acceptance of these terms</h2>
 		<p>
-			By using this website, or by placing an order, you confirm that
-			you have read and accepted these terms. If you do not agree with
-			any part of them, please don't use the site or place an order.
+			When you place an order you confirm, by ticking the
+			confirmation box at checkout, that you have read and accepted
+			these terms together with the
+			<a href="/returns">Refund &amp; Returns Policy</a> and the
+			<a href="/privacy">Privacy Policy</a>. The three documents
+			operate together. If you do not agree with any part of them,
+			please don't place an order.
 		</p>
 		<p>
 			You must be at least 18 years old, or have the consent of a parent
@@ -139,10 +163,15 @@
 			we'll contact you to confirm the corrected price before
 			production starts. You can either accept the corrected price or
 			cancel the order in full for a refund of any amount already
-			paid. Section 23 of the Consumer Protection Act, 2008 (CPA)
-			limits how a retailer may correct a displayed price; we will
-			only invoke a correction where the error is genuine and
-			obvious.
+			paid. Section 23 of the Consumer Protection Act, 2008 (CPA),
+			read with section 23(9), allows a supplier to decline to sell
+			at a displayed price only where the displayed price was so
+			inadequate that a reasonable consumer would have realised it
+			was an error. We will only invoke a correction on that
+			footing. If we contact you about a price correction, please
+			confirm or decline within <strong>14 days</strong> &mdash; if
+			we don't hear back in that window, we'll treat the order as
+			cancelled and refund any amount paid.
 		</p>
 
 		<h2>Placing an order</h2>
@@ -153,9 +182,14 @@
 			payment, does not by itself form a contract.
 		</p>
 		<p>
-			A contract between you and us is formed only once we send you
-			an order confirmation email at the address you provided. We
-			reserve the right to decline an order &mdash; for example, if
+			Submitting the order form triggers an immediate
+			&ldquo;Order received&rdquo; email confirming we have your
+			offer and have queued it for processing. <strong>This first
+			email is not an acceptance.</strong> A contract between you
+			and us is formed only when we send you the separate
+			&ldquo;Order confirmed&rdquo; email after your payment has
+			cleared via PayFast. We reserve the right to decline an order
+			before sending the confirmation email &mdash; for example, if
 			a piece is unexpectedly unavailable, if there's a pricing
 			error, or if we cannot verify the shipping address. If we
 			decline, we'll refund any payment in full.
@@ -164,20 +198,22 @@
 		<h2>Made-to-order &mdash; lead times</h2>
 		<p>
 			Production on each screen begins after full payment has been
-			received and the order confirmation has been sent. Typical lead
-			times are <strong>2&ndash;6 weeks</strong> depending on the
-			piece, current workload, and supplier availability. We'll keep
-			you updated by email at the major status changes (payment
-			received, in production, shipped).
+			received and the order confirmation has been sent. <strong>Each
+			piece is produced within 6 weeks of payment</strong> unless
+			we contact you to agree a longer time. Most pieces ship
+			sooner; the 6-week figure is the upper bound, not the typical
+			case. We'll keep you updated by email at the major status
+			changes (payment received, in production, shipped).
 		</p>
 		<p>
-			Because each piece is specially produced for the buyer,
-			cooling-off rights that apply to distance-selling transactions
-			under CPA section 20 and ECT Act section 44 do not apply to
-			orders placed through this site. Your statutory rights if
-			something goes wrong with the order are unaffected &mdash; see
-			the <a href="/returns">Refund &amp; Returns Policy</a> for the
-			full set of remedies.
+			Because each piece is specially produced for you after you
+			order, the 7-day cooling-off right under section 44 of the
+			Electronic Communications and Transactions Act, 2002 does
+			not apply &mdash; section 44(3)(c) of that Act exempts goods
+			made to the consumer's specifications. Your statutory rights
+			if something goes wrong with the order are unaffected &mdash;
+			see the <a href="/returns">Refund &amp; Returns Policy</a> for
+			the full set of remedies.
 		</p>
 
 		<h2>Payment</h2>
@@ -208,13 +244,18 @@
 			&mdash; courier-side delays are outside our control.
 		</p>
 		<p>
-			<strong>Risk in the goods</strong> passes to you on delivery to
-			the address you provided (or, if no one is present at that
-			address, on the first delivery attempt at that address).
-			<strong>Ownership</strong> of the goods passes to you once full
-			payment has cleared. Damaged-on-arrival packaging, defective
-			items, wrong items, and lost-in-transit deliveries are covered
-			by the <a href="/returns">Refund &amp; Returns Policy</a>.
+			<strong>Risk in the goods</strong> passes to you on
+			<strong>successful delivery</strong> &mdash; that is, when
+			the goods are accepted at the address you provided. If the
+			courier cannot deliver because no one is available to
+			receive the goods, we and the courier will make reasonable
+			further attempts and, if necessary, agree a redelivery with
+			you; risk only passes once the goods are actually accepted.
+			<strong>Ownership</strong> of the goods passes to you once
+			full payment has cleared. Damaged-on-arrival packaging,
+			defective items, wrong items, and lost-in-transit
+			deliveries are covered by the
+			<a href="/returns">Refund &amp; Returns Policy</a>.
 		</p>
 
 		<h2>Cancellations, returns, and refunds</h2>
@@ -243,16 +284,23 @@
 		<h2>Intellectual property</h2>
 		<p>
 			All designs, illustrations, photographs, product names, and
-			written content on this site are owned by Meryl Green Designs (or
-			licensed to us by the photographers and contributors who created
-			them). When you buy a screen, you buy the physical object
-			&mdash; the underlying design remains ours. You may not
-			reproduce, copy, manufacture, or sell pieces based on our
-			designs without our prior written permission.
+			written content on this site are owned by Meryl Green Designs
+			(or licensed to us by the photographers and contributors who
+			created them). When you buy a screen, you buy the physical
+			object &mdash; the underlying design remains ours. You may
+			not <strong>reproduce, copy, or manufacture</strong> pieces
+			based on our designs, or sell such reproductions, without
+			our prior written permission. This restriction does not
+			limit your right to resell the physical screen you bought
+			from us &mdash; that right is yours under the first-sale
+			doctrine in section 23 of the Copyright Act, 1978.
 		</p>
 		<p>
-			You're welcome to photograph and share your screens on social
-			media; please credit Meryl Green Designs where you can.
+			You may photograph the screen you bought and share those
+			photos on social media for personal, non-commercial
+			purposes &mdash; we'd appreciate credit to Meryl Green
+			Designs where you can give it. This permission does not
+			extend to commercial use or merchandising of the photos.
 		</p>
 
 		<h2>Acceptable use of the website</h2>
@@ -290,6 +338,22 @@
 			themselves. Our maximum liability for any direct loss arising
 			from an order is limited to the amount you paid for that order.
 		</p>
+		<p>
+			The limit above does <strong>not</strong> apply to, and we
+			make no attempt to exclude or limit, any of the following:
+		</p>
+		<ul>
+			<li>Liability for death or personal injury caused by our
+				negligence;</li>
+			<li>Liability under section 61 of the Consumer Protection
+				Act for harm caused by unsafe, defective, or hazardous
+				goods (which the CPA imposes on a strict-liability
+				basis and which a contract cannot displace);</li>
+			<li>Liability arising from our gross negligence or wilful
+				misconduct;</li>
+			<li>Any other liability that, under South African law,
+				cannot lawfully be limited or excluded by contract.</li>
+		</ul>
 
 		<h2>Severability</h2>
 		<p>
@@ -305,19 +369,33 @@
 		<p>
 			If you have a dispute with us, please contact us first by email
 			at <a href="mailto:zagreenwoman@gmail.com">zagreenwoman@gmail.com</a>
-			&mdash; most issues are resolved quickly that way. If we can't
-			resolve the dispute directly, you may refer the matter to the
+			&mdash; most issues are resolved quickly that way. If we
+			can't resolve the dispute directly, you may refer the matter
+			to the
 			<a
 				href="https://www.cgso.org.za"
 				target="_blank"
 				rel="noopener noreferrer">Consumer Goods and Services Ombud
-				(CGSO)</a>, which provides free dispute resolution for
-			consumer goods complaints in South Africa.
+				(CGSO)</a>, the
+			<a
+				href="https://thencc.gov.za"
+				target="_blank"
+				rel="noopener noreferrer">National Consumer Commission
+				(NCC)</a>, or take it to court &mdash; whichever route
+			you prefer. Section 69 of the Consumer Protection Act
+			preserves all three options at your election.
 		</p>
 		<p>
-			Any court proceedings arising from these terms will be brought
-			in the courts of the Western Cape Division of the High Court of
-			South Africa, save where another forum is required by law.
+			If <strong>you</strong> bring court proceedings against us,
+			you may do so in your local Magistrates' Court, the High
+			Court division covering your residence, or the Western Cape
+			Division of the High Court of South Africa. If
+			<strong>we</strong> bring proceedings against you, we will
+			bring them in the High Court division covering your
+			residence or, with your written consent, in the Western
+			Cape Division. Nothing in this clause limits your rights
+			under section 48 of the Consumer Protection Act or under
+			section 28 of the Magistrates' Courts Act.
 		</p>
 
 		<h2>Questions about these terms</h2>

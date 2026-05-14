@@ -4,24 +4,32 @@
 	IMPORTANT: This document describes how the site actually handles data
 	today, based on the current architecture (static SvelteKit frontend,
 	Hono backend on AWS Lambda, Sanity CMS, Resend for email, PayFast for
-	payments, Google Fonts for typography). It is written to be accurate
-	to those data flows rather than generated from a template.
+	payments). The typeface is self-hosted under static/fonts/ — no
+	external font CDN. The document is written to be accurate to those
+	data flows rather than generated from a template.
 
 	Even so, a privacy policy is a legal document. Before going live with
 	this under Meryl's name, have it reviewed by a South African legal
 	professional who can:
 	  - Confirm POPIA wording (responsible party / operator terminology,
-	    information officer designation) is correct for the business.
-	  - Advise on cross-border transfer language (Sanity, Resend, AWS,
-	    Google are all outside South Africa).
-	  - Advise on retention periods — currently left deliberately broad
-	    because the business hasn't defined them.
+	    Information Officer designation per s55) is correct for the
+	    business. The IO must also be REGISTERED with the Information
+	    Regulator via the online portal — tracked in docs/roadmap.md.
+	  - Confirm the cross-border transfer language (Sanity / Resend US,
+	    AWS af-south-1 with global control plane) reflects the actually-
+	    executed DPAs on Meryl's current plan tier with each provider.
+	    Tracked in docs/roadmap.md as a pre-launch DPA-verification task.
+	  - Sanity-check the concrete retention windows (12 months on
+	    terminal-state orders, 30-day auto-cancellation for stale
+	    pending_payment orders, 30-day backend log retention, 5-year
+	    SARS retention for transactional records) against current SARS
+	    guidance and the CGSO's reasonable-retention expectations.
 
 	Update the "Last updated" date whenever the data flows or policy
 	text change.
 -->
 <script lang="ts">
-	const lastUpdated = 'April 2026';
+	const lastUpdated = 'May 2026';
 </script>
 
 <svelte:head>
@@ -60,11 +68,54 @@
 			collected through this site.
 		</p>
 		<p>
-			If you have any questions about this policy, or you want to
-			exercise any of the rights described below, please email
-			<a href="mailto:zagreenwoman@gmail.com"
-				>zagreenwoman@gmail.com</a
-			>.
+			Our <strong>Information Officer</strong> under section 55 of
+			POPIA is Meryl Green. Requests under POPIA (access, correction,
+			deletion, objection) and any complaints about how we handle
+			your personal information can be sent to
+			<a href="mailto:zagreenwoman@gmail.com">zagreenwoman@gmail.com</a>.
+			We aim to respond within the 30-day window prescribed by the
+			POPIA Regulations.
+		</p>
+		<p>
+			The terms that apply when you place an order, alongside this
+			privacy notice, are set out in the
+			<a href="/terms">Terms &amp; Conditions</a>.
+		</p>
+
+		<h2>Lawful basis for processing</h2>
+		<p>
+			Under section 11 of POPIA, every act of processing must rest
+			on a specific lawful basis. We rely on the following:
+		</p>
+		<ul>
+			<li>
+				<strong>Section 11(1)(b) — necessary for the conclusion or
+				performance of a contract.</strong> This is our lawful
+				basis for processing the information you give us when
+				placing an order (name, email, phone, shipping address,
+				items). Without it, we cannot fulfil your order. You do
+				not need to give separate consent for this processing —
+				submitting an order is the act of contracting.
+			</li>
+			<li>
+				<strong>Section 11(1)(f) — legitimate interest.</strong>
+				This is our lawful basis for server logs, fraud
+				prevention, and basic security telemetry. We balance
+				these interests against your rights and use only the
+				minimum information needed.
+			</li>
+			<li>
+				<strong>Section 11(1)(c) — compliance with a legal
+				obligation.</strong> This is our lawful basis for
+				retaining transactional records SARS may require (see
+				"How long we keep it" below).
+			</li>
+		</ul>
+		<p>
+			We do not rely on consent (section 11(1)(a)) for any of the
+			processing this policy describes. If a future feature would
+			require consent — for example, a newsletter signup — we will
+			collect it explicitly and separately at that point.
 		</p>
 
 		<h2>What we collect</h2>
@@ -142,9 +193,11 @@
 		<h2>Who we share it with</h2>
 		<p>
 			We only share your information with the service providers we
-			need to run the site and fulfil orders. Each of these
-			providers is contractually required to protect your data and
-			to use it only for the purpose we have engaged them for.
+			need to run the site and fulfil orders. Each provider listed
+			below acts as an <strong>operator</strong> under POPIA section
+			1 and has signed a written data-processing agreement with us
+			under POPIA section 21, committing to security safeguards
+			substantially similar to those POPIA itself requires.
 		</p>
 		<ul>
 			<li>
@@ -180,26 +233,49 @@
 					target="_blank"
 					rel="noopener noreferrer">AWS privacy notice</a>
 			</li>
-			<li>
-				<strong>Google Fonts</strong> — supplies the typeface used
-				on the site. When your browser loads the font, Google may
-				log your IP address and user agent.
-				<a href="https://policies.google.com/privacy"
-					target="_blank"
-					rel="noopener noreferrer">Google privacy policy</a>
-			</li>
 		</ul>
 		<p>
-			Some of these providers are located outside South Africa.
-			Where personal information is transferred across borders, we
-			rely on the provider's own safeguards (for example, standard
-			contractual clauses or equivalent protections) in line with
-			section 72 of POPIA.
+			We do not sell your personal information to anyone, and we do
+			not share it with advertisers. The site does not load fonts,
+			scripts, or analytics from third-party CDNs; the typeface is
+			served from our own infrastructure, so your browser does not
+			make any background calls to Google or similar providers
+			while you visit the site.
+		</p>
+
+		<h2>Cross-border transfers</h2>
+		<p>
+			Of the operators above, <strong>Sanity</strong> (United States)
+			and <strong>Resend</strong> (United States) are located outside
+			South Africa, and <strong>Amazon Web Services</strong> stores
+			your order data primarily in the AWS Cape Town (af-south-1)
+			region but operates global control-plane services that may be
+			accessed from other AWS regions. <strong>PayFast</strong>
+			operates from South Africa.
 		</p>
 		<p>
-			We do not sell your personal information to anyone, and we do
-			not share it with advertisers.
+			Where personal information is transferred across borders, we
+			rely on the following bases under section 72 of POPIA:
 		</p>
+		<ul>
+			<li>
+				<strong>Section 72(1)(b) — adequate protections in
+				binding agreements.</strong> Each non-SA operator has
+				agreed in its data-processing terms to protections
+				substantially similar to those required by POPIA's
+				Conditions 7 and 8 (security safeguards, data-subject
+				participation). These are the Sanity DPA, the Resend
+				DPA, and the AWS GDPR Data Processing Addendum, all of
+				which incorporate Standard Contractual Clauses.
+			</li>
+			<li>
+				<strong>Section 72(1)(a) — consent.</strong> By submitting
+				an order, you consent to the limited cross-border transfer
+				described above, as necessary to fulfil your order. You
+				may withdraw consent by emailing us, but withdrawing
+				consent will also prevent us from completing your order.
+			</li>
+		</ul>
 
 		<h2>How long we keep it</h2>
 		<p>
@@ -219,9 +295,21 @@
 			complete the fulfilment and respond to questions.
 		</p>
 		<p>
-			Server logs are retained for 30 days at our hosting
-			provider's default. Email records are retained by Resend
-			(our email provider) according to their own policy.
+			Orders that remain in the &ldquo;pending payment&rdquo; state
+			for more than 30 days without a successful payment are
+			automatically cancelled by the same cleanup job. The
+			12-month deletion window then starts from that cancellation
+			date — so no abandoned-checkout details linger indefinitely
+			on our records.
+		</p>
+		<p>
+			Application logs from our serverless backend are retained
+			for <strong>30 days</strong>. We do not currently capture
+			access logs from CloudFront or S3, so the only PII that
+			survives in logs at all is whatever IP address and
+			user-agent your browser supplied when calling our backend
+			APIs. Email records are retained by Resend (our email
+			provider) according to their own retention policy.
 		</p>
 		<p>
 			If you ask us to delete your information sooner than the
@@ -288,18 +376,17 @@
 			</li>
 		</ul>
 		<p>
-			To exercise any of these rights, email
-			<a href="mailto:zagreenwoman@gmail.com"
-				>zagreenwoman@gmail.com</a>. We will respond within
-			30 days.
-		</p>
-
-		<h2>Rights for visitors outside South Africa</h2>
-		<p>
-			If you are a resident of the European Economic Area or the
-			United Kingdom, you have additional rights under the GDPR —
-			including the right to data portability and the right to
-			restrict processing. These are available on request by email.
+			Requests under POPIA may be made informally by emailing
+			<a href="mailto:zagreenwoman@gmail.com">zagreenwoman@gmail.com</a>,
+			or formally on the Information Regulator's prescribed
+			<strong>Form 2</strong> (access requests under section 23) or
+			<strong>Form 3</strong> (correction or deletion under section
+			24), both available at
+			<a href="https://inforegulator.org.za"
+				target="_blank"
+				rel="noopener noreferrer">inforegulator.org.za</a>.
+			We will acknowledge your request promptly and respond within
+			the 30-day window prescribed by the POPIA Regulations.
 		</p>
 
 		<h2>Children</h2>

@@ -27,15 +27,30 @@
 	    statutory rights
 
 	Items the legal reviewer must specifically confirm or fill in:
-	  - The 48-hour damage-photo window is a reasonable default; confirm
-	    against current CPA case law and Meryl's courier SLA.
-	  - The 7-day window for defective / wrong-item notifications is a
-	    reasonable default — CPA's outer bound is 6 months, but
-	    operationally a tighter notification window is normal practice.
+	  - The 48-hour damage-photo window is framed as a courier-insurance
+	    deadline that does NOT bar the consumer's CPA s56 right (6-month
+	    statutory window). Reviewer to confirm against Meryl's actual
+	    courier-insurance terms.
+	  - The 7-day defective-notification window is framed as a courtesy
+	    request, not a statutory bar — the s56 6-month right is
+	    preserved explicitly. CPA s51 voids any term that contracts
+	    around s56.
 	  - The 4-week non-delivery threshold is a generous default for
 	    SA courier networks; Meryl can tighten if her couriers are fast.
-	  - The 30-day refund-back-to-card timeline is industry-standard but
-	    not statutorily mandated.
+	  - The 14-business-day refund-back-to-customer timeline is aligned
+	    with CGSO guidance; reviewer to confirm against current CGSO
+	    code-of-conduct expectations.
+	  - The cooling-off section cites ECT s44(3)(c) only (specially-
+	    produced goods exemption) — CPA s20 is not cited because it
+	    applies to direct-marketing transactions only, which this site
+	    does not engage in.
+	  - The consumer's right under CPA s56(2) to CHOOSE between repair /
+	    replace / refund is preserved explicitly; do not let any later
+	    edit revert to "we default to offering replacement".
+	  - Section 56(3) escalation right after one failed repair/replace
+	    is preserved explicitly; do not let any later edit revert to
+	    "we will not accept more than two attempts" (which inverts the
+	    statutory right).
 	  - ECT Act s43 disclosure is INCOMPLETE — registered business name,
 	    legal status (sole trader / CC / Pty Ltd), physical address,
 	    telephone number, and any registration number must be added
@@ -84,12 +99,12 @@
 			or refunds after payment.
 		</p>
 		<p>
-			Cooling-off rights that apply to direct-marketing or
-			distance-selling transactions in South Africa (Consumer
-			Protection Act section 20 and Electronic Communications and
-			Transactions Act section 44) do not cover specially-produced
-			goods, so they do not apply to orders placed through this
-			site.
+			The 7-day cooling-off right under section 44 of the
+			Electronic Communications and Transactions Act, 2002 (ECT
+			Act) does not apply to goods made to the consumer's
+			specifications (section 44(3)(c)). Because each piece is
+			specially produced for you after you order, that exemption
+			covers orders placed through this site.
 		</p>
 		<p>
 			This does not affect your statutory rights below if something
@@ -99,12 +114,16 @@
 		<h2>If your package arrives damaged on the outside</h2>
 		<p>
 			If the box you receive is visibly damaged when the courier
-			delivers it, please email us a photo of the damaged package
-			within <strong>48 hours of delivery</strong>. We will arrange
-			a courier collection of the package at no cost to you, and a
-			replacement will be put into production and shipped within
-			3&ndash;4 weeks of the original item arriving back at our
-			workshop.
+			delivers it, please email us a photo as soon as you can &mdash;
+			ideally within <strong>48 hours of delivery</strong>. The
+			48-hour window helps us file a courier-insurance claim
+			while the evidence is fresh, but it does not affect your
+			rights under section 56 of the Consumer Protection Act if
+			you notice the damage later. Once we have your photo we
+			will arrange courier collection of the package at no cost
+			to you, and a replacement will be put into production and
+			shipped within 3&ndash;4 weeks of the original item arriving
+			back at our workshop.
 		</p>
 
 		<h2>If your item is defective or arrives broken inside intact packaging</h2>
@@ -112,16 +131,20 @@
 			If the package looks fine but the screen itself has a
 			manufacturing flaw, a broken hinge, the wrong colour or
 			finish, or any defect that prevents it from being used as
-			intended, please email us within <strong>7 days of
-			delivery</strong> with a photo and a short description.
+			intended, please tell us as soon as you can &mdash;
+			ideally within 7 days of delivery so we can inspect it
+			promptly with the issue fresh in mind. Your statutory right
+			under section 56 of the Consumer Protection Act to ask for a
+			refund, repair, or replacement runs for <strong>six months
+			from delivery</strong> and is not affected if you notify us
+			later within that window.
 		</p>
 		<p>
-			Under section 56 of the Consumer Protection Act you are
-			entitled, within six months of delivery, to ask for a
+			Section 56 entitles you to choose between a
 			<strong>repair</strong>, a <strong>replacement</strong>, or a
-			<strong>refund</strong>. We will discuss which option suits
-			both sides best and arrange courier collection at no cost
-			to you.
+			<strong>refund</strong> &mdash; the choice is yours, not ours.
+			Once you've told us which remedy you'd like, we'll arrange
+			courier collection at no cost to you.
 		</p>
 
 		<h2>If you receive the wrong item</h2>
@@ -146,9 +169,12 @@
 		<p>
 			We aim to ship within the timeframe communicated when you
 			place your order. If delivery is unreasonably delayed beyond
-			that timeframe and we cannot agree with you on a revised
-			date, you have the right under section 19 of the Consumer
-			Protection Act to cancel the order and receive a full refund.
+			that timeframe, you have the right under section 19 of the
+			Consumer Protection Act to cancel the order and receive a
+			full refund. We will usually offer to agree a revised
+			delivery date with you first, but you are not obliged to
+			accept one — the cancellation right under section 19 is
+			yours regardless.
 		</p>
 
 		<h2>How to claim</h2>
@@ -172,11 +198,11 @@
 		<h2>Refunds, replacements, and shipping costs</h2>
 		<p>
 			Where you are entitled to a remedy under this policy or
-			under the Consumer Protection Act, you may choose between a
-			<strong>repair</strong>, a <strong>replacement</strong>, or a
-			<strong>refund</strong>. We default to offering a replacement
-			because each item is handcrafted, but a refund is available
-			if you prefer.
+			under the Consumer Protection Act, <strong>you</strong>
+			choose between a <strong>repair</strong>, a
+			<strong>replacement</strong>, or a <strong>refund</strong>
+			— section 56(2) of the CPA gives that election to the
+			consumer. We will fulfil whichever you select.
 		</p>
 		<p>
 			<strong>Courier costs</strong> for any free collection
@@ -184,16 +210,23 @@
 			charges</strong> are refunded in full if the issue is our
 			responsibility (damaged on arrival, defective, wrong item,
 			non-delivery, significant delay). Refunds are processed back
-			to the original payment method within 30 days of the issue
-			being resolved.
+			to the original payment method within <strong>14 business
+			days</strong> of our agreement that a refund is due. Once we
+			initiate the refund, the payment provider (PayFast) typically
+			settles the funds back to your card within a further
+			3&ndash;5 business days.
 		</p>
 
 		<h2>If a replacement also has a problem</h2>
 		<p>
-			If the replacement we ship is also damaged or defective, we
-			will, at your choice, attempt a second replacement or issue a
-			full refund including all shipping costs. We will not require
-			you to accept more than two attempts.
+			Section 56(3) of the Consumer Protection Act gives you the
+			right, after one failed repair or replacement, to escalate
+			to a <strong>full refund</strong> rather than accept further
+			repair attempts. So if the replacement we ship is also
+			damaged or defective, you may &mdash; at your choice &mdash;
+			ask for a second replacement or a full refund including all
+			shipping costs. You are not obliged to accept further
+			repair attempts.
 		</p>
 
 		<h2>Your statutory rights and dispute resolution</h2>
@@ -210,9 +243,16 @@
 			<a
 				href="https://www.cgso.org.za"
 				target="_blank"
-				rel="noopener noreferrer">Consumer Goods and Services Ombud</a>,
-			which is the industry-funded ombud service for consumer
-			complaints in South Africa.
+				rel="noopener noreferrer">Consumer Goods and Services Ombud
+				(CGSO)</a>, the
+			<a
+				href="https://thencc.gov.za"
+				target="_blank"
+				rel="noopener noreferrer">National Consumer Commission (NCC)</a>,
+			or take it to court — whichever route you prefer. Section
+			69 of the Consumer Protection Act preserves all three options
+			at your election; you are not obliged to use any one of
+			them in preference to the others.
 		</p>
 
 		<h2>About Meryl Green Designs</h2>

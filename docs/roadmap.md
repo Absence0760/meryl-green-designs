@@ -172,6 +172,56 @@ traffic. Most are external, and each is documented with exact steps in
       `frontend/src/routes/terms/+page.svelte` (governing-law clause,
       lead-time numbers, CPA s51 limitation scope). Each page's header
       comment lists the specific items the reviewer must confirm.
+- [ ] **Information Officer registration with the Information
+      Regulator.** Meryl is named in the Privacy Policy as the
+      Information Officer under POPIA s55. POPIA also requires the IO
+      to be registered with the Information Regulator via the online
+      portal at inforegulator.org.za. The page-level designation alone
+      is not enough; the portal registration is a separate compliance
+      step Meryl needs to complete before launch.
+- [ ] **Verify executed DPAs (data-processing agreements) with each
+      operator** named in the Privacy Policy: Sanity DPA, Resend DPA,
+      AWS GDPR Data Processing Addendum. The policy claims each is
+      executed under POPIA s21; sign in to each provider's dashboard
+      and accept/download the DPA on the current plan tier. The
+      Sanity Free and Resend Free tiers may surface the DPA only as
+      a click-to-accept on first login.
+- [ ] **Domain mailbox to replace the personal Gmail.** The Privacy
+      Policy currently uses `zagreenwoman@gmail.com` for Information
+      Officer requests, claims handling, and general contact. Splitting
+      these into `privacy@<domain>` / `support@<domain>` / `legal@<domain>`
+      (or at minimum a single business mailbox under Meryl's domain)
+      reduces the chance that data-subject requests get lost in a
+      personal inbox and looks more professional to the Regulator and
+      CGSO. Resend or Zoho Mail can host this against the same
+      verified sending domain.
+- [ ] **Clickwrap acceptance checkbox at checkout.** The Terms &amp;
+      Conditions reads "when you place an order you confirm, by ticking
+      the confirmation box at checkout, that you have read and accepted
+      these terms…" — that tickbox is referred to but doesn't yet
+      exist in the order form. Add a required checkbox to the cart-
+      panel submit step linking to /terms, /returns, /privacy. CPA
+      s49 prefers clickwrap over browsewrap for material terms; the
+      Information Regulator's draft online-consent guidance agrees.
+- [ ] **Auto-cancel stale `pending_payment` orders.** The Privacy
+      Policy commits to: orders that stay in `pending_payment` for
+      more than 30 days are automatically cancelled, and the 12-month
+      PII deletion clock then starts from that cancellation date. The
+      existing cleanup job only deletes PII from terminal-state
+      orders, so abandoned checkouts currently never reach a state the
+      cleanup touches. Either ship a scheduled job (Lambda + EventBridge,
+      or a daily cron in the existing reconciler design) that flips
+      stale `pending_payment` rows to `cancelled`, or reword the
+      Privacy Policy before launch — the current wording is a promise
+      the code doesn't keep.
+- [ ] **Order-confirmation email subject-line audit.** The Terms
+      distinguishes the "Order received" acknowledgement email (sent
+      after POST /orders) from the "Order confirmed" acceptance email
+      (sent after the payment ITN). The two subject lines must match
+      those exact strings in `backend/src/email-templates.ts` because
+      the Terms tells the customer the contract forms on receipt of
+      the second email. Verify the templates and update if they
+      diverge.
 
 ### External accounts
 - [ ] Resend account with verified sending domain (DNS propagation wait
