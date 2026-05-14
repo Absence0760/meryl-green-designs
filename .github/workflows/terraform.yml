@@ -87,6 +87,11 @@ jobs:
           # same coverage without standing up tfsec separately.
           scan-type: config
           scan-ref: infra
+          # Centralised suppressions with per-line rationale live in
+          # `infra/.trivyignore`. Each accepted finding documents
+          # *why* it's accepted, so future audits can re-evaluate
+          # per-line without re-deriving the cost/benefit reasoning.
+          trivyignores: infra/.trivyignore
           format: sarif
           output: trivy-iac.sarif
           severity: CRITICAL,HIGH

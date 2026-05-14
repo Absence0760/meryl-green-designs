@@ -1,0 +1,67 @@
+# Trivy IaC suppressions.
+#
+# Each entry below is an explicit acceptance, not a "fix later". The
+# common thread is: these checks recommend hardening that costs more
+# than it saves for the threat model of this small e-commerce site
+# (one product line, low single-digit orders/week, no card data on
+# our servers — PayFast handles that). See docs/security.md for the
+# canonical risk register.
+#
+# When adding a suppression: include the AVD ID, a one-line summary,
+# and one or two sentences on why we accept the risk. Future audits
+# can re-evaluate per-line without re-deriving the rationale.
+
+# S3 bucket does not encrypt data with a customer-managed KMS key.
+# The frontend bucket is static, public-read assets (HTML, CSS, JS,
+# images of for-sale products) — there is nothing in it worth a
+# $1/month CMK + per-API-call cost. SSE-S3 (AES-256 with an
+# AWS-managed key) is enabled by default and adequate.
+AVD-AWS-0132
+
+# S3 bucket has logging disabled. Access logging would charge for
+# log storage + processing on a static asset bucket whose access
+# patterns we don't audit at this scale. CloudFront in front of it
+# is the choke point; if we ever needed traffic insight we'd add
+# CloudFront logging (suppressed below for the same reason).
+AVD-AWS-0089
+
+# CloudFront distribution does not utilise a WAF. AWS WAF costs $5+
+# per month per Web ACL plus per-request fees — disproportionate
+# for a site of this scale. docs/privacy lists DDoS protection as
+# explicitly out of scope, and the privacy policy reflects that.
+AVD-AWS-0011
+
+# CloudFront distribution does not have logging enabled. Same
+# rationale as the S3 bucket logging suppression — log volume on
+# a site of this scale is not worth the cost of storage +
+# processing without a concrete need to inspect access patterns.
+AVD-AWS-0010
+
+# Lambda function does not have tracing enabled. AWS X-Ray costs
+# per request invocation. The Lambda's HTTP handlers complete in
+# <1s and have synchronous logs to CloudWatch; we don't need
+# distributed tracing for a single-Lambda backend.
+AVD-AWS-0066
+
+# CloudWatch log group is not encrypted with a customer-managed
+# key. Logs contain orderRefs + status changes — no PII (the admin
+# routes are regression-guarded to log only orderRef + action +
+# result). AWS-managed encryption at rest is the default; CMK
+# would add cost without protecting anything customer-identifying.
+AVD-AWS-0017
+
+# DynamoDB table encryption uses the default AWS-managed
+# `aws/dynamodb` KMS key rather than a customer-managed key.
+# Documented as a deliberate choice in infra/README.md — same
+# blast-radius rationale: PII rotation lives in the application
+# layer (365-day TTL), CMK would add cost without changing the
+# trust boundary.
+AVD-AWS-0025
+
+# API Gateway stage does not have access logging configured.
+# Same rationale as CloudFront access logging — the backend is
+# logged via CloudWatch Logs from the Lambda itself. API Gateway
+# access logs would be redundant for traffic insight and would
+# carry the customer email URL param for retry calls (a privacy
+# downgrade we explicitly avoid — see docs/security.md § Risk 3).
+AVD-AWS-0001
