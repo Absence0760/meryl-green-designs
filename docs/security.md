@@ -99,6 +99,7 @@ inbox.
   | `POST /orders` | 5 / 15 minutes per IP |
   | `POST /enquiries` | 5 / 15 minutes per IP |
   | `GET /orders/:ref` | 20 / minute per IP |
+  | `POST /orders/:ref/retry-payment` | 10 / 15 minutes per IP |
   | `POST /webhooks/sanity-order` | 60 / minute per IP |
   | `POST /webhooks/payfast-itn` | 60 / minute per IP |
 
@@ -106,7 +107,7 @@ inbox.
   IP in `x-forwarded-for` (populated by CloudFront / API Gateway as the
   request traverses the front-door stack).
   Over the limit returns `429 Too Many Requests` with a `Retry-After`
-  header. Covered by `__tests__/rate-limit.test.ts` (12 tests including
+  header. Covered by `__tests__/rate-limit.test.ts` (11 tests including
   integration regression guards on `/orders` and `/orders/:ref`).
 
 **Residual risk:**
@@ -193,7 +194,7 @@ to look up strangers' orders on `/track`.
   parsing, so body-tampering doesn't slip past). Implemented with
   `timingSafeEqual`.
 - Missing header, malformed header, wrong secret, and tampered-body cases
-  are all tested (`sanity-webhook.test.ts` — 11 tests).
+  are all tested (`sanity-webhook.test.ts` — 12 tests).
 - A missing `SANITY_WEBHOOK_SECRET` on the Lambda short-circuits to 500
   before any signature check, so a mis-configured prod can't become
   accidentally open.
@@ -277,8 +278,9 @@ into submitting requests to the backend on their behalf.
 - CORS is strictly origin-matched against `ALLOWED_ORIGINS` (prod) or
   `http://localhost:7777` (local fallback). Non-listed origins get **no**
   `access-control-allow-origin` header, so browser fetches fail.
-- CORS `allowMethods` is limited to `GET, POST, OPTIONS`. No `DELETE`, no
-  `PUT`.
+- CORS `allowMethods` is limited to `GET, POST, PATCH, OPTIONS`. `PATCH`
+  is permitted only because the Studio's PII panels need it for the
+  admin tracking/internal-notes routes; no `DELETE`, no `PUT`.
 - Tested: `app.test.ts` covers both listed and unlisted origin cases, plus
   OPTIONS preflight.
 
@@ -430,13 +432,20 @@ amount, or forges an ITN callback to mark an unpaid order as paid.
   Prevents price-tampering attacks.
 - **ITN signature verification**: the PayFast ITN callback is validated
   against `PAYFAST_PASSPHRASE` using the standard PayFast MD5 signature
-  scheme. Forged callbacks fail validation.
+  scheme **over the raw request body** (PayFast signs with PHP `urlencode`
+  and includes empty fields; re-encoding from the parsed body produces a
+  mismatch). Forged callbacks fail validation.
 - **Amount cross-check**: the ITN handler compares `amount_gross` against
   the `amountZar` stored on the Sanity order document. Mismatches are
   rejected.
 - **Idempotency guard**: the ITN handler checks the order's current status.
   If it's already past `pending_payment`, the ITN is silently ignored —
   preventing double-processing.
+- **Failed-ITN dedup marker**: `recordFailedItn` in
+  `backend/src/orders-store.ts` writes the PayFast `pf_payment_id` to
+  DynamoDB on the first failed payment. PayFast retries failed ITNs for
+  ~24 hours; the marker suppresses duplicate "your payment didn't go
+  through" emails to the customer during that window.
 - **No card data on our server**: the PayFast redirect model means card
   numbers never touch our infrastructure. PCI compliance scope is SAQ A
   (the lowest tier).
@@ -513,6 +522,51 @@ injection in JSX `style` rendering): no advisory until someone finds it.
 
 ---
 
+### 12. Admin PII routes (Studio's `/admin/*` surface)
+
+| | |
+|---|---|
+| **Likelihood** | low |
+| **Impact** | high |
+
+**What could happen:** An attacker (or a forwarded Studio bundle) calls
+the backend's `/admin/orders/:ref` / `PATCH .../tracking` / `PATCH
+.../internal-notes` routes and reads or rewrites customer PII.
+
+**Current mitigations:**
+- **Bearer token gate**: every admin route requires
+  `Authorization: Bearer <ADMIN_API_TOKEN>`. The token is compared
+  against the Lambda env using `crypto.timingSafeEqual`
+  (`backend/src/middleware/admin-auth.ts`) — no string-equality timing
+  oracle.
+- **CORS narrowed to `STUDIO_ORIGINS`** — only the deployed Sanity
+  Studio origin (e.g. `https://meryl-green-designs.sanity.studio`)
+  gets `access-control-allow-origin`, so a hostile site can't
+  cross-fetch even with the token in hand.
+- **Logging is PII-free**: handlers log only `orderRef + action +
+  result`, never the customer's name/email/etc. — regression-guarded
+  in `email.test.ts`.
+- **Symmetric token in two places**: the same `ADMIN_API_TOKEN` lives
+  in `infra/terraform.tfvars.sops:admin_api_token` (the Lambda env)
+  and the `production` GHA secret of the same name (which
+  `deploy-studio.yml` re-exports as `SANITY_STUDIO_ADMIN_TOKEN` at
+  build time so the Studio bundle can call the backend). Rotate both
+  together — see incident-playbook item 7 below.
+
+**Residual risk:**
+- The bearer token is **baked into the Studio JS bundle at build
+  time**, so anyone who can load the published Studio can extract it
+  from the bundle. CORS is the real gate against cross-origin abuse;
+  the token alone doesn't protect against direct backend calls from
+  someone who reads the bundle. Acceptable today because (a) the
+  Studio bundle is only served to authenticated Meryl-Green-Designs
+  Sanity users at the studio URL, and (b) write-side admin routes
+  are PATCH-only on known fields, so the worst-case is operator-level
+  tampering by someone who already has Studio access. Future
+  hardening: validate a Sanity-issued JWT instead of a static bearer.
+
+---
+
 ## What this site explicitly does not protect against
 
 Documenting the non-goals so they're not mistaken for gaps:
@@ -542,14 +596,14 @@ If something goes wrong:
    is not needed (the account isn't compromised, just being impersonated).
 2. **Suspected `SANITY_WEBHOOK_SECRET` leak.**
    - Generate a new secret: `openssl rand -hex 32`.
-   - Update `infra/terraform.tfvars` → `terraform apply`.
+   - Update `sops infra/terraform.tfvars.sops` → `terraform apply`.
    - Update the secret in the Sanity webhook configuration to match.
 3. **Suspected `SANITY_API_TOKEN` leak.**
    - Revoke the token in Sanity dashboard → API → Tokens.
-   - Create a new one, update `infra/terraform.tfvars` → `terraform apply`.
+   - Create a new one, update `sops infra/terraform.tfvars.sops` → `terraform apply`.
 4. **Suspected `RESEND_API_KEY` leak.**
    - Revoke in the Resend dashboard.
-   - Create a new key, update tfvars → apply.
+   - Create a new key, update `sops infra/terraform.tfvars.sops` → `terraform apply`.
 5. **Sanity database compromised or accidentally made public.**
    - In the Sanity dashboard, set the `production` dataset to **private**
      (it should already be).
@@ -579,7 +633,17 @@ If something goes wrong:
      updating the alias (see `docs/deployment.md § Rotating the KMS key`).
      Not strictly required — the leaked credential can't grant itself new
      permissions — but a defence-in-depth move.
-7. **AWS account compromised.** (Not just one credential — the whole
+7. **Suspected `ADMIN_API_TOKEN` leak** (bearer token guarding
+   `/admin/orders/:ref/*` routes consumed by Studio's PII panels).
+   - Generate a new token: `openssl rand -hex 32`.
+   - Update `sops infra/terraform.tfvars.sops:admin_api_token` →
+     `terraform apply` (pushes the new value to the Lambda env).
+   - Update the `production` GHA secret of the same name:
+     `gh secret set ADMIN_API_TOKEN --env production --body <new>`.
+   - Trigger a fresh studio deploy so the new token is baked into the
+     bundle (`gh workflow run deploy-studio.yml` or cut a new
+     release). The Studio panels stop working until that build lands.
+8. **AWS account compromised.** (Not just one credential — the whole
    account.) This is a major incident; treat the project's KMS key as
    owned by the attacker.
    - Regain control of the AWS account via AWS account recovery (phone
@@ -594,7 +658,7 @@ If something goes wrong:
    - Consider whether the infrastructure itself was tampered with
      (Lambda code, S3 bucket contents, IAM policies) and reprovision as
      needed.
-8. **Lost AWS account access entirely** (account closed, recovery failed).
+9. **Lost AWS account access entirely** (account closed, recovery failed).
    - The encrypted files in git are no longer recoverable by you — they
      were encrypted under a KMS key you no longer control. This is a
      recovery incident, not a security incident (the secrets are not
