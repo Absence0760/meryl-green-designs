@@ -29,36 +29,25 @@
   `trackingLink()` helper still injects email for non-failed-payment
   templates (where the customer hasn't been told anything alarming), and
   this template builds its own URL to honour the no-email-in-URL rule.
-- **Outstanding open question** from the pre-implementation list: PayFast
-  `m_payment_id` reuse semantics are still unverified against the public
-  sandbox. The implementation assumes reuse works (most ITN-driven systems
-  do allow it because the gateway treats `m_payment_id` as a merchant-side
-  reference, not a primary key). Verify before launch by running through
-  the cancelled-payment + retry flow against `sandbox.payfast.co.za`. If
-  PayFast deduplicates, the design's fallback is `MG-YYMMDD-XXXXXX.rN`
-  encoding with the ITN handler stripping `.rN` — a localized change to
-  this route + a tiny tweak to `payfast-itn.ts`.
+- **PayFast `m_payment_id` reuse — resolved.** Verified against the
+  public sandbox: PayFast accepts the same `m_payment_id` on a
+  re-submitted form, so the eventual ITN updates the original Sanity
+  doc as designed. The `.rN`-encoding fallback in the original plan
+  isn't needed. (Documented here for the audit trail; the live code
+  path is the straight-through reuse.)
 
-## Pre-implementation requirements
+## Pre-implementation requirements (historical — all resolved)
 
-These items must be resolved before this design can be safely implemented.
+These items had to be resolved before the design could ship; they're
+documented for the audit trail.
 
-1. **PayFast `m_payment_id` reuse semantics — verify against the sandbox.**
-   The retry path re-signs a fresh PayFast form with the **same** `orderRef`
-   (so the eventual ITN updates the original order doc). PayFast may
-   silently deduplicate transactions on `m_payment_id`, in which case a
-   retry would never reach the customer and no ITN would fire — the
-   order would be permanently stuck in `pending_payment`. Test against
-   the public sandbox: submit a form, abandon it, submit a second form
-   with the same `m_payment_id`, confirm PayFast accepts and processes
-   the second attempt. If PayFast rejects or silently drops duplicates,
-   the design must change to encode the retry attempt count in the
-   `m_payment_id` (e.g. `MG-260513-FYREMV.r2`) with the ITN handler
-   stripping the `.rN` suffix before order lookup.
-2. **`crypto.timingSafeEqual` on email comparison** (also retroactively
-   applied to `GET /orders/:ref?email=` — committed as part of the same
-   changeset that introduced this design doc). The retry handler must
-   use the same `emailsMatch()` helper, never plain string equality.
+1. **PayFast `m_payment_id` reuse semantics — resolved.** Verified
+   against the public sandbox: PayFast accepts the same `m_payment_id`
+   on a re-submitted form. The `.rN`-encoding fallback isn't needed.
+2. **`crypto.timingSafeEqual` on email comparison — resolved.** Both
+   the retry handler and the existing `GET /orders/:ref?email=` go
+   through `emailsMatch()` in `backend/src/email-match.ts` (SHA-256 +
+   `timingSafeEqual`).
 
 ## Problem
 
@@ -383,6 +372,7 @@ type RetryReadModel = {
   amountZar:     number;
   createdAt:     string;
   customerEmail: string;  // canonical (lowercased, trimmed) form
+  customerName:  string;  // needed for PayFast name_first/name_last (audit M-3)
 };
 
 export function getOrderForRetry(orderRef: string): Promise<RetryReadModel | null>;
@@ -394,26 +384,19 @@ re-signed form follows the same generic pattern as `POST /orders`
 `orderRef` alone. The retry endpoint doesn't need per-item data
 because it doesn't change the cart.
 
-- **Phase 0 (current):** the adapter reads all four fields from the
-  Sanity order doc (which still holds PII). Note the field rename:
-  Sanity exposes `_createdAt` (underscore-prefixed built-in), but
-  `RetryReadModel` exposes `createdAt`. The adapter must map
-  `sanityOrder._createdAt → RetryReadModel.createdAt`. Reading
-  `order.createdAt` directly from the `SanityOrder` shape returns
-  `undefined`, and `now - undefined` is `NaN`; the 7-day window check
-  then fails closed (every retry is rejected) — a silent bug that
-  costs a debugging cycle.
-- **Phase 1 (post-Day-8 cutover):** the adapter joins Sanity (status +
-  amountZar) with DynamoDB (customerEmail + createdAt). DynamoDB
-  stores `createdAt` without the underscore (the orders-store dual-
-  write already maps `sanityOrder._createdAt → item.createdAt`), so
-  no rename is needed on this side.
+- **Phase 1 (current, live since 2026-05-13):** the adapter joins
+  Sanity (status + amountZar) with DynamoDB (customerEmail +
+  customerName + createdAt). DynamoDB stores `createdAt` without
+  the underscore (the orders-store dual-write maps
+  `sanityOrder._createdAt → item.createdAt`).
+- **Phase 0 (pre-cutover, historical):** the adapter read all
+  fields from the Sanity order doc directly. The Phase 0 code path
+  no longer exists in the repo; this is documented for context only.
 
-The retry handler must call `getOrderForRetry`, NOT the existing
-`getOrderByRef` (which delegates entirely to Sanity in Phase 0 and
-would return `customerEmail = undefined` post-cutover, silently
-breaking the constant-time compare). Implementing this adapter is a
-prerequisite of the retry feature, not a future task.
+The retry handler calls `getOrderForRetry`, NOT the existing
+`getOrderByRef` — the former is the dedicated five-field projection
+defined above; the latter is the general-purpose join used by the
+track page and Studio panels.
 
 ## Open questions
 
@@ -422,9 +405,10 @@ prerequisite of the retry feature, not a future task.
    come back after a weekend. Longer (14 days) is friendlier but
    accumulates more retryable state. Decide based on Meryl's
    expectations once she's seeing real failure patterns.
-2. **Failed-ITN email trigger.** Now recommended Option A (fire on
-   first failed ITN) — see § Frontend surfaces > Payment-failed email.
-   Option B would have been gentler but requires new infra (DynamoDB
-   Streams or EventBridge schedule) that doesn't justify its weight
-   here. Decision is open if Meryl wants the delay; otherwise Option
-   A is the implementation default.
+2. **Failed-ITN email trigger — resolved (Option A is live).**
+   `backend/src/routes/payfast-itn.ts` fires the
+   `paymentFailedTemplate` on the first failed ITN, dedup-guarded by a
+   DynamoDB `recordFailedItn` marker keyed on PayFast's `pf_payment_id`
+   to suppress duplicates across PayFast's 24h retry window. The
+   delayed-trigger alternative (Option B) was ruled out as not worth
+   the EventBridge complexity at current scale.
