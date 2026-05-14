@@ -38,10 +38,14 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.pull_request.head.ref }}
-          # Using the PAT here means the subsequent `git push` is attributed to
-          # the PAT owner (not github-actions), which is what causes CI to
-          # retrigger on the resulting synchronize event.
-          token: ${{ secrets.DEPENDABOT_LOCKFILE_PAT }}
+          # Defense in depth (closes CodeQL actions/untrusted-checkout):
+          # do NOT persist the PAT into .git/config. If any step were
+          # ever able to execute attacker-controlled code (e.g. a
+          # postinstall script — which `--lockfile-only` already
+          # blocks, but belt-and-braces), it would not be able to read
+          # the token from disk. The token is supplied directly to the
+          # `git push` invocation in the last step via $REMOTE_URL.
+          persist-credentials: false
 
       - name: Set up pnpm
         uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
@@ -56,12 +60,18 @@ jobs:
 
       - name: Regenerate lockfile
         # --lockfile-only updates pnpm-lock.yaml without actually installing to
-        # node_modules — fast and avoids running postinstall scripts from a
-        # dep that's being bumped (defense in depth against a malicious bump).
-        run: pnpm install --lockfile-only
+        # node_modules — pnpm does not run any lifecycle scripts in this mode.
+        # --ignore-scripts is redundant here but explicit for the auditor.
+        run: pnpm install --lockfile-only --ignore-scripts
 
       - name: Commit & push if changed
+        env:
+          # Token used only as an env var; never written to disk.
+          DEPENDABOT_LOCKFILE_PAT: ${{ secrets.DEPENDABOT_LOCKFILE_PAT }}
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          REPO: ${{ github.repository }}
         run: |
+          set -euo pipefail
           if git diff --quiet pnpm-lock.yaml; then
             echo "Lockfile already in sync — nothing to commit."
             exit 0
@@ -70,4 +80,10 @@ jobs:
           git config user.email "49699333+dependabot[bot]@users.noreply.github.com"
           git add pnpm-lock.yaml
           git commit -m "chore: sync pnpm-lock.yaml"
-          git push
+          # Inline the token into the remote URL just for this push.
+          # The token is NOT persisted into .git/config (persist-credentials: false)
+          # and the URL is consumed immediately. `git push` accepts the
+          # URL via positional argument in this form. The push retriggers
+          # `pull_request` events because the commit is attributed to the
+          # PAT owner, not github-actions.
+          git push "https://x-access-token:${DEPENDABOT_LOCKFILE_PAT}@github.com/${REPO}.git" "HEAD:${PR_HEAD_REF}"
