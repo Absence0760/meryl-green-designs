@@ -115,6 +115,33 @@ describe('POST /enquiries', () => {
 		expect(data.error).toMatch(/too long/i);
 	});
 
+	// Every optional field has its own MAX_LEN; before this block, only
+	// `message` had a regression test. A typo dropping any of the others
+	// (eg. `name`) from the iteration would silently let an arbitrarily
+	// long value through to the email + Resend. Each row asserts the
+	// 1-over-limit case still produces 400 and skips the email send.
+	it.each([
+		{ field: 'name', limit: 120 },
+		{ field: 'email', limit: 200 },
+		{ field: 'phone', limit: 40 },
+		{ field: 'photoReference', limit: 200 },
+		{ field: 'size', limit: 200 },
+		{ field: 'finish', limit: 200 },
+		{ field: 'location', limit: 200 }
+	] as const)('caps $field at $limit chars', async ({ field, limit }) => {
+		// Email needs a `@` and `.` to pass the format check first; ensure
+		// the over-limit payload still parses as an email but is too long.
+		const oversize =
+			field === 'email'
+				? 'a'.repeat(limit) + '@x.co'
+				: 'x'.repeat(limit + 1);
+		const res = await postEnquiry({ ...validBody, [field]: oversize });
+		expect(res.status).toBe(400);
+		const data = (await res.json()) as { error: string };
+		expect(data.error).toMatch(/too long/i);
+		expect(email.sendEmail).not.toHaveBeenCalled();
+	});
+
 	it('rate-limits after 5 submissions from the same IP', async () => {
 		const app = createApp();
 		const headers = {
