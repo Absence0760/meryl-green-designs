@@ -493,6 +493,33 @@ describe('ordersStore.getOrderForRetry', () => {
 	});
 });
 
+describe('ordersStore.recordFailedItn', () => {
+	beforeEach(() => {
+		ddbMock.reset();
+	});
+
+	it('writes the pf_payment_id marker with the existence-guard condition', async () => {
+		// Audit M-X-2 follow-up. The ITN dedup logic depends entirely
+		// on this marker write — a silent regression (wrong attribute
+		// name, missing ConditionExpression, no UpdateCommand sent)
+		// would restart the email storm PayFast's 24h retry window
+		// creates. Test asserts the exact UpdateCommand shape.
+		ddbMock.on(UpdateCommand).resolves({});
+
+		await ordersStore.recordFailedItn('MG-260410-ABCD', 'pf-attempt-1');
+
+		const call = ddbMock.commandCalls(UpdateCommand)[0]!.args[0].input;
+		expect(call.Key).toEqual({ orderRef: 'MG-260410-ABCD' });
+		expect(call.UpdateExpression).toBe('SET lastFailedItnPaymentId = :pid');
+		expect(call.ExpressionAttributeValues).toEqual({ ':pid': 'pf-attempt-1' });
+		// attribute_exists keeps the write tied to a real PII row —
+		// phantom-row protection consistent with the rest of the file.
+		// Without this, a stray write would create an orderRef row
+		// with only `lastFailedItnPaymentId` set.
+		expect(call.ConditionExpression).toBe('attribute_exists(orderRef)');
+	});
+});
+
 describe('ordersStore.incrementRetryAttempt', () => {
 	beforeEach(() => {
 		ddbMock.reset();
