@@ -43,7 +43,9 @@ For first-time deploy walkthrough see [`../docs/deployment.md`](../docs/deployme
 
 ## Prerequisites
 
-- Terraform `>= 1.6.0`
+- Terraform `>= 1.13.0` (earlier versions ship an embedded HashiCorp
+  PGP key that expired in 2026; provider downloads fail with
+  `openpgp: key expired`)
 - AWS CLI v2 configured with credentials for a user that can create IAM, S3,
   CloudFront, Lambda, and Route 53 resources
 - The apex domain's Route 53 hosted zone must already exist (Terraform will

@@ -50,9 +50,14 @@ jobs:
 
       - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
         with:
-          # Matches the `>= 1.6.0, < 2.0.0` range pinned in
-          # `infra/main.tf`. Bump in lockstep when the floor moves.
-          terraform_version: '1.6.0'
+          # Terraform 1.6.0 ships an embedded HashiCorp PGP key that
+          # expired in 2026. With v6 of the AWS provider (and any
+          # other recent provider release) the install step fails with
+          # `openpgp: key expired` because the older Terraform can't
+          # verify the new signing key. 1.13.0+ includes the rotated
+          # key. The `required_version` floor in infra/main.tf was
+          # bumped to >= 1.13.0 to match.
+          terraform_version: '1.13.0'
           terraform_wrapper: false
 
       - name: terraform fmt -check

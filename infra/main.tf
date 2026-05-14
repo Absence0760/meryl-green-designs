@@ -1,5 +1,9 @@
 terraform {
-  required_version = ">= 1.6.0, < 2.0.0"
+  # 1.13.0 floor: earlier Terraform versions ship an embedded
+  # HashiCorp PGP key that expired in 2026, causing provider downloads
+  # to fail with `openpgp: key expired`. Bump in lockstep with the
+  # `terraform_version` pin in .github/workflows/terraform.yml.
+  required_version = ">= 1.13.0, < 2.0.0"
 
   # State backend values are hardcoded because terraform backend blocks
   # can't reference variables. The state bucket and lock table are created
