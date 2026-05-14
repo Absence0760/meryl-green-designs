@@ -148,25 +148,23 @@ Code changes that landed for Day 8:
 
 What's outstanding for Day 8 (operator hands):
 
-1. **Update the Sanity webhook filter** in the Sanity dashboard.
-   The pre-Phase-1 filter was probably `_type == "order" && defined(customerEmail)`
-   or similar — that field no longer exists on the doc and the
-   webhook would stop firing. Change the filter to
-   `_type == "order"` (or `_type == "order" && defined(orderRef)` for
-   tighter shape-checking).
+1. **Sanity webhook filter — confirmed already compatible.** The
+   actual filter in the Sanity dashboard is
+   `_type == "order" && delta::changedAny(status)`. Both clauses still
+   work post-cutover (`_type` is unchanged; `status` is one of the
+   five fields we kept on the Sanity doc). No change needed.
 2. **Cut a new release** (`gh release create vX.Y.0 --generate-notes
    --target main`). The release-gated workflows fire
-   `deploy-studio.yml` then `deploy-backend.yml` in parallel; the
-   Studio deploy needs to land *before* customers see the new
-   schema, so the operator should verify `deploy-studio.yml`
-   completed before `deploy-backend.yml` flips the Lambda. If either
-   workflow run shows a green check before the other, fine; the
-   issue would be if backend deploy succeeded and Studio deploy
-   failed.
+   `deploy-studio.yml` and `deploy-backend.yml` in parallel; the
+   Studio deploy should land before customers see the new schema,
+   so the operator should verify `deploy-studio.yml` completed
+   before `deploy-backend.yml` flips the Lambda. If either workflow
+   run shows a green check before the other, fine; the issue would
+   be if backend deploy succeeded and Studio deploy failed.
 3. **Run the scrub script** against prod:
    ```bash
-   pnpm scrub:sanity-pii:dry   # preview
-   pnpm scrub:sanity-pii --prod --yes
+   pnpm scrub:sanity-pii:dry            # preview
+   pnpm scrub:sanity-pii --prod --yes   # writes
    ```
    This nulls the PII fields on every existing order doc. Re-runnable;
    the second run reports `skipped=N` because the docs are already
@@ -184,8 +182,9 @@ What's outstanding for Day 8 (operator hands):
    - Place a fresh sandbox order — confirm it lands in both stores
      (Sanity holds only the skeleton, DynamoDB holds the PII).
    - Trigger a status change in Studio — confirm the Sanity webhook
-     fires AND the customer status email gets sent (this verifies
-     the webhook filter from step 1).
+     still fires (the `delta::changedAny(status)` filter is the
+     trigger) AND the customer status email gets sent (this also
+     verifies the new DynamoDB join inside the webhook handler).
 
 Phase 2 (Sanity Free downgrade) waits for 14 calendar days of green
 metrics after step 5.
