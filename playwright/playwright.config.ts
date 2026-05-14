@@ -11,6 +11,17 @@ const repoRoot = path.resolve(__dirname, '..');
 loadEnv({ path: path.join(__dirname, '.env'), override: true });
 loadEnv({ path: path.join(__dirname, '.env.local'), override: true });
 
+// E2E suite invariants. These values are fixed for any test run — the
+// env-guard rejects anything else — so seed sensible defaults rather
+// than force the operator to remember them in .env. `??=` only fires
+// when the key is genuinely unset, so a deliberately wrong value in
+// the shell or .env still flows through to the env-guard and aborts.
+process.env.EMAIL_BACKEND ??= 'file';
+process.env.PAYFAST_SANDBOX ??= 'true';
+process.env.PAYFAST_MERCHANT_ID ??= '10004002';
+process.env.PAYFAST_MERCHANT_KEY ??= 'q1cd2rdny4a53';
+process.env.PAYFAST_PASSPHRASE ??= 'payfast';
+
 const FRONTEND_PORT = Number(process.env.E2E_FRONTEND_PORT ?? 7777);
 const BACKEND_PORT = Number(process.env.E2E_BACKEND_PORT ?? 3001);
 
