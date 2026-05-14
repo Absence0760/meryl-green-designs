@@ -1,5 +1,10 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, GetCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
+import {
+	DynamoDBDocumentClient,
+	GetCommand,
+	ScanCommand,
+	UpdateCommand,
+} from '@aws-sdk/lib-dynamodb';
 import { assertNotProd } from './env-guard.ts';
 
 // Read-side access to the local LocalStack DynamoDB so specs can
@@ -41,4 +46,42 @@ export async function scanOrders(): Promise<Record<string, unknown>[]> {
 	const c = client();
 	const result = await c.send(new ScanCommand({ TableName: tableName() }));
 	return (result.Items as Record<string, unknown>[] | undefined) ?? [];
+}
+
+/**
+ * Backdate a PII row's createdAt so tests can exercise time-windowed
+ * code paths (auto-cancel sweep, payment-retry 7-day window) without
+ * actually waiting days. Updates both `createdAt` (ISO string) and
+ * `ttl` (epoch seconds) since the backend reads both.
+ */
+export async function backdateOrder(orderRef: string, daysAgo: number): Promise<void> {
+	const c = client();
+	const created = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000);
+	const ttlSeconds = Math.floor(created.getTime() / 1000) + 365 * 24 * 60 * 60;
+	await c.send(
+		new UpdateCommand({
+			TableName: tableName(),
+			Key: { orderRef },
+			UpdateExpression: 'SET createdAt = :ts, #ttl = :ttl',
+			ExpressionAttributeNames: { '#ttl': 'ttl' },
+			ExpressionAttributeValues: { ':ts': created.toISOString(), ':ttl': ttlSeconds },
+		}),
+	);
+}
+
+/**
+ * Force the retry-attempt counter to a specific value so a single
+ * spec can verify the cap-exhausted path without issuing five real
+ * retries (which would also consume real PayFast sandbox interactions).
+ */
+export async function setRetryAttempts(orderRef: string, attempts: number): Promise<void> {
+	const c = client();
+	await c.send(
+		new UpdateCommand({
+			TableName: tableName(),
+			Key: { orderRef },
+			UpdateExpression: 'SET retryAttempts = :n',
+			ExpressionAttributeValues: { ':n': attempts },
+		}),
+	);
 }
