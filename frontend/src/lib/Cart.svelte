@@ -2,6 +2,7 @@
 	import { cart } from './cartStore.svelte';
 	import { formatPrice } from './sanity';
 	import { PUBLIC_API_URL } from '$env/static/public';
+	import PayFastRedirecting from './PayFastRedirecting.svelte';
 
 	export let open = false;
 	export let onclose: () => void;
@@ -128,10 +129,8 @@
 			</header>
 
 			{#if redirecting}
-				<div class="redirecting" role="status" aria-live="polite">
-					<div class="spinner" aria-hidden="true"></div>
-					<p>Redirecting to PayFast…</p>
-					<p class="empty-hint">Complete your payment on the next page.</p>
+				<div class="redirecting-wrap">
+					<PayFastRedirecting />
 				</div>
 			{:else if cart.items.length === 0}
 				<div class="empty">
@@ -292,8 +291,7 @@
 		color: var(--color-ink);
 	}
 
-	.empty,
-	.redirecting {
+	.empty {
 		flex: 1;
 		display: flex;
 		flex-direction: column;
@@ -305,25 +303,17 @@
 		font-size: 0.9rem;
 	}
 
-	.empty p,
-	.redirecting p { margin: 0; }
+	.empty p { margin: 0; }
 
-	.spinner {
-		width: 32px;
-		height: 32px;
-		border: 3px solid var(--color-rule);
-		border-top-color: var(--color-leaf-dark);
-		border-radius: 50%;
-		animation: spin 0.8s linear infinite;
-		margin-bottom: 8px;
-	}
-
-	@keyframes spin {
-		to { transform: rotate(360deg); }
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		.spinner { animation: none; }
+	/* Cart panel is flex-column; make the redirecting block grow to
+	   fill the panel so the spinner sits centred vertically — matching
+	   the previous inline implementation. The shared component owns
+	   its own padding + spinner styles. */
+	.redirecting-wrap {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
 	}
 
 	.empty-hint {
