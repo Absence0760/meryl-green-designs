@@ -1,0 +1,25 @@
+{
+	"$schema": "https://json.schemastore.org/package.json",
+	"name": "@meryl-green-designs/playwright",
+	"version": "0.0.1",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"test": "playwright test",
+		"test:headed": "playwright test --headed",
+		"test:ui": "playwright test --ui",
+		"check": "tsc --noEmit",
+		"seed": "tsx helpers/seed-sanity.ts",
+		"install-browsers": "playwright install --with-deps chromium"
+	},
+	"devDependencies": {
+		"@aws-sdk/client-dynamodb": "^3.1046.0",
+		"@aws-sdk/lib-dynamodb": "^3.1046.0",
+		"@playwright/test": "^1.49.0",
+		"@sanity/client": "^7.22.0",
+		"@types/node": "25.7.0",
+		"dotenv": "^17.4.2",
+		"tsx": "4.21.0",
+		"typescript": "6.0.3"
+	}
+}
