@@ -57,7 +57,16 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
         run: |
-          gh pr review --approve "$PR_URL"
+          set -euo pipefail
+          # Best-effort approval. Fails closed (`|| true`) when the
+          # repo setting "Allow GitHub Actions to create and approve
+          # pull requests" is off — without it, gh pr review --approve
+          # returns "GitHub Actions is not permitted to approve pull
+          # requests". The workflow still proceeds to queue auto-merge;
+          # if branch protection requires approvals the merge sits in
+          # the queue until a human approves, which is the desired
+          # behaviour for that protection-strict mode.
+          gh pr review --approve "$PR_URL" || echo "::notice::PR approval not permitted (enable 'Allow GitHub Actions to create and approve pull requests' in repo settings to enable). Proceeding to queue auto-merge."
           # `--auto --squash` lands the merge as soon as every required
           # check turns green. If branch protection blocks the merge,
           # `--auto` queues it — a human can land it manually after
