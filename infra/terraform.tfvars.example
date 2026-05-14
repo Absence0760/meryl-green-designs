@@ -20,6 +20,13 @@ resend_api_key = "re_xxxxxxxxxxxxxxxxxxxx"
 from_email     = "Meryl Green Designs <orders@merylgreendesigns.com>"
 owner_email    = "meryl@example.com"
 
+# Optional. Address that receives operational CloudWatch alarm emails
+# (auto-cancel Lambda errors, missed daily-cron invocations). Leave
+# blank to send those to `owner_email` instead. Recommended: use a
+# '+tag' alias on a developer-controlled inbox — alarm bodies are AWS
+# metric JSON that isn't actionable for a non-technical recipient.
+ops_alerts_email = ""
+
 # Sanity project — the value baked into the frontend build at CI time and
 # also passed to the backend for reading/writing order documents.
 sanity_project_id = ""

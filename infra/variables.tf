@@ -35,8 +35,22 @@ variable "from_email" {
 }
 
 variable "owner_email" {
-  description = "Address that receives new-order notifications."
+  description = "Address that receives new-order notifications + AWS Budget alerts. Typically the business owner."
   type        = string
+}
+
+variable "ops_alerts_email" {
+  description = <<-EOT
+    Address that receives operational CloudWatch alarm emails (auto-cancel
+    Lambda errors, missed daily-cron invocations). Typically the developer /
+    operator, not the business owner — alarm bodies are AWS metric JSON that
+    isn't actionable for a non-technical recipient.
+
+    Optional. Leaves blank, defaults to `owner_email`. Use a '+tag' alias
+    (e.g. you+ops-alerts@gmail.com) so you can filter them in your inbox.
+  EOT
+  type        = string
+  default     = ""
 }
 
 variable "sanity_project_id" {

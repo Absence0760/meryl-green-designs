@@ -139,10 +139,20 @@ resource "aws_lambda_permission" "events_invoke_auto_cancel" {
 #      single missed invocation crosses the threshold once we're
 #      definitely outside the schedule's nominal window.
 #
-# Both alarms publish to a single SNS topic that emails the owner.
+# Both alarms publish to a single SNS topic that emails the operator
+# (var.ops_alerts_email, falling back to var.owner_email if unset).
 # AWS SNS email subscriptions need a one-time confirmation click — the
-# owner gets a `Subscription Confirmation` email on first apply.
+# subscriber gets a `Subscription Confirmation` email on first apply.
 # ----------------------------------------------------------------------------
+
+locals {
+  # Operational alarms go to the developer/operator inbox, not to the
+  # business owner. Customer-order notifications + AWS Budget alerts
+  # still go to var.owner_email. If ops_alerts_email is left blank in
+  # tfvars, both streams collapse onto owner_email — fine for a solo
+  # operator who is also the business owner.
+  ops_alerts_email = var.ops_alerts_email != "" ? var.ops_alerts_email : var.owner_email
+}
 
 resource "aws_sns_topic" "ops_alerts" {
   name = "${local.project}-ops-alerts"
@@ -159,7 +169,7 @@ resource "aws_sns_topic" "ops_alerts" {
 resource "aws_sns_topic_subscription" "ops_alerts_owner" {
   topic_arn = aws_sns_topic.ops_alerts.arn
   protocol  = "email"
-  endpoint  = var.owner_email
+  endpoint  = local.ops_alerts_email
 }
 
 resource "aws_cloudwatch_metric_alarm" "auto_cancel_errors" {

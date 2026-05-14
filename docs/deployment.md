@@ -366,7 +366,8 @@ Required values:
 | `github_repo` | Your repo in `owner/name` form, e.g. `owner/meryl-green-designs` |
 | `resend_api_key` | Resend dashboard → API Keys → Create API key → copy the value |
 | `from_email` | A verified sender on your Resend domain, e.g. `"Meryl Green Designs <orders@merylgreendesigns.com>"` |
-| `owner_email` | Inbox that should receive new-order notifications |
+| `owner_email` | Inbox that should receive new-order notifications + AWS Budget alerts. Typically the business owner. |
+| `ops_alerts_email` | *Optional.* Inbox for operational CloudWatch alarm emails (auto-cancel Lambda errors, missed daily-cron invocations). Defaults to `owner_email` if blank. Use a `+tag` alias on a developer-controlled inbox — alarm bodies are AWS metric JSON, not customer-friendly. |
 | `sanity_project_id` | Sanity dashboard → your project → top of the page |
 | `sanity_api_token` | Sanity → Project → API → Tokens → Add → `Editor` role (used by the Lambda at runtime to create orders and read documents) |
 | `sanity_webhook_secret` | Generate with `openssl rand -hex 32`. Store this somewhere — the setup script reuses it when creating the Sanity webhook |
@@ -911,11 +912,12 @@ gh release create v0.X.Y --generate-notes --target main
 ```
 
 **SNS subscription confirmation.** The auto-cancel Lambda's CloudWatch
-alarms publish to an SNS topic with `owner_email` subscribed. AWS sends
-the owner a `Subscription Confirmation` email on the first apply that
-creates the topic — the operator must click the confirmation link
-**before** the alarms can deliver. If alarms fire while the
-subscription is still pending, SNS silently drops the notification.
+alarms publish to an SNS topic with `ops_alerts_email` subscribed (or
+`owner_email` if `ops_alerts_email` is blank in tfvars). AWS sends a
+`Subscription Confirmation` email on the first apply that creates the
+topic — the subscriber must click the confirmation link **before** the
+alarms can deliver. If alarms fire while the subscription is still
+pending, SNS silently drops the notification.
 
 If you missed the confirmation email (spam, deleted, wrong address),
 go to the SNS console → Subscriptions, find the `ops-alerts`
