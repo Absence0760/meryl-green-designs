@@ -144,10 +144,14 @@ traffic. Most are external, and each is documented with exact steps in
       so the reply takes 30 seconds per order, not 3 minutes.
 - [ ] Real contact details on `frontend/src/routes/contact/+page.svelte`:
       - [x] real email — `zagreenwoman@gmail.com` (confirmed by Meryl 2026-04-16)
-      - [ ] phone number (or remove the row — `TODO` in markup; current
-            placeholder reads "By email first, please.")
-      - [ ] studio location/town (`TODO` in markup; current placeholder
-            reads "Based in South Africa. Shipped nationwide.")
+      - [ ] phone number — row removed for now because Meryl hasn't
+            provided a number. Once she does, add a new `<div
+            class="contact-row">` with `<dt>Phone</dt><dd>…</dd>` back
+            into the markup at the location flagged by the HTML
+            comment.
+      - [ ] studio location/town (`TODO` in markup; current production
+            wording reads "Based in South Africa. Shipped nationwide."
+            — acceptable as-is, but a real town would be friendlier)
 - [ ] Meryl populates the shop with real products via Sanity Studio
 - [ ] Meryl populates the gallery with real photos via Sanity Studio
 - [ ] **ECT Act s43 business identification** for the Returns page

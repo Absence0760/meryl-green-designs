@@ -109,12 +109,9 @@
 				</dd>
 			</div>
 
-			<!-- TODO: replace with real phone, or remove this row if Meryl doesn't
-			     want a public number. -->
-			<div class="contact-row">
-				<dt>Phone</dt>
-				<dd class="muted">By email first, please.</dd>
-			</div>
+			<!-- Phone row removed — Meryl has not provided a public number.
+			     Tracked in docs/roadmap.md. Add the row back here once a
+			     number is available. -->
 
 			<!-- TODO: replace [town] with Meryl's actual studio location. -->
 			<div class="contact-row">
