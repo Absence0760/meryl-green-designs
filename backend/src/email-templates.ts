@@ -194,7 +194,13 @@ function cancelledTemplate(order: Order): { subject: string; html: string } {
 	// emailing for a refund that doesn't exist (audit M-1). The "reply
 	// if you have questions" line covers all three cases without making
 	// claims the system can't keep.
-	const paymentReceived = order.status === 'cancelled' && order.paymentId !== null;
+	// `cancelledTemplate` is only ever reached from the STATUS_TEMPLATES
+	// dispatch for status='cancelled', so the redundant status check
+	// from an earlier draft was always true at this call site. Only the
+	// paymentId condition actually matters — a non-null paymentId
+	// means a successful PayFast ITN was processed for this order,
+	// so the customer was charged and a refund is appropriate.
+	const paymentReceived = order.paymentId !== null;
 	return {
 		subject: `Order ${order.orderRef} cancelled`,
 		html: `
