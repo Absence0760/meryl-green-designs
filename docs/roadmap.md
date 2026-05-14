@@ -203,6 +203,13 @@ None are blocking; pick the ones that match observed pain.
 - [x] Rate limiting on `POST /orders`, `GET /orders/:ref`, and the two
       webhook endpoints — per-IP fixed-window in-memory limiter
       (`backend/src/rate-limit.ts`)
+- [ ] **Self-service payment retry** for orders left in `pending_payment`
+      after a failed PayFast attempt. Same `orderRef` re-submitted to
+      PayFast so the eventual ITN updates the original Sanity doc instead
+      of orphaning it. Requires per-orderRef rate limit, 7-day retry
+      window, status guard, and a failed-payment email after 24h with no
+      successful ITN. **Full proposal:**
+      [`docs/payment-retry-plan.md`](./payment-retry-plan.md).
 - [ ] Structured product picker on the order form (checkboxes + quantities
       per product) — only worth it once there are enough products that
       the free-text field feels clumsy
