@@ -1,10 +1,22 @@
 # Orders & tracking
 
-**Status: implemented.** Orders are stored in Sanity, customers can track
-their order at `/track`, and status updates in the Studio trigger automatic
-emails via a webhook. Product reads go through the backend, and the Sanity
-dataset is configured as private, so customer PII on order documents stays
-inaccessible to anonymous clients.
+**Status: implemented + Phase 1 cutover landed.** Customer order PII now
+lives in a private AWS DynamoDB table; the Sanity order document holds
+only the non-PII skeleton (`orderRef`, `status`, `paymentMethod`,
+`amountZar`, `paymentId`). The Studio's three custom panels
+(`CustomerDetailsPanel`, `TrackingFields`, `InternalNotesField`) fetch
+PII from the backend's `/admin/*` routes, which read DynamoDB directly.
+Customers track their order at `/track` as before — the backend joins
+both stores and returns a unified shape. Status updates in the Studio
+trigger automatic emails via the Sanity webhook (now joining DynamoDB to
+recover the customer's email). See
+[`orders-pii-split-plan.md`](./orders-pii-split-plan.md) for the
+migration history.
+
+The detail below was written for the original Sanity-only design and
+still describes that surface where it matters for the customer-facing
+parts. Where the implementation now differs from this text, the Phase 1
+note in this status block is canonical.
 
 ## Problem
 
@@ -581,13 +593,24 @@ For testing locally against PayFast's public sandbox (including ngrok setup
 for ITN callbacks), see
 [`run-locally.md § Testing PayFast with sandbox credentials`](./run-locally.md#testing-payfast-with-sandbox-credentials).
 
-### New Sanity fields on the order schema
+### Post-Phase-1 Sanity order schema
+
+After the Phase 1 cutover the Sanity order document holds only the
+non-PII skeleton. All customer-facing fields moved to DynamoDB.
 
 | Field | Type | Purpose |
 |---|---|---|
+| `orderRef` | string | Join key shared with the DynamoDB row |
+| `status` | `OrderStatus` | Lifecycle state: `pending_payment`, `payment_received`, `shipped`, `delivered`, `cancelled` |
 | `paymentMethod` | `'payfast'` (historical orders may carry `'eft'`) | Which payment path the customer chose |
 | `amountZar` | number | Server-computed total in ZAR |
 | `paymentId` | string | PayFast transaction ID (set by ITN handler) |
+
+The matching DynamoDB row (table `meryl-green-designs-orders`, hash key
+`orderRef`) holds `customerName`, `customerEmail`, `customerPhone`,
+`shippingAddress`, `items`, `customerNotes`, `internalNotes`,
+`trackingNumber`, `trackingUrl`, `shippingCarrier`, plus a per-item
+365-day TTL. See `backend/src/orders-store.ts` for the join.
 
 ## What's NOT in this plan
 

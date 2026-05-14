@@ -11,7 +11,7 @@ import {
 	ownerNotification,
 	customerEmailForStatus
 } from '../email-templates.js';
-import type { SanityOrder } from '../sanity.js';
+import type { Order } from '../orders-store.js';
 import { createApp } from '../app.js';
 import * as ordersStore from '../orders-store.js';
 import type { OrderPii } from '../orders-store.js';
@@ -44,8 +44,8 @@ describe('escapeHtml', () => {
 	});
 });
 
-// Helper to build a test order document matching the SanityOrder shape.
-function makeOrder(overrides: Partial<SanityOrder> = {}): SanityOrder {
+// Helper to build a test order document matching the Order shape (Sanity skeleton + DynamoDB PII).
+function makeOrder(overrides: Partial<Order> = {}): Order {
 	return {
 		_id: 'abc123',
 		_type: 'order',
@@ -65,6 +65,7 @@ function makeOrder(overrides: Partial<SanityOrder> = {}): SanityOrder {
 		trackingNumber: null,
 		trackingUrl: null,
 		shippingCarrier: null,
+		internalNotes: null,
 		...overrides
 	};
 }

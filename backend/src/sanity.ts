@@ -9,6 +9,10 @@ export type OrderStatus =
 
 export type PaymentMethod = 'eft' | 'payfast';
 
+// Phase 1: Sanity stores only the non-PII order skeleton. PII lives in
+// DynamoDB and is joined back by orders-store.ts before reaching any
+// caller — see docs/orders-pii-split-plan.md. The `Order` shape that
+// callers actually work with is exported from orders-store.ts.
 export type SanityOrder = {
 	_id: string;
 	_type: 'order';
@@ -19,25 +23,10 @@ export type SanityOrder = {
 	paymentMethod: PaymentMethod;
 	amountZar: number | null;
 	paymentId: string | null;
-	customerName: string;
-	customerEmail: string;
-	customerPhone: string | null;
-	shippingAddress: string | null;
-	items: string;
-	customerNotes: string | null;
-	trackingNumber: string | null;
-	trackingUrl: string | null;
-	shippingCarrier: string | null;
 };
 
-export type NewOrderInput = {
+export type NewSanityOrderInput = {
 	orderRef: string;
-	customerName: string;
-	customerEmail: string;
-	customerPhone: string;
-	shippingAddress: string;
-	items: string;
-	customerNotes: string;
 	paymentMethod?: PaymentMethod;
 	amountZar?: number;
 };
@@ -155,22 +144,25 @@ function getClient(): SanityClient {
 	return cachedClient;
 }
 
-export async function createOrder(input: NewOrderInput): Promise<SanityOrder> {
+export async function createOrder(input: NewSanityOrderInput): Promise<SanityOrder> {
 	const client = getClient();
 	const created = await client.create({
 		_type: 'order',
 		orderRef: input.orderRef,
 		status: 'pending_payment',
 		paymentMethod: input.paymentMethod ?? 'payfast',
-		amountZar: input.amountZar ?? null,
-		customerName: input.customerName,
-		customerEmail: input.customerEmail,
-		customerPhone: input.customerPhone || null,
-		shippingAddress: input.shippingAddress,
-		items: input.items,
-		customerNotes: input.customerNotes || null
+		amountZar: input.amountZar ?? null
 	});
 	return created as unknown as SanityOrder;
+}
+
+export async function deleteOrder(orderId: string): Promise<void> {
+	// Used as the compensating action when the DynamoDB PII write succeeds
+	// but the Sanity create fails — orders-store.ts catches and reverses
+	// the DynamoDB row; if Sanity itself errors AFTER inserting the doc
+	// (very rare), this is the cleanup hook.
+	const client = getClient();
+	await client.delete(orderId);
 }
 
 export async function updateOrderPayment(
@@ -265,57 +257,8 @@ export async function getTestimonials(): Promise<SanityTestimonial[]> {
 	return client.fetch<SanityTestimonial[]>(TESTIMONIALS_QUERY);
 }
 
-// ---------------------------------------------------------------------------
-// PII retention — see backend/src/pii-cleanup.ts and docs/security.md
-// ---------------------------------------------------------------------------
-
-/** Subset returned by findOrdersWithExpiredPii — just enough for the cleanup. */
-export type ExpiredOrder = {
-	_id: string;
-	orderRef: string;
-	status: OrderStatus;
-};
-
-/**
- * Find orders in a terminal state (`delivered` or `cancelled`) whose
- * `_updatedAt` is older than `cutoffIso`. These are eligible for PII
- * scrubbing under the documented retention policy. Already-scrubbed
- * orders self-exclude — `clearOrderPii()` updates `_updatedAt`, so the
- * order won't match the next time the query runs.
- */
-export async function findOrdersWithExpiredPii(cutoffIso: string): Promise<ExpiredOrder[]> {
-	const client = getClient();
-	const query = `*[_type == "order"
-		&& status in ["delivered", "cancelled"]
-		&& _updatedAt < $cutoff
-		&& (defined(customerEmail) || defined(customerName) || defined(shippingAddress) || defined(customerPhone))
-	] | order(_updatedAt asc) {
-		_id,
-		orderRef,
-		status
-	}`;
-	return client.fetch<ExpiredOrder[]>(query, { cutoff: cutoffIso });
-}
-
-/**
- * Set the PII fields on a single order to null. `orderRef`, `status`,
- * `amountZar`, `paymentMethod`, `paymentId`, `_createdAt`, `items` are
- * preserved for accounting/audit purposes — none of those are PII.
- *
- * `items` contains the product summary (`"1 x Small Screen — R 450"`)
- * which has no customer-identifying content; safe to keep.
- */
-export async function clearOrderPii(orderId: string): Promise<void> {
-	const client = getClient();
-	await client
-		.patch(orderId)
-		.set({
-			customerName: null,
-			customerEmail: null,
-			customerPhone: null,
-			shippingAddress: null,
-			customerNotes: null,
-			internalNotes: null
-		})
-		.commit();
-}
+// PII retention is now handled by DynamoDB's per-item TTL (365 days from
+// createdAt, set in orders-store.ts:buildPiiItem). The Sanity-side
+// findOrdersWithExpiredPii / clearOrderPii pair that lived here before
+// Phase 1 cutover was removed alongside backend/src/pii-cleanup.ts —
+// see docs/orders-pii-split-plan.md.

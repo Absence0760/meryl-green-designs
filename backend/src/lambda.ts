@@ -1,30 +1,9 @@
-import { handle, type LambdaEvent } from 'hono/aws-lambda';
-import type { ScheduledEvent, Context } from 'aws-lambda';
+import { handle } from 'hono/aws-lambda';
 import { createApp } from './app.js';
-import { runPiiCleanup } from './pii-cleanup.js';
 
-const httpHandler = handle(createApp());
-
-/**
- * Single Lambda serving two distinct event sources:
- *
- * 1. **HTTP requests** via API Gateway v2 (HTTP API, AWS_PROXY integration)
- *    fronted by CloudFront at `/api/*` — the regular Hono app.
- * 2. **EventBridge scheduled invocations** for the PII retention sweep.
- *    EventBridge events have `source === 'aws.events'`; the schedule
- *    rule is defined in `infra/pii_cleanup.tf`.
- *
- * Dispatching here keeps both code paths in one deployment unit while
- * keeping the runtime IAM role identical (the Sanity write token already
- * lives in the Lambda env).
- */
-export const handler = async (event: LambdaEvent | ScheduledEvent, context: Context) => {
-	if (isScheduledEvent(event)) {
-		return runPiiCleanup();
-	}
-	return httpHandler(event, context);
-};
-
-function isScheduledEvent(event: LambdaEvent | ScheduledEvent): event is ScheduledEvent {
-	return (event as { source?: string }).source === 'aws.events';
-}
+// Lambda entrypoint. Phase 1: the Lambda serves HTTP requests only —
+// the pre-Phase-1 dual-purpose dispatcher that also handled
+// EventBridge-scheduled PII-cleanup invocations is gone, replaced by
+// per-row DynamoDB TTL on the orders table. The corresponding
+// EventBridge rule was removed from infra/.
+export const handler = handle(createApp());

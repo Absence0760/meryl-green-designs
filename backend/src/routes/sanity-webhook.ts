@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { sendEmail } from '../email.js';
 import { customerEmailForStatus } from '../email-templates.js';
+import { getOrderByRef } from '../orders-store.js';
 import type { SanityOrder } from '../sanity.js';
 import { createRateLimiter } from '../rate-limit.js';
 
@@ -62,19 +63,38 @@ export function sanityWebhookRouter() {
 			return c.json({ error: 'Invalid signature' }, 401);
 		}
 
-		let order: SanityOrder;
+		let webhookOrder: SanityOrder;
 		try {
-			order = JSON.parse(rawBody);
+			webhookOrder = JSON.parse(rawBody);
 		} catch {
 			return c.json({ error: 'Invalid JSON body' }, 400);
 		}
 
-		if (order._type !== undefined && order._type !== 'order') {
+		if (webhookOrder._type !== undefined && webhookOrder._type !== 'order') {
 			return c.json({ ok: true, skipped: 'not an order document' });
 		}
 
+		if (!webhookOrder.orderRef) {
+			console.warn('Sanity webhook payload missing orderRef — skipping');
+			return c.json({ ok: true, skipped: 'no order ref' });
+		}
+
+		// Phase 1: the Sanity webhook payload no longer carries PII fields
+		// (the Sanity doc itself is now PII-free). Join with DynamoDB to
+		// recover customerEmail + customerName + tracking info before
+		// rendering the status email.
+		const order = await getOrderByRef(webhookOrder.orderRef);
+		if (!order) {
+			console.warn(
+				`Sanity webhook for order ${webhookOrder.orderRef} could not be joined with DynamoDB — skipping`
+			);
+			return c.json({ ok: true, skipped: 'order not found' });
+		}
+
 		if (!order.customerEmail) {
-			console.warn(`Sanity webhook for order ${order.orderRef} has no customerEmail — skipping`);
+			console.warn(
+				`Sanity webhook for order ${order.orderRef} has no customerEmail — skipping`
+			);
 			return c.json({ ok: true, skipped: 'no customer email' });
 		}
 

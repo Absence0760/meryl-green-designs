@@ -23,6 +23,11 @@ import * as sanity from '../sanity.js';
 
 const PASSPHRASE = 'test-passphrase';
 
+// Phase 1: Sanity now stores only the non-PII order skeleton. The
+// payfast-itn route reads `status` and `amountZar` directly from the
+// Sanity doc to verify the ITN's amount, and updates the payment fields
+// — all non-PII. The PII fields that used to live on this fixture moved
+// to DynamoDB and don't need to appear here.
 function sanityOrder(overrides: Partial<SanityOrder> = {}): SanityOrder {
 	return {
 		_id: 'order-1',
@@ -34,15 +39,6 @@ function sanityOrder(overrides: Partial<SanityOrder> = {}): SanityOrder {
 		paymentMethod: 'payfast',
 		amountZar: 450,
 		paymentId: null,
-		customerName: 'Jane Smith',
-		customerEmail: 'jane@example.com',
-		customerPhone: null,
-		shippingAddress: '1 Test Street',
-		items: '1 x Small Screen — R 450',
-		customerNotes: null,
-		trackingNumber: null,
-		trackingUrl: null,
-		shippingCarrier: null,
 		...overrides
 	};
 }

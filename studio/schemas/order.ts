@@ -5,6 +5,15 @@ import {
 	TrackingFields
 } from '../components/orderPii';
 
+// Phase 1 schema: Sanity holds only the non-PII order skeleton. Customer
+// details, items, tracking, and internal notes all live in DynamoDB and
+// are rendered via the three custom panels below — these panels fetch
+// from /admin/orders/:ref and write back through PATCH endpoints. The
+// previous native Sanity PII fields (customerName, customerEmail,
+// customerPhone, shippingAddress, items, customerNotes, internalNotes,
+// trackingNumber, trackingUrl, shippingCarrier) were removed at the
+// Phase 1 cutover; existing docs were stripped of those values by
+// `pnpm scrub:sanity-pii --prod --yes`. See docs/orders-pii-split-plan.md.
 export const order = defineType({
 	name: 'order',
 	title: 'Order',
@@ -35,18 +44,15 @@ export const order = defineType({
 			validation: (rule) => rule.required()
 		}),
 
-		// --- Payment ---
+		// --- Payment (non-PII; lives in Sanity) ---
 		defineField({
 			name: 'paymentMethod',
 			title: 'Payment method',
 			type: 'string',
 			options: {
-				list: [
-					{ title: 'EFT', value: 'eft' },
-					{ title: 'PayFast', value: 'payfast' }
-				]
+				list: [{ title: 'PayFast', value: 'payfast' }]
 			},
-			initialValue: 'eft',
+			initialValue: 'payfast',
 			readOnly: true
 		}),
 		defineField({
@@ -64,89 +70,27 @@ export const order = defineType({
 			readOnly: true
 		}),
 
-		// --- Customer ---
-		defineField({
-			name: 'customerName',
-			title: 'Customer name',
-			type: 'string'
-		}),
-		defineField({
-			name: 'customerEmail',
-			title: 'Customer email',
-			type: 'string'
-		}),
-		defineField({
-			name: 'customerPhone',
-			title: 'Customer phone',
-			type: 'string'
-		}),
-		defineField({
-			name: 'shippingAddress',
-			title: 'Shipping address',
-			type: 'text',
-			rows: 3
-		}),
-
-		defineField({
-			name: 'items',
-			title: 'Items',
-			type: 'text',
-			rows: 4,
-			description: 'What the customer said they wanted (free text for now).'
-		}),
-		defineField({
-			name: 'customerNotes',
-			title: 'Customer notes',
-			type: 'text',
-			rows: 2
-		}),
-
-		defineField({
-			name: 'trackingNumber',
-			title: 'Tracking number',
-			type: 'string',
-			description: 'Fill in when marking as shipped.'
-		}),
-		defineField({
-			name: 'trackingUrl',
-			title: 'Tracking URL',
-			type: 'url'
-		}),
-		defineField({
-			name: 'shippingCarrier',
-			title: 'Shipping carrier',
-			type: 'string'
-		}),
-
-		defineField({
-			name: 'internalNotes',
-			title: 'Internal notes (never shown to customer)',
-			type: 'text',
-			rows: 3
-		}),
-
-		// --- DynamoDB-backed panels (Phase 0 dual-write validation) ---
+		// --- DynamoDB-backed panels ---
 		// These placeholder string fields exist only to give the custom
 		// components a slot in the form layout — they never persist any
 		// value to the Sanity document. The components fetch their data
-		// from /admin/orders/:ref (DynamoDB). Native PII fields above stay
-		// until Phase 1 cutover so the operator can eyeball parity.
-		// See docs/orders-pii-split-plan.md.
+		// from /admin/orders/:ref (DynamoDB) and save back through PATCH
+		// endpoints.
 		defineField({
 			name: 'customerDetailsPanel',
-			title: 'Customer details (DynamoDB)',
+			title: 'Customer details',
 			type: 'string',
 			components: { field: CustomerDetailsPanel as never }
 		}),
 		defineField({
 			name: 'trackingPanel',
-			title: 'Tracking (DynamoDB)',
+			title: 'Tracking',
 			type: 'string',
 			components: { field: TrackingFields as never }
 		}),
 		defineField({
 			name: 'internalNotesPanel',
-			title: 'Internal notes (DynamoDB)',
+			title: 'Internal notes',
 			type: 'string',
 			components: { field: InternalNotesField as never }
 		})
@@ -166,12 +110,13 @@ export const order = defineType({
 	preview: {
 		select: {
 			title: 'orderRef',
-			subtitle: 'customerName',
 			status: 'status'
 		},
-		prepare({ title, subtitle, status }) {
+		prepare({ title, status }) {
+			// Customer name lives in DynamoDB now; the list preview keeps
+			// just the orderRef + status to avoid a per-row DynamoDB read.
 			return {
-				title: `${title ?? 'New order'} — ${subtitle ?? 'Unknown'}`,
+				title: title ?? 'New order',
 				subtitle: `Status: ${status ?? 'pending_payment'}`
 			};
 		}

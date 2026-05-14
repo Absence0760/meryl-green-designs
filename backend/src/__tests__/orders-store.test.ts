@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mockClient } from 'aws-sdk-client-mock';
 import {
+	DeleteCommand,
 	DynamoDBDocumentClient,
 	GetCommand,
 	PutCommand,
@@ -10,6 +11,7 @@ import type { SanityOrder } from '../sanity.js';
 
 vi.mock('../sanity.js', () => ({
 	createOrder: vi.fn(),
+	deleteOrder: vi.fn(),
 	getOrderByRef: vi.fn(),
 	updateOrderPayment: vi.fn()
 }));
@@ -19,6 +21,7 @@ import * as ordersStore from '../orders-store.js';
 
 const ddbMock = mockClient(DynamoDBDocumentClient);
 
+// Phase 1: Sanity stores only the non-PII skeleton.
 function sanityOrder(overrides: Partial<SanityOrder> = {}): SanityOrder {
 	return {
 		_id: 'order-1',
@@ -30,15 +33,6 @@ function sanityOrder(overrides: Partial<SanityOrder> = {}): SanityOrder {
 		paymentMethod: 'payfast',
 		amountZar: 450,
 		paymentId: null,
-		customerName: 'Jane Smith',
-		customerEmail: 'jane@example.com',
-		customerPhone: '0123456789',
-		shippingAddress: '1 Test Street',
-		items: '1 x Small Screen — R 450.00',
-		customerNotes: 'Please gift wrap',
-		trackingNumber: null,
-		trackingUrl: null,
-		shippingCarrier: null,
 		...overrides
 	};
 }
@@ -55,34 +49,54 @@ const newOrderInput = {
 	amountZar: 450
 };
 
-describe('ordersStore.createOrder (Phase 0 dual-write)', () => {
+describe('ordersStore.createOrder (Phase 1 split-write)', () => {
 	beforeEach(() => {
 		ddbMock.reset();
 		vi.mocked(sanity.createOrder).mockReset();
+		vi.mocked(sanity.deleteOrder).mockReset();
 	});
 
-	it('writes Sanity first, then DynamoDB', async () => {
-		const order = sanityOrder();
-		// Track the call order across the two stores: Sanity should resolve
-		// before DynamoDB.send is invoked at all.
+	it('writes DynamoDB first, then Sanity — opposite of Phase 0', async () => {
+		// Phase 1 ordering matters: PII has to land in DynamoDB before the
+		// Sanity skeleton exists, so we never have a Sanity order doc
+		// referring to a row that isn't there yet.
 		const calls: string[] = [];
-		vi.mocked(sanity.createOrder).mockImplementation(async () => {
-			calls.push('sanity');
-			return order;
-		});
 		ddbMock.on(PutCommand).callsFake(() => {
 			calls.push('dynamo');
 			return {};
 		});
+		vi.mocked(sanity.createOrder).mockImplementation(async () => {
+			calls.push('sanity');
+			return sanityOrder();
+		});
 
 		await ordersStore.createOrder(newOrderInput);
 
-		expect(calls).toEqual(['sanity', 'dynamo']);
+		expect(calls).toEqual(['dynamo', 'sanity']);
+	});
+
+	it('returns the joined Order — Sanity skeleton + DynamoDB PII', async () => {
+		ddbMock.on(PutCommand).resolves({});
+		vi.mocked(sanity.createOrder).mockResolvedValueOnce(
+			sanityOrder({ paymentId: null, amountZar: 450 })
+		);
+
+		const result = await ordersStore.createOrder(newOrderInput);
+
+		// Non-PII from Sanity
+		expect(result.orderRef).toBe('MG-260410-ABCD');
+		expect(result.status).toBe('pending_payment');
+		expect(result.amountZar).toBe(450);
+		expect(result.paymentMethod).toBe('payfast');
+		// PII from DynamoDB (built from input)
+		expect(result.customerName).toBe('Jane Smith');
+		expect(result.customerEmail).toBe('jane@example.com');
+		expect(result.items).toBe('1 x Small Screen — R 450.00');
 	});
 
 	it('writes a PII row keyed by orderRef with a 365-day TTL', async () => {
-		vi.mocked(sanity.createOrder).mockResolvedValueOnce(sanityOrder());
 		ddbMock.on(PutCommand).resolves({});
+		vi.mocked(sanity.createOrder).mockResolvedValueOnce(sanityOrder());
 
 		await ordersStore.createOrder(newOrderInput);
 
@@ -95,8 +109,14 @@ describe('ordersStore.createOrder (Phase 0 dual-write)', () => {
 		expect(item.items).toBe('1 x Small Screen — R 450.00');
 		expect(item.trackingNumber).toBeNull();
 
-		const createdAt = Date.parse('2026-04-10T12:00:00Z') / 1000;
-		expect(item.ttl).toBe(createdAt + 365 * 24 * 60 * 60);
+		// TTL anchored at the createdAt that the test fixture controls. The
+		// Phase 1 createOrder uses `new Date()` at call time rather than
+		// reading from Sanity's _createdAt (since the Sanity write happens
+		// AFTER the DynamoDB write), so just assert the TTL is roughly the
+		// expected duration into the future.
+		const now = Math.floor(Date.now() / 1000);
+		expect(item.ttl).toBeGreaterThan(now + 364 * 24 * 60 * 60);
+		expect(item.ttl).toBeLessThan(now + 366 * 24 * 60 * 60);
 
 		// Duplicate guard for retries.
 		expect(putCalls[0]!.args[0].input.ConditionExpression).toBe(
@@ -104,38 +124,76 @@ describe('ordersStore.createOrder (Phase 0 dual-write)', () => {
 		);
 	});
 
-	it('returns the Sanity order even when the DynamoDB shadow write fails', async () => {
-		// Phase 0 contract: a DynamoDB failure must NOT fail the customer's
-		// order. Reads still come from Sanity, so the order is valid.
-		const order = sanityOrder();
-		vi.mocked(sanity.createOrder).mockResolvedValueOnce(order);
-		ddbMock.on(PutCommand).rejects(new Error('throttled'));
-		const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+	it('only writes the non-PII skeleton to Sanity', async () => {
+		ddbMock.on(PutCommand).resolves({});
+		vi.mocked(sanity.createOrder).mockResolvedValueOnce(sanityOrder());
 
-		const result = await ordersStore.createOrder(newOrderInput);
+		await ordersStore.createOrder(newOrderInput);
 
-		expect(result).toEqual(order);
-		// Error log is intentionally scrubbed — only the orderRef and the
-		// error message survive, the raw Error object does not.
-		expect(errSpy).toHaveBeenCalledOnce();
-		const logged = errSpy.mock.calls[0]![0] as string;
-		expect(logged).toContain('shadow write failed');
-		expect(logged).toContain('MG-260410-ABCD');
-		expect(logged).toContain('throttled');
-		errSpy.mockRestore();
+		expect(sanity.createOrder).toHaveBeenCalledWith({
+			orderRef: 'MG-260410-ABCD',
+			paymentMethod: 'payfast',
+			amountZar: 450
+		});
+		// No PII fields slipped into the Sanity call.
+		const args = vi.mocked(sanity.createOrder).mock.calls[0]![0];
+		expect(args).not.toHaveProperty('customerName');
+		expect(args).not.toHaveProperty('customerEmail');
+		expect(args).not.toHaveProperty('items');
+		expect(args).not.toHaveProperty('shippingAddress');
 	});
 
-	it('propagates a Sanity failure without writing to DynamoDB', async () => {
+	it('propagates a Sanity failure AFTER deleting the DynamoDB PII row (compensating action)', async () => {
+		ddbMock.on(PutCommand).resolves({});
+		ddbMock.on(DeleteCommand).resolves({});
 		vi.mocked(sanity.createOrder).mockRejectedValueOnce(new Error('sanity exploded'));
 
 		await expect(ordersStore.createOrder(newOrderInput)).rejects.toThrow('sanity exploded');
 
-		expect(ddbMock.commandCalls(PutCommand)).toHaveLength(0);
+		// The DynamoDB PII row was inserted, then deleted as compensation.
+		expect(ddbMock.commandCalls(PutCommand)).toHaveLength(1);
+		const delCalls = ddbMock.commandCalls(DeleteCommand);
+		expect(delCalls).toHaveLength(1);
+		expect(delCalls[0]!.args[0].input.Key).toEqual({ orderRef: 'MG-260410-ABCD' });
+	});
+
+	it('still throws the Sanity error even when the compensating delete fails', async () => {
+		// The orphaned PII row has a 365-day TTL and will expire. The
+		// reconciler cron (Day 9+) flags it sooner. We must not swallow the
+		// Sanity error just because cleanup failed — the customer's order
+		// did not complete.
+		ddbMock.on(PutCommand).resolves({});
+		ddbMock.on(DeleteCommand).rejects(new Error('delete throttled'));
+		vi.mocked(sanity.createOrder).mockRejectedValueOnce(new Error('sanity exploded'));
+		const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+		await expect(ordersStore.createOrder(newOrderInput)).rejects.toThrow('sanity exploded');
+
+		// The compensating-delete failure was logged but didn't mask the
+		// Sanity error.
+		expect(errSpy).toHaveBeenCalledOnce();
+		const logged = errSpy.mock.calls[0]![0] as string;
+		expect(logged).toContain('Compensating delete failed');
+		expect(logged).toContain('MG-260410-ABCD');
+		expect(logged).toContain('delete throttled');
+		errSpy.mockRestore();
+	});
+
+	it('propagates a DynamoDB write failure without ever calling Sanity', async () => {
+		// Phase 1 inverts Phase 0: a DynamoDB failure now must fail the
+		// customer's order, because Sanity hasn't been touched yet and
+		// there's nothing to compensate.
+		ddbMock.on(PutCommand).rejects(new Error('throttled'));
+
+		await expect(ordersStore.createOrder(newOrderInput)).rejects.toThrow('throttled');
+
+		expect(sanity.createOrder).not.toHaveBeenCalled();
+		expect(ddbMock.commandCalls(DeleteCommand)).toHaveLength(0);
 	});
 
 	it('coerces empty optional strings to null when writing PII', async () => {
-		vi.mocked(sanity.createOrder).mockResolvedValueOnce(sanityOrder());
 		ddbMock.on(PutCommand).resolves({});
+		vi.mocked(sanity.createOrder).mockResolvedValueOnce(sanityOrder());
 
 		await ordersStore.createOrder({
 			...newOrderInput,
@@ -149,28 +207,73 @@ describe('ordersStore.createOrder (Phase 0 dual-write)', () => {
 	});
 });
 
-describe('ordersStore.getOrderByRef', () => {
+describe('ordersStore.getOrderByRef (Phase 1 join)', () => {
 	beforeEach(() => {
 		ddbMock.reset();
 		vi.mocked(sanity.getOrderByRef).mockReset();
 	});
 
-	it('delegates to Sanity in Phase 0 (single source of truth)', async () => {
-		const order = sanityOrder();
-		vi.mocked(sanity.getOrderByRef).mockResolvedValueOnce(order);
+	function piiItem() {
+		return {
+			orderRef: 'MG-260410-ABCD',
+			customerName: 'Jane Smith',
+			customerEmail: 'jane@example.com',
+			customerPhone: '0123456789',
+			shippingAddress: '1 Test Street',
+			items: '1 x Small Screen — R 450.00',
+			customerNotes: null,
+			trackingNumber: 'CG-12345',
+			trackingUrl: null,
+			shippingCarrier: 'Courier Guy',
+			internalNotes: null,
+			createdAt: '2026-04-10T12:00:00Z',
+			ttl: 1234567890
+		};
+	}
+
+	it('joins Sanity skeleton + DynamoDB PII into a unified Order', async () => {
+		vi.mocked(sanity.getOrderByRef).mockResolvedValueOnce(sanityOrder());
+		ddbMock.on(GetCommand).resolves({ Item: piiItem() });
 
 		const result = await ordersStore.getOrderByRef('MG-260410-ABCD');
 
-		expect(result).toEqual(order);
-		expect(sanity.getOrderByRef).toHaveBeenCalledWith('MG-260410-ABCD');
-		expect(ddbMock.commandCalls(PutCommand)).toHaveLength(0);
+		expect(result).not.toBeNull();
+		expect(result!.orderRef).toBe('MG-260410-ABCD');
+		expect(result!.status).toBe('pending_payment');
+		expect(result!.amountZar).toBe(450);
+		expect(result!.customerName).toBe('Jane Smith');
+		expect(result!.customerEmail).toBe('jane@example.com');
+		expect(result!.trackingNumber).toBe('CG-12345');
 	});
 
-	it('returns null when Sanity has no matching order', async () => {
+	it('returns null when Sanity has no matching order (orphan PII)', async () => {
+		// A DynamoDB row without a Sanity counterpart is an orphan from a
+		// failed compensating delete or a manual cleanup mid-flight. The
+		// public lookup behaves as a 404 — the reconciler cron flags the
+		// orphan for operator attention.
 		vi.mocked(sanity.getOrderByRef).mockResolvedValueOnce(null);
+		ddbMock.on(GetCommand).resolves({ Item: piiItem() });
 
 		const result = await ordersStore.getOrderByRef('MG-000000-XXXX');
+		expect(result).toBeNull();
+	});
 
+	it('returns null when DynamoDB has no PII row (skeleton-only)', async () => {
+		// A skeleton-only Sanity doc is the symmetric orphan — possible if
+		// somebody manually deleted a PII row, or if a TTL fired but the
+		// Sanity doc wasn't cleaned. Same null behaviour for the lookup.
+		vi.mocked(sanity.getOrderByRef).mockResolvedValueOnce(sanityOrder());
+		ddbMock.on(GetCommand).resolves({});
+
+		const result = await ordersStore.getOrderByRef('MG-000000-XXXX');
+		expect(result).toBeNull();
+	});
+
+	it('returns null when both stores miss', async () => {
+		vi.mocked(sanity.getOrderByRef).mockResolvedValueOnce(null);
+		ddbMock.on(GetCommand).resolves({});
+
+		const result = await ordersStore.getOrderByRef('MG-NONEXISTENT');
 		expect(result).toBeNull();
 	});
 });

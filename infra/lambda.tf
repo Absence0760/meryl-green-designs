@@ -65,10 +65,9 @@ resource "aws_lambda_function" "backend" {
   handler       = "lambda.handler"
   runtime       = "nodejs22.x"
   architectures = ["arm64"]
-  # 30s accommodates the monthly PII cleanup sweep (~60 sequential Sanity
-  # patches on the first run, ~5/month thereafter — see pii-cleanup.ts).
-  # HTTP request handlers complete in well under a second; the longer
-  # timeout is dormant for those.
+  # 30s — HTTP request handlers complete in well under a second, but a
+  # generous timeout absorbs occasional cold-start + Sanity round-trip
+  # spikes on the order-create path without erroring the customer.
   timeout = 30
 
   # 128 MB (the AWS default) throttles cold-start CPU enough that a Node 22

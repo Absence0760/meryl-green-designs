@@ -14,7 +14,9 @@
 		"backfill:orders": "tsx src/scripts/backfill-orders.ts",
 		"backfill:orders:dry": "tsx src/scripts/backfill-orders.ts --dry-run",
 		"restore:sanity-pii": "tsx src/scripts/restore-sanity-pii.ts",
-		"restore:sanity-pii:dry": "tsx src/scripts/restore-sanity-pii.ts --dry-run"
+		"restore:sanity-pii:dry": "tsx src/scripts/restore-sanity-pii.ts --dry-run",
+		"scrub:sanity-pii": "tsx src/scripts/scrub-sanity-pii.ts",
+		"scrub:sanity-pii:dry": "tsx src/scripts/scrub-sanity-pii.ts --dry-run"
 	},
 	"dependencies": {
 		"@aws-sdk/client-dynamodb": "^3.1045.0",

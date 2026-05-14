@@ -1,5 +1,6 @@
 import { escapeHtml } from './email.js';
-import type { OrderStatus, PaymentMethod, SanityOrder } from './sanity.js';
+import type { Order } from './orders-store.js';
+import type { OrderStatus, PaymentMethod } from './sanity.js';
 
 export type OwnerNotificationInput = {
 	orderRef: string;
@@ -56,7 +57,7 @@ export function ownerNotification(input: OwnerNotificationInput): { subject: str
 	};
 }
 
-function pendingPaymentTemplate(order: SanityOrder): { subject: string; html: string } {
+function pendingPaymentTemplate(order: Order): { subject: string; html: string } {
 	// This template fires if the Sanity webhook sees a status change to
 	// pending_payment (unlikely in normal flow, but possible if Meryl
 	// manually resets an order).
@@ -76,7 +77,7 @@ function pendingPaymentTemplate(order: SanityOrder): { subject: string; html: st
 	};
 }
 
-function paymentReceivedTemplate(order: SanityOrder): { subject: string; html: string } {
+function paymentReceivedTemplate(order: Order): { subject: string; html: string } {
 	return {
 		subject: `Payment received — order ${order.orderRef}`,
 		html: `
@@ -92,7 +93,7 @@ function paymentReceivedTemplate(order: SanityOrder): { subject: string; html: s
 	};
 }
 
-function shippedTemplate(order: SanityOrder): { subject: string; html: string } {
+function shippedTemplate(order: Order): { subject: string; html: string } {
 	const trackingInfo =
 		order.trackingNumber || order.trackingUrl
 			? `
@@ -118,7 +119,7 @@ function shippedTemplate(order: SanityOrder): { subject: string; html: string } 
 	};
 }
 
-function deliveredTemplate(order: SanityOrder): { subject: string; html: string } {
+function deliveredTemplate(order: Order): { subject: string; html: string } {
 	return {
 		subject: `Order ${order.orderRef} delivered`,
 		html: `
@@ -132,7 +133,7 @@ function deliveredTemplate(order: SanityOrder): { subject: string; html: string 
 	};
 }
 
-function cancelledTemplate(order: SanityOrder): { subject: string; html: string } {
+function cancelledTemplate(order: Order): { subject: string; html: string } {
 	return {
 		subject: `Order ${order.orderRef} cancelled`,
 		html: `
@@ -146,7 +147,7 @@ function cancelledTemplate(order: SanityOrder): { subject: string; html: string 
 	};
 }
 
-const STATUS_TEMPLATES: Record<OrderStatus, (order: SanityOrder) => { subject: string; html: string } | null> = {
+const STATUS_TEMPLATES: Record<OrderStatus, (order: Order) => { subject: string; html: string } | null> = {
 	pending_payment: pendingPaymentTemplate,
 	payment_received: paymentReceivedTemplate,
 	shipped: shippedTemplate,
@@ -154,7 +155,7 @@ const STATUS_TEMPLATES: Record<OrderStatus, (order: SanityOrder) => { subject: s
 	cancelled: cancelledTemplate
 };
 
-export function customerEmailForStatus(order: SanityOrder): { subject: string; html: string } | null {
+export function customerEmailForStatus(order: Order): { subject: string; html: string } | null {
 	const template = STATUS_TEMPLATES[order.status];
 	if (!template) return null;
 	return template(order);

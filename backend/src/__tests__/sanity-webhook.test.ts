@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createHmac } from 'node:crypto';
 
-// Mock email and sanity modules BEFORE importing app.
+// Mock email, sanity, and orders-store modules BEFORE importing app.
 vi.mock('../email.js', async () => {
 	const actual = await vi.importActual<typeof import('../email.js')>('../email.js');
 	return {
@@ -17,9 +17,17 @@ vi.mock('../sanity.js', () => ({
 	getProductsByIds: vi.fn(),
 	updateOrderPayment: vi.fn()
 }));
+vi.mock('../orders-store.js', () => ({
+	createOrder: vi.fn(),
+	getOrderByRef: vi.fn(),
+	updateOrderStatus: vi.fn(),
+	updateOrderTracking: vi.fn(),
+	updateOrderInternalNotes: vi.fn()
+}));
 
 import { createApp } from '../app.js';
 import * as email from '../email.js';
+import * as ordersStore from '../orders-store.js';
 
 const WEBHOOK_SECRET = 'test-webhook-secret';
 
@@ -61,6 +69,16 @@ function makeOrderDoc(overrides: Record<string, unknown> = {}) {
 describe('POST /webhooks/sanity-order', () => {
 	beforeEach(() => {
 		vi.mocked(email.sendEmail).mockClear();
+		vi.mocked(ordersStore.getOrderByRef).mockReset();
+		// Default: orders-store returns a fully-joined Order matching the
+		// webhook payload. Individual tests override when they need the
+		// no-row / no-email behaviours.
+		vi.mocked(ordersStore.getOrderByRef).mockImplementation(async (ref: string) => {
+			const doc = makeOrderDoc({ orderRef: ref });
+			return doc as unknown as Awaited<
+				ReturnType<typeof ordersStore.getOrderByRef>
+			>;
+		});
 	});
 
 	it('accepts a request with a valid signature and dispatches the matching email', async () => {
@@ -145,8 +163,17 @@ describe('POST /webhooks/sanity-order', () => {
 		expect(email.sendEmail).not.toHaveBeenCalled();
 	});
 
-	it('skips when document has no customerEmail (200, no email sent)', async () => {
-		const body = JSON.stringify(makeOrderDoc({ customerEmail: '' }));
+	it('skips when DynamoDB lookup has no customerEmail (200, no email sent)', async () => {
+		// Phase 1: the webhook payload is the slim Sanity doc (no PII).
+		// The handler joins with DynamoDB to get the email — if that join
+		// returns a row with an empty customerEmail, the handler can't
+		// send anything and skips with 200.
+		vi.mocked(ordersStore.getOrderByRef).mockResolvedValueOnce(
+			makeOrderDoc({ customerEmail: '' }) as unknown as Awaited<
+				ReturnType<typeof ordersStore.getOrderByRef>
+			>
+		);
+		const body = JSON.stringify(makeOrderDoc());
 		const signature = signPayload(body);
 		const app = createApp();
 		const res = await app.request('/webhooks/sanity-order', {
@@ -160,6 +187,29 @@ describe('POST /webhooks/sanity-order', () => {
 		expect(res.status).toBe(200);
 		const data = (await res.json()) as any;
 		expect(data.skipped).toBe('no customer email');
+		expect(email.sendEmail).not.toHaveBeenCalled();
+	});
+
+	it('skips when DynamoDB has no joined row (200, no email sent)', async () => {
+		// Phase 1: if the webhook fires for an orderRef whose DynamoDB row
+		// has been TTL'd or otherwise gone, there's no way to send a
+		// status email. Skip rather than retrying, same convention as the
+		// no-email path.
+		vi.mocked(ordersStore.getOrderByRef).mockResolvedValueOnce(null);
+		const body = JSON.stringify(makeOrderDoc());
+		const signature = signPayload(body);
+		const app = createApp();
+		const res = await app.request('/webhooks/sanity-order', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				'sanity-webhook-signature': signature
+			},
+			body
+		});
+		expect(res.status).toBe(200);
+		const data = (await res.json()) as any;
+		expect(data.skipped).toBe('order not found');
 		expect(email.sendEmail).not.toHaveBeenCalled();
 	});
 

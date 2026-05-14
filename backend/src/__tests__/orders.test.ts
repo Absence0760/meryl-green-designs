@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import type { SanityOrder } from '../sanity.js';
+import type { Order } from '../orders-store.js';
 
 vi.mock('../email.js', async () => {
 	const actual = await vi.importActual<typeof import('../email.js')>('../email.js');
@@ -29,7 +29,11 @@ import * as email from '../email.js';
 import * as sanity from '../sanity.js';
 import * as ordersStore from '../orders-store.js';
 
-function sanityOrder(overrides: Partial<SanityOrder> = {}): SanityOrder {
+// Phase 1: orders-store.getOrderByRef returns the joined Order shape
+// (Sanity skeleton + DynamoDB PII). The GET /orders/:ref route reads
+// from ordersStore now, not from Sanity directly — the fixture matches
+// what the join would produce.
+function sanityOrder(overrides: Partial<Order> = {}): Order {
 	return {
 		_id: 'order-1',
 		_type: 'order',
@@ -49,6 +53,7 @@ function sanityOrder(overrides: Partial<SanityOrder> = {}): SanityOrder {
 		trackingNumber: null,
 		trackingUrl: null,
 		shippingCarrier: null,
+		internalNotes: null,
 		...overrides
 	};
 }
@@ -303,11 +308,11 @@ describe('POST /orders', () => {
 
 describe('GET /orders/:ref?email=…', () => {
 	beforeEach(() => {
-		vi.mocked(sanity.getOrderByRef).mockReset();
+		vi.mocked(ordersStore.getOrderByRef).mockReset();
 	});
 
 	it('returns a sanitised order when the email matches', async () => {
-		vi.mocked(sanity.getOrderByRef).mockResolvedValueOnce(
+		vi.mocked(ordersStore.getOrderByRef).mockResolvedValueOnce(
 			sanityOrder({
 				customerEmail: 'jane@example.com',
 				customerPhone: '0123456789',
@@ -336,7 +341,7 @@ describe('GET /orders/:ref?email=…', () => {
 	});
 
 	it('is case-insensitive on the email parameter', async () => {
-		vi.mocked(sanity.getOrderByRef).mockResolvedValueOnce(
+		vi.mocked(ordersStore.getOrderByRef).mockResolvedValueOnce(
 			sanityOrder({ customerEmail: 'Jane@Example.com' })
 		);
 		const app = createApp();
@@ -347,7 +352,7 @@ describe('GET /orders/:ref?email=…', () => {
 	});
 
 	it('returns 404 when the order reference is not found', async () => {
-		vi.mocked(sanity.getOrderByRef).mockResolvedValueOnce(null);
+		vi.mocked(ordersStore.getOrderByRef).mockResolvedValueOnce(null);
 		const app = createApp();
 		const res = await app.request(
 			'/orders/MG-000000-XXXX?email=jane%40example.com'
@@ -358,7 +363,7 @@ describe('GET /orders/:ref?email=…', () => {
 	it('returns 404 (not 403) when the email does not match', async () => {
 		// Security: same response as not-found so attackers can't distinguish
 		// "real ref + wrong email" from "fake ref".
-		vi.mocked(sanity.getOrderByRef).mockResolvedValueOnce(
+		vi.mocked(ordersStore.getOrderByRef).mockResolvedValueOnce(
 			sanityOrder({ customerEmail: 'real@example.com' })
 		);
 		const app = createApp();
@@ -372,11 +377,11 @@ describe('GET /orders/:ref?email=…', () => {
 		const app = createApp();
 		const res = await app.request('/orders/MG-260410-ABCD');
 		expect(res.status).toBe(404);
-		expect(sanity.getOrderByRef).not.toHaveBeenCalled();
+		expect(ordersStore.getOrderByRef).not.toHaveBeenCalled();
 	});
 
 	it('returns 500 if Sanity throws during lookup', async () => {
-		vi.mocked(sanity.getOrderByRef).mockRejectedValueOnce(new Error('sanity down'));
+		vi.mocked(ordersStore.getOrderByRef).mockRejectedValueOnce(new Error('sanity down'));
 		const app = createApp();
 		const res = await app.request(
 			'/orders/MG-260410-ABCD?email=jane%40example.com'
@@ -385,7 +390,7 @@ describe('GET /orders/:ref?email=…', () => {
 	});
 
 	it('returns null shipping info when the order has none', async () => {
-		vi.mocked(sanity.getOrderByRef).mockResolvedValueOnce(
+		vi.mocked(ordersStore.getOrderByRef).mockResolvedValueOnce(
 			sanityOrder({
 				customerEmail: 'jane@example.com',
 				trackingNumber: null,

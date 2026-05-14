@@ -68,7 +68,7 @@ block requiring one of those two literal strings.
 
 Dry-runs always bypass the script gates so previewing is cheap.
 
-**Day 7 — prod deploy prep (code landed; apply pending).**
+**Day 7 — prod deploy prep: code landed AND applied.**
 
 The Terraform code, tfvars example, and deployment docs are now updated:
 
@@ -106,6 +106,89 @@ What the operator still needs to do (Day 7 hand-off, not done yet):
 
 Day 8 cutover (Phase 1) still requires explicit go-ahead after Day 7
 has run cleanly in prod for at least one full order cycle.
+
+**Day 8 — Phase 1 cutover (code landed; deploys + scrub script pending).**
+
+Code changes that landed for Day 8:
+
+- `studio/schemas/order.ts` — PII fields removed from the schema. Only
+  the non-PII skeleton (`orderRef`, `status`, `paymentMethod`,
+  `amountZar`, `paymentId`) plus the three custom DynamoDB-backed
+  panel placeholders. The `customerName` subtitle in the document
+  list preview was dropped to avoid a per-row DynamoDB read.
+- `backend/src/sanity.ts` — `SanityOrder` type trimmed to non-PII.
+  `NewOrderInput` renamed to `NewSanityOrderInput` (just orderRef +
+  paymentMethod + amountZar). `clearOrderPii` /
+  `findOrdersWithExpiredPii` / `ExpiredOrder` removed; replaced by
+  DynamoDB's per-item TTL.
+- `backend/src/orders-store.ts` — flipped to split-write. DynamoDB
+  written first, Sanity second. Compensating delete on Sanity failure
+  removes the orphaned PII row; if the compensating delete also fails,
+  the row's 365-day TTL takes care of cleanup. `getOrderByRef` joins
+  both stores in parallel and returns null if either side is missing.
+  New `Order` type (Sanity skeleton + DynamoDB PII) is what callers
+  see — the join is invisible to them.
+- `backend/src/routes/sanity-webhook.ts` — webhook payload is now the
+  slim Sanity doc. Handler joins with DynamoDB via
+  `ordersStore.getOrderByRef` before passing to the email template.
+- `backend/src/routes/order-lookup.ts`,
+  `backend/src/email-templates.ts` — switched their type/import from
+  `SanityOrder` to `Order` (joined). Field access is unchanged.
+- `backend/src/lambda.ts` — dropped the scheduled-event dispatcher
+  branch (PII cleanup is now DynamoDB TTL).
+- Deleted: `backend/src/pii-cleanup.ts`,
+  `backend/src/__tests__/pii-cleanup.test.ts`, `infra/pii_cleanup.tf`,
+  stale comment in `infra/lambda.tf`.
+- New: `backend/src/scripts/scrub-sanity-pii.ts` + matching test.
+  Iterates every existing Sanity order doc, patches each to null its
+  PII fields. Same safety gates as the other scripts (`--dry-run`
+  default, `--prod` + `--yes` for wet runs). Idempotent.
+- Roughly 250 backend tests + 24 frontend tests still pass against
+  the new architecture.
+
+What's outstanding for Day 8 (operator hands):
+
+1. **Update the Sanity webhook filter** in the Sanity dashboard.
+   The pre-Phase-1 filter was probably `_type == "order" && defined(customerEmail)`
+   or similar — that field no longer exists on the doc and the
+   webhook would stop firing. Change the filter to
+   `_type == "order"` (or `_type == "order" && defined(orderRef)` for
+   tighter shape-checking).
+2. **Cut a new release** (`gh release create vX.Y.0 --generate-notes
+   --target main`). The release-gated workflows fire
+   `deploy-studio.yml` then `deploy-backend.yml` in parallel; the
+   Studio deploy needs to land *before* customers see the new
+   schema, so the operator should verify `deploy-studio.yml`
+   completed before `deploy-backend.yml` flips the Lambda. If either
+   workflow run shows a green check before the other, fine; the
+   issue would be if backend deploy succeeded and Studio deploy
+   failed.
+3. **Run the scrub script** against prod:
+   ```bash
+   pnpm scrub:sanity-pii:dry   # preview
+   pnpm scrub:sanity-pii --prod --yes
+   ```
+   This nulls the PII fields on every existing order doc. Re-runnable;
+   the second run reports `skipped=N` because the docs are already
+   scrubbed.
+4. **Decide on Sanity history strategy**: by default Sanity retains the
+   pre-scrub doc revision for ~30 days. Either (a) explicitly purge
+   history via the Sanity HTTP API's history endpoint so Phase 2
+   (the plan downgrade) can start after the 14-day observation
+   window, or (b) skip the purge and wait the full 30 days. Picking
+   (a) requires a manual API call documented in this file's "Phase 1
+   step 4" further down.
+5. **Smoke-test prod** after the scrub:
+   - Open ~5 orders in Studio — confirm the custom PII panels render
+     correctly and the native PII fields are gone.
+   - Place a fresh sandbox order — confirm it lands in both stores
+     (Sanity holds only the skeleton, DynamoDB holds the PII).
+   - Trigger a status change in Studio — confirm the Sanity webhook
+     fires AND the customer status email gets sent (this verifies
+     the webhook filter from step 1).
+
+Phase 2 (Sanity Free downgrade) waits for 14 calendar days of green
+metrics after step 5.
 
 ## Why this exists
 

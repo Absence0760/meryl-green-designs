@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { createHash, timingSafeEqual } from 'node:crypto';
-import { getOrderByRef, type SanityOrder, type OrderStatus } from '../sanity.js';
+import { getOrderByRef, type Order } from '../orders-store.js';
+import { type OrderStatus } from '../sanity.js';
 import { createRateLimiter } from '../rate-limit.js';
 
 // Constant-time email equality. Plain `===` short-circuits at the first
@@ -30,7 +31,7 @@ type TrackingResponse = {
 	updatedAt: string;
 };
 
-function sanitise(order: SanityOrder): TrackingResponse {
+function sanitise(order: Order): TrackingResponse {
 	const hasShippingInfo =
 		order.shippingCarrier || order.trackingNumber || order.trackingUrl;
 
@@ -67,7 +68,7 @@ export function orderLookupRouter() {
 			return c.json({ error: 'Order not found' }, 404);
 		}
 
-		let order: SanityOrder | null;
+		let order: Order | null;
 		try {
 			order = await getOrderByRef(ref);
 		} catch (err) {

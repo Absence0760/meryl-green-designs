@@ -8,14 +8,12 @@
 	external font CDN. The document is written to be accurate to those
 	data flows rather than generated from a template.
 
-	Phase 0 dual-write note: the backend currently writes order PII to
-	BOTH Sanity (primary) AND DynamoDB (shadow copy in af-south-1) on
-	every order create — see docs/orders-pii-split-plan.md. Both bullets
-	("Sanity" and "AWS" under "Who we share it with") need to stay in
-	sync with each other while Phase 0 is live. After the Phase 1 cutover
-	(when Sanity stops holding PII and DynamoDB becomes the sole PII
-	store), the Sanity bullet must be rewritten to say it only holds the
-	order reference, status, amount, and payment method.
+	Phase 1 (current): DynamoDB is the sole store of order PII (name,
+	email, phone, address, items, notes, tracking). Sanity stores only
+	the non-PII order skeleton (orderRef, status, paymentMethod,
+	amountZar, paymentId). The two bullets under "Who we share it with"
+	reflect that split. See docs/orders-pii-split-plan.md for the
+	migration history.
 
 	Even so, a privacy policy is a legal document. Before going live with
 	this under Meryl's name, have it reviewed by a South African legal
@@ -211,8 +209,11 @@
 		<ul>
 			<li>
 				<strong>Sanity</strong> — our content management system.
-				Stores your order (name, email, phone, address, items,
-				notes, status).
+				Stores only the order skeleton (order reference, status,
+				amount, payment method, payment provider ID). Your
+				personal details — name, email, phone, address, items,
+				notes — are not held in Sanity; they live in our private
+				AWS DynamoDB table (see below).
 				<a href="https://www.sanity.io/legal/privacy"
 					target="_blank"
 					rel="noopener noreferrer">Sanity privacy policy</a>
@@ -237,10 +238,11 @@
 			<li>
 				<strong>Amazon Web Services (AWS)</strong> — our hosting
 				provider. Serves the website, runs the backend API, and
-				stores a copy of your order (name, email, phone,
-				shipping address, items, notes, status, and any tracking
-				information added later) in a private DynamoDB table in
-				the AWS Cape Town region. Also retains standard
+				stores your order details (name, email, phone, shipping
+				address, items, notes, and any tracking information added
+				later) in a private DynamoDB table in the AWS Cape Town
+				region. This is the sole record of your personal
+				information on our infrastructure. Also retains standard
 				application server logs as described in "How long we
 				keep it" below.
 				<a href="https://aws.amazon.com/privacy/"

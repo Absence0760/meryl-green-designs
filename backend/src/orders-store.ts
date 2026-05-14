@@ -1,17 +1,23 @@
-// Split-store for order data. Phase 0 (dual-write) is below: Sanity is the
-// source of truth and DynamoDB receives a shadow copy of the PII fields.
-// Phase 1 (cutover) inverts this — see docs/orders-pii-split-plan.md.
+// Split-store for order data. Phase 1: DynamoDB holds PII; Sanity holds
+// only the order skeleton (orderRef, status, paymentMethod, amountZar,
+// paymentId). Callers see a unified `Order` shape — the join is hidden
+// in this module. See docs/orders-pii-split-plan.md.
 //
-// Read paths still go to Sanity; the join with DynamoDB lands in Phase 1.
+// Write order on create is DynamoDB first, then Sanity. If Sanity fails
+// after DynamoDB succeeds, the DynamoDB row is removed by a compensating
+// delete so we don't end up with PII orphaned from any non-PII record.
+// The reverse compensation (Sanity write succeeds, DynamoDB fails) is
+// impossible here by construction — DynamoDB writes first.
 
-import { GetCommand, PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { DeleteCommand, GetCommand, PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { getDynamoClient, getOrdersTableName } from './dynamo.js';
 import {
 	createOrder as createSanityOrder,
+	deleteOrder as deleteSanityOrder,
 	getOrderByRef as getSanityOrderByRef,
 	updateOrderPayment as updateSanityOrderPayment,
-	type NewOrderInput,
 	type OrderStatus,
+	type PaymentMethod,
 	type SanityOrder
 } from './sanity.js';
 
@@ -39,6 +45,33 @@ export type TrackingUpdate = {
 	shippingCarrier?: string | null;
 };
 
+// What every caller sees. Same shape as the pre-Phase-1 SanityOrder —
+// the join is invisible to them.
+export type Order = SanityOrder & {
+	customerName: string;
+	customerEmail: string;
+	customerPhone: string | null;
+	shippingAddress: string;
+	items: string;
+	customerNotes: string | null;
+	trackingNumber: string | null;
+	trackingUrl: string | null;
+	shippingCarrier: string | null;
+	internalNotes: string | null;
+};
+
+export type NewOrderInput = {
+	orderRef: string;
+	customerName: string;
+	customerEmail: string;
+	customerPhone: string;
+	shippingAddress: string;
+	items: string;
+	customerNotes: string;
+	paymentMethod?: PaymentMethod;
+	amountZar?: number;
+};
+
 function buildPiiItem(input: NewOrderInput, createdAt: Date): OrderPii {
 	return {
 		orderRef: input.orderRef,
@@ -57,6 +90,22 @@ function buildPiiItem(input: NewOrderInput, createdAt: Date): OrderPii {
 	};
 }
 
+function mergeOrder(sanityOrder: SanityOrder, pii: OrderPii): Order {
+	return {
+		...sanityOrder,
+		customerName: pii.customerName,
+		customerEmail: pii.customerEmail,
+		customerPhone: pii.customerPhone,
+		shippingAddress: pii.shippingAddress,
+		items: pii.items,
+		customerNotes: pii.customerNotes,
+		trackingNumber: pii.trackingNumber,
+		trackingUrl: pii.trackingUrl,
+		shippingCarrier: pii.shippingCarrier,
+		internalNotes: pii.internalNotes
+	};
+}
+
 async function writeOrderPii(item: OrderPii): Promise<void> {
 	const client = getDynamoClient();
 	await client.send(
@@ -70,36 +119,72 @@ async function writeOrderPii(item: OrderPii): Promise<void> {
 	);
 }
 
-export async function createOrder(input: NewOrderInput): Promise<SanityOrder> {
-	// Phase 0: Sanity write is the source of truth. DynamoDB is shadow —
-	// a failure there must not fail the customer's order. Phase 1 inverts
-	// this (DynamoDB first, Sanity second, compensating delete on failure).
-	const sanityOrder = await createSanityOrder(input);
-	try {
-		await writeOrderPii(buildPiiItem(input, new Date(sanityOrder._createdAt)));
-	} catch (err) {
-		// Shadow write — log and continue. The reconciler cron (added later)
-		// flags orders missing from DynamoDB so we can backfill them.
-		// Stringify the error explicitly rather than passing the raw `err`
-		// object — defence-in-depth so a future SDK version that embeds
-		// request context in the error never lands customer values in
-		// CloudWatch.
-		const message = err instanceof Error ? err.message : String(err);
-		console.error(`DynamoDB shadow write failed for order ${sanityOrder.orderRef}: ${message}`);
-	}
-	return sanityOrder;
+async function deleteOrderPii(orderRef: string): Promise<void> {
+	const client = getDynamoClient();
+	await client.send(
+		new DeleteCommand({
+			TableName: getOrdersTableName(),
+			Key: { orderRef }
+		})
+	);
 }
 
-export async function getOrderByRef(orderRef: string): Promise<SanityOrder | null> {
-	// Phase 0: Sanity has every field. Phase 1 reads non-PII from Sanity and
-	// joins the PII from DynamoDB before returning a unified shape.
-	return getSanityOrderByRef(orderRef);
+export async function createOrder(input: NewOrderInput): Promise<Order> {
+	// Phase 1: PII write first so the Sanity document never exists without
+	// a matching PII row. If the Sanity create fails afterwards we delete
+	// the PII row to keep the two stores in sync.
+	const createdAt = new Date();
+	const piiItem = buildPiiItem(input, createdAt);
+
+	await writeOrderPii(piiItem);
+
+	let sanityOrder: SanityOrder;
+	try {
+		sanityOrder = await createSanityOrder({
+			orderRef: input.orderRef,
+			paymentMethod: input.paymentMethod,
+			amountZar: input.amountZar
+		});
+	} catch (err) {
+		try {
+			await deleteOrderPii(input.orderRef);
+		} catch (delErr) {
+			// Best-effort. If the compensating delete fails the orphaned PII
+			// row has a 365-day TTL and will expire on its own; the
+			// reconciler cron (planned for Day 9) will flag the orphan
+			// sooner. Stringify the error rather than passing the raw object
+			// so customer values can't end up in CloudWatch by accident.
+			const delMessage = delErr instanceof Error ? delErr.message : String(delErr);
+			console.error(
+				`Compensating delete failed for orphaned PII ${input.orderRef}: ${delMessage}`
+			);
+		}
+		throw err;
+	}
+
+	return mergeOrder(sanityOrder, piiItem);
+}
+
+export async function getOrderByRef(orderRef: string): Promise<Order | null> {
+	// Phase 1: join Sanity (non-PII) with DynamoDB (PII). Parallel reads
+	// because they hit independent backends.
+	const [sanityOrder, pii] = await Promise.all([
+		getSanityOrderByRef(orderRef),
+		getOrderPii(orderRef)
+	]);
+	if (!sanityOrder || !pii) {
+		// Either side missing means the row is unreadable as an order. The
+		// reconciler cron flags the orphan; callers see a 404 just like an
+		// unknown orderRef. Returning null rather than throwing keeps the
+		// no-enumeration policy intact on the public /orders/:ref route.
+		return null;
+	}
+	return mergeOrder(sanityOrder, pii);
 }
 
 export async function getOrderPii(orderRef: string): Promise<OrderPii | null> {
-	// Read PII straight from DynamoDB. Used by the admin routes that power
-	// the Studio custom panels — they want the DynamoDB view so dual-write
-	// parity is observable to the operator during Phase 0.
+	// Direct DynamoDB read; bypasses the Sanity-side join. The admin routes
+	// that power the Studio's custom PII panels call this directly.
 	const client = getDynamoClient();
 	const result = await client.send(
 		new GetCommand({
@@ -114,17 +199,11 @@ export async function updateOrderStatus(
 	orderRef: string,
 	updates: { status: OrderStatus; paymentId?: string }
 ): Promise<SanityOrder> {
-	// Status and paymentId aren't PII — they stay on the Sanity document in
-	// both phases. No DynamoDB touch.
+	// Status + paymentId are non-PII; they stay on the Sanity document.
 	return updateSanityOrderPayment(orderRef, updates);
 }
 
 export async function updateOrderTracking(orderRef: string, tracking: TrackingUpdate): Promise<void> {
-	// Tracking is PII (courier links typically expose recipient name/address).
-	// DynamoDB is the source of truth for tracking even in Phase 0; admin
-	// route handlers call this. The Sanity-side native fields stay populated
-	// during Phase 0 via Meryl's existing Studio workflow until Phase 1
-	// scrubs them.
 	const sets: string[] = [];
 	const names: Record<string, string> = {};
 	const values: Record<string, unknown> = {};
@@ -163,3 +242,8 @@ export async function updateOrderInternalNotes(
 		})
 	);
 }
+
+// Unused-by-default safety net: re-export the Sanity delete so a future
+// cleanup script can call it directly without a fresh import. Kept here
+// so it's discoverable alongside the create/delete compensating pair.
+export { deleteSanityOrder };
