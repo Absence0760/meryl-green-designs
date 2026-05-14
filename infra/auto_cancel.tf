@@ -176,15 +176,18 @@ resource "aws_cloudwatch_metric_alarm" "auto_cancel_errors" {
 
 resource "aws_cloudwatch_metric_alarm" "auto_cancel_no_recent_invocation" {
   alarm_name          = "${local.project}-auto-cancel-no-recent-invocation"
-  alarm_description   = "Daily auto-cancel Lambda has not been invoked in 26h — EventBridge rule may be disabled or missing target."
+  alarm_description   = "Daily auto-cancel Lambda has not been invoked in the last 24h — EventBridge rule may be disabled or missing target."
   comparison_operator = "LessThanThreshold"
   evaluation_periods  = 1
   metric_name         = "Invocations"
   namespace           = "AWS/Lambda"
-  # 26h evaluation window absorbs the 24h cron interval plus some
-  # slack for the metric to publish; a single missed invocation
-  # exceeds it and triggers the alarm.
-  period             = 26 * 3600
+  # CloudWatch caps `period × evaluation_periods` at 86400 seconds.
+  # With evaluation_periods=1, the max usable period is 86400 (24h).
+  # An earlier draft set this to 26 * 3600 to buy slack; PutMetricAlarm
+  # rejects that as invalid. The 24h window is sufficient: the cron
+  # publishes Invocations into a UTC-aligned bucket each day, so the
+  # most recent complete bucket reflects yesterday's run.
+  period             = 86400
   statistic          = "Sum"
   threshold          = 1
   treat_missing_data = "breaching"
@@ -209,9 +212,10 @@ resource "aws_cloudwatch_metric_alarm" "auto_cancel_no_recent_invocation" {
 resource "aws_sqs_queue" "auto_cancel_dlq" {
   name = "${local.project}-auto-cancel-dlq"
 
-  # Same 365-day cap as the DynamoDB orders TTL — a dropped invocation
-  # older than the longest-lived order it could affect is no longer
-  # operationally interesting.
+  # 14 days — SQS's maximum retention. Two weeks is comfortably longer
+  # than any operator triage window for a missed cron run; anything
+  # older than that is no longer operationally interesting (the
+  # CloudWatch alarm above would have already fired).
   message_retention_seconds = 14 * 24 * 60 * 60
 
   # Server-side encryption with the AWS-managed key — Trivy flags
