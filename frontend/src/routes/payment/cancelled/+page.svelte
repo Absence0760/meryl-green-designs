@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { base } from '$app/paths';
 	import { PUBLIC_API_URL } from '$env/static/public';
+	import PayFastRedirecting from '$lib/PayFastRedirecting.svelte';
 
 	const apiUrl = PUBLIC_API_URL;
 
@@ -13,6 +14,11 @@
 	// browser-history dumps. The customer types it fresh.
 	let email = '';
 	let submitting = false;
+	// Flips once the POST returns signed form data and we're about to
+	// navigate cross-origin to PayFast. Swaps the retry form for the
+	// shared centered-spinner so the customer sees the same
+	// "Redirecting to PayFast…" state as the cart checkout.
+	let redirecting = false;
 	let error: string | null = null;
 
 	onMount(() => {
@@ -63,6 +69,10 @@
 				payfast?: { action: string; fields: Record<string, string> };
 			};
 			if (data.payfast) {
+				// Swap the form for the spinner BEFORE we kick the
+				// navigation so the customer never sees the form briefly
+				// re-enabled between fetch resolving and the redirect.
+				redirecting = true;
 				submitToPayFast(data.payfast);
 				return;
 			}
@@ -71,7 +81,11 @@
 			console.error(e);
 			error = 'Could not reach the order service. Please try again.';
 		} finally {
-			submitting = false;
+			// Leave `submitting` set when we're redirecting — the form
+			// is unmounted by the {#if !redirecting} branch, so the
+			// button state doesn't matter, but flipping it back briefly
+			// would be a visible blip if the redirect is slow.
+			if (!redirecting) submitting = false;
 		}
 	}
 </script>
@@ -93,42 +107,48 @@
 			{/if}
 
 			{#if ref}
-				<p>
-					Cards sometimes get declined for routine reasons. You can retry
-					payment for the same order without losing it — enter the email
-					address you used when placing the order:
-				</p>
+				{#if redirecting}
+					<PayFastRedirecting />
+				{:else}
+					<p>
+						Cards sometimes get declined for routine reasons. You can retry
+						payment for the same order without losing it — enter the email
+						address you used when placing the order:
+					</p>
 
-				<form class="retry-form" on:submit={handleRetry}>
-					<label>
-						<span>Email</span>
-						<input
-							type="email"
-							autocomplete="email"
-							inputmode="email"
-							required
-							bind:value={email}
-						/>
-					</label>
-					<button class="btn" type="submit" disabled={submitting}>
-						{#if submitting}Retrying…{:else}Retry payment{/if}
-					</button>
-				</form>
+					<form class="retry-form" on:submit={handleRetry}>
+						<label>
+							<span>Email</span>
+							<input
+								type="email"
+								autocomplete="email"
+								inputmode="email"
+								required
+								bind:value={email}
+							/>
+						</label>
+						<button class="btn" type="submit" disabled={submitting}>
+							{#if submitting}Retrying…{:else}Retry payment{/if}
+						</button>
+					</form>
 
-				{#if error}
-					<div class="alert alert--error">{error}</div>
+					{#if error}
+						<div class="alert alert--error">{error}</div>
+					{/if}
+
+					<p class="hint">
+						Prefer to start over? Return to the shop and place a fresh order.
+					</p>
 				{/if}
-
-				<p class="hint">
-					Prefer to start over? Return to the shop and place a fresh order.
-				</p>
 			{:else}
 				<p>If you'd still like to complete your order, return to the shop and try again.</p>
 			{/if}
 
-			<div class="actions">
-				<a class="btn btn--secondary" href="{base}/shop#order">Return to the shop</a>
-			</div>
+			{#if !redirecting}
+				<div class="actions">
+					<a class="btn btn--secondary" href="{base}/shop#order">Return to the shop</a>
+				</div>
+			{/if}
 		</div>
 	</div>
 </section>

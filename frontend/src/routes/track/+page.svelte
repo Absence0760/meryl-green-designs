@@ -2,6 +2,7 @@
 	import { PUBLIC_API_URL } from '$env/static/public';
 	import { onMount } from 'svelte';
 	import Button from '$lib/Button.svelte';
+	import PayFastRedirecting from '$lib/PayFastRedirecting.svelte';
 	import { safeHttpUrl } from '$lib/safeHttpUrl';
 
 	type Shipping = {
@@ -33,6 +34,11 @@
 	let error: string | null = null;
 	let order: OrderResponse | null = null;
 	let retrying = false;
+	// Flips once the retry POST returns signed form data and we're
+	// about to navigate cross-origin to PayFast. Swaps the retry CTA
+	// for the shared centered-spinner so the customer sees the same
+	// "Redirecting to PayFast…" state as the cart checkout.
+	let redirectingToPayFast = false;
 	let retryError: string | null = null;
 
 	const RETRY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
@@ -140,6 +146,11 @@
 				payfast?: { action: string; fields: Record<string, string> };
 			};
 			if (data.payfast) {
+				// Swap the retry section for the spinner BEFORE we kick
+				// the navigation so the customer never sees the CTA
+				// briefly re-enabled between fetch resolving and the
+				// redirect.
+				redirectingToPayFast = true;
 				submitToPayFast(data.payfast);
 				return;
 			}
@@ -148,7 +159,11 @@
 			console.error(e);
 			retryError = 'Could not reach the order service. Please try again.';
 		} finally {
-			retrying = false;
+			// Leave `retrying` set when we're redirecting — the CTA is
+			// unmounted by the {#if redirectingToPayFast} branch, but
+			// flipping the flag back briefly would still re-render the
+			// disabled label as a visible blip if the redirect is slow.
+			if (!redirectingToPayFast) retrying = false;
 		}
 	}
 
@@ -252,19 +267,23 @@
 
 				{#if canRetry}
 					<section class="retry-section">
-						<h3>Payment hasn't gone through yet</h3>
-						<p>
-							Cards sometimes get declined for routine reasons. You can
-							retry payment for this order — you'll be redirected back to
-							PayFast.
-						</p>
-						<form on:submit={handleRetry}>
-							<button class="retry-btn" type="submit" disabled={retrying}>
-								{#if retrying}Retrying…{:else}Retry payment{/if}
-							</button>
-						</form>
-						{#if retryError}
-							<div class="alert alert--error">{retryError}</div>
+						{#if redirectingToPayFast}
+							<PayFastRedirecting />
+						{:else}
+							<h3>Payment hasn't gone through yet</h3>
+							<p>
+								Cards sometimes get declined for routine reasons. You can
+								retry payment for this order — you'll be redirected back to
+								PayFast.
+							</p>
+							<form on:submit={handleRetry}>
+								<button class="retry-btn" type="submit" disabled={retrying}>
+									{#if retrying}Retrying…{:else}Retry payment{/if}
+								</button>
+							</form>
+							{#if retryError}
+								<div class="alert alert--error">{retryError}</div>
+							{/if}
 						{/if}
 					</section>
 				{/if}
