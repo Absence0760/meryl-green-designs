@@ -10,7 +10,8 @@ import { escapeHtml, sendEmail } from '../email.js';
 import {
 	ownerNotification,
 	customerEmailForStatus,
-	paymentFailedTemplate
+	paymentFailedTemplate,
+	commissionEnquiry
 } from '../email-templates.js';
 import type { Order } from '../orders-store.js';
 import { createApp } from '../app.js';
@@ -42,6 +43,25 @@ describe('escapeHtml', () => {
 	it('escapes ampersands first so entity sequences are safe', () => {
 		// If & were escaped last, & + amp; would produce &amp;amp;
 		expect(escapeHtml('&amp;')).toBe('&amp;amp;');
+	});
+
+	it('escapes attribute-breaking characters in URLs (href context)', () => {
+		// Defence-in-depth: trackingUrl passes the safeHttpUrl protocol
+		// check in admin.ts before being stored, but the template still
+		// runs the value through escapeHtml when emitting it as both
+		// href="…" and text. Pin that an embedded quote can't break out
+		// of the attribute boundary.
+		expect(escapeHtml('https://example.com/track?x="><script>')).toBe(
+			'https://example.com/track?x=&quot;&gt;&lt;script&gt;'
+		);
+	});
+
+	it('does not unescape numeric character references — keeps payload inert', () => {
+		// A naive entity decoder could turn this back into a real `<`, but
+		// escapeHtml only does forward replacement. So `&#60;` survives as
+		// `&amp;#60;` and a payload like `&#60;script&#62;alert(1)&#60;/script&#62;`
+		// stays inert.
+		expect(escapeHtml('&#60;script&#62;')).toBe('&amp;#60;script&amp;#62;');
 	});
 });
 
@@ -149,6 +169,69 @@ describe('ownerNotification', () => {
 		// And the cleaned subject still carries the original name + ref
 		expect(mail.subject).toContain('MG-260410-ABCD');
 		expect(mail.subject).toContain('Jane');
+	});
+
+	it('renders address newlines as <br> AFTER escaping HTML in the address', () => {
+		// The template does `escapeHtml(input.address).replace(/\n/g, '<br>')`.
+		// Order matters: escape first, then convert newlines. Doing it the
+		// other way would let an address like
+		//   "Line 1\n<script>alert(1)</script>"
+		// inject a real script. Pin the order by asserting both: the
+		// script tag is escaped AND the newline became a literal <br>.
+		const mail = ownerNotification({
+			orderRef: 'MG-1',
+			name: 'x',
+			email: 'x@y.z',
+			phone: '',
+			address: 'Line 1\n<script>alert(1)</script>',
+			items: '',
+			notes: ''
+		});
+		expect(mail.html).toContain('Line 1<br>&lt;script&gt;alert(1)&lt;/script&gt;');
+		expect(mail.html).not.toContain('<script>alert(1)</script>');
+	});
+
+	it('renders notes newlines as <br> AFTER escaping HTML in the notes', () => {
+		// Same escape-then-replace ordering for the notes block. Notes are
+		// only rendered when non-empty, so this also exercises the
+		// `${input.notes ? … : ''}` branch with content present.
+		const mail = ownerNotification({
+			orderRef: 'MG-1',
+			name: 'x',
+			email: 'x@y.z',
+			phone: '',
+			address: 'a',
+			items: 'b',
+			notes: 'gift wrap please\n<img src=x onerror=alert(1)>'
+		});
+		expect(mail.html).toContain('<h3>Notes</h3>');
+		expect(mail.html).toContain('gift wrap please<br>&lt;img src=x onerror=alert(1)&gt;');
+		expect(mail.html).not.toContain('<img src=x onerror=alert(1)>');
+	});
+
+	it('escapes a defensive `<` even inside the orderRef', () => {
+		// orderRefs are upstream-validated to /^MG-\d{6}-[A-Z0-9]{6}$/, so
+		// HTML in here can't actually happen in production. But the
+		// template doesn't know that — if anyone ever loosens the
+		// validation, the email layer must still hold the line. This
+		// pins the defensive escape that lives inside ownerNotification.
+		const mail = ownerNotification({
+			orderRef: '<svg/onload=alert(1)>',
+			name: 'x',
+			email: 'x@y.z',
+			phone: '',
+			address: 'a',
+			items: 'b',
+			notes: ''
+		});
+		expect(mail.html).not.toContain('<svg/onload=alert(1)>');
+		expect(mail.html).toContain('&lt;svg/onload=alert(1)&gt;');
+		// Subject also passes through safeHeader — should still keep
+		// the (escaped or not) text inline. safeHeader only strips CR/LF,
+		// not other characters; the orderRef in the subject is NOT
+		// HTML-escaped because the subject isn't HTML. Email clients
+		// render it as plain text so `<svg…>` is harmless there.
+		expect(mail.subject).toContain('<svg/onload=alert(1)>');
 	});
 
 	it('tells the owner that PayFast will handle payment', () => {
@@ -314,6 +397,124 @@ describe('paymentFailedTemplate', () => {
 		);
 		expect(mail.html).not.toContain('<script>alert');
 		expect(mail.html).toContain('&lt;script&gt;');
+	});
+});
+
+describe('commissionEnquiry', () => {
+	it('includes every required field in the body', () => {
+		const mail = commissionEnquiry({
+			name: 'Alice',
+			email: 'alice@example.com',
+			phone: '0821234567',
+			photoReference: 'Sunset palms',
+			size: '600x900mm',
+			finish: 'Oak',
+			location: 'Living room',
+			message: 'Looking for a screen for my hallway.'
+		});
+		expect(mail.subject).toContain('Commission enquiry');
+		expect(mail.subject).toContain('Alice');
+		expect(mail.html).toContain('Alice');
+		expect(mail.html).toContain('alice@example.com');
+		expect(mail.html).toContain('0821234567');
+		expect(mail.html).toContain('Sunset palms');
+		expect(mail.html).toContain('600x900mm');
+		expect(mail.html).toContain('Oak');
+		expect(mail.html).toContain('Living room');
+		expect(mail.html).toContain('Looking for a screen for my hallway.');
+	});
+
+	it('flags the visitor-supplied fields as unverified (anti-impersonation banner)', () => {
+		// The reply-with-banking-details vector docs/security.md § replyTo
+		// describes is mitigated by the visible "not verified — confirm
+		// authenticity" banner at the top of the email. Pin that the
+		// wording stays in place; a refactor that drops the banner would
+		// lose the social-engineering guard for the operator.
+		const mail = commissionEnquiry({
+			name: 'Alice',
+			email: 'alice@example.com',
+			phone: '',
+			photoReference: '',
+			size: '',
+			finish: '',
+			location: '',
+			message: 'm'
+		});
+		expect(mail.html.toLowerCase()).toContain('have not been verified');
+		expect(mail.html.toLowerCase()).toContain('authenticity');
+	});
+
+	it('hides optional rows when the field is empty or whitespace-only', () => {
+		const mail = commissionEnquiry({
+			name: 'Alice',
+			email: 'alice@example.com',
+			phone: '',
+			photoReference: '   ',
+			size: '',
+			finish: '',
+			location: '',
+			message: 'm'
+		});
+		expect(mail.html).not.toContain('Phone:');
+		expect(mail.html).not.toContain('Photo reference:');
+		expect(mail.html).not.toContain('Size:');
+		expect(mail.html).not.toContain('Wood / finish:');
+		expect(mail.html).not.toContain('Where it will go:');
+	});
+
+	it('escapes HTML in name, email, and message', () => {
+		const mail = commissionEnquiry({
+			name: '<img src=x onerror=alert(1)>',
+			email: '"><script>alert(1)</script>@example.com',
+			phone: '',
+			photoReference: '',
+			size: '',
+			finish: '',
+			location: '',
+			message: '<script>alert("xss")</script>'
+		});
+		expect(mail.html).not.toContain('<img src=x onerror=alert(1)>');
+		expect(mail.html).not.toContain('<script>alert("xss")</script>');
+		expect(mail.html).not.toContain('"><script>alert(1)</script>');
+		expect(mail.html).toContain('&lt;img src=x onerror=alert(1)&gt;');
+		expect(mail.html).toContain('&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;');
+	});
+
+	it('renders message newlines as <br> AFTER escaping', () => {
+		// Same escape-then-replace ordering as ownerNotification's notes
+		// and address blocks. Pin it for commissionEnquiry too — a refactor
+		// that swapped the order would be the textbook way to introduce
+		// stored XSS in this template.
+		const mail = commissionEnquiry({
+			name: 'Alice',
+			email: 'a@b.c',
+			phone: '',
+			photoReference: '',
+			size: '',
+			finish: '',
+			location: '',
+			message: 'line 1\n<script>alert(1)</script>'
+		});
+		expect(mail.html).toContain('line 1<br>&lt;script&gt;alert(1)&lt;/script&gt;');
+		expect(mail.html).not.toContain('<script>alert(1)</script>');
+	});
+
+	it('strips CR/LF from the subject so a malicious name cannot inject headers', () => {
+		// Same RFC 5322 protection as ownerNotification — header
+		// injection through the subject is closed off by safeHeader's
+		// CR/LF strip.
+		const mail = commissionEnquiry({
+			name: 'Mal\r\nBcc: attacker@evil.example',
+			email: 'a@b.c',
+			phone: '',
+			photoReference: '',
+			size: '',
+			finish: '',
+			location: '',
+			message: 'm'
+		});
+		expect(mail.subject).not.toMatch(/[\r\n]/);
+		expect(mail.subject).toContain('Commission enquiry');
 	});
 });
 
