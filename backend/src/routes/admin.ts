@@ -49,7 +49,16 @@ export function adminRouter() {
 			if (value === null) {
 				update[key] = null;
 			} else if (typeof value === 'string') {
-				update[key] = value === '' ? null : value;
+				if (value === '') {
+					update[key] = null;
+				} else if (key === 'trackingUrl' && !isSafeHttpUrl(value)) {
+					return c.json(
+						{ error: 'trackingUrl must be an http:// or https:// URL.' },
+						400
+					);
+				} else {
+					update[key] = value;
+				}
 			} else {
 				return c.json({ error: `${key} must be a string or null.` }, 400);
 			}
@@ -105,4 +114,19 @@ export function adminRouter() {
 function errorMessage(err: unknown): string {
 	if (err instanceof Error) return err.message;
 	return String(err);
+}
+
+// trackingUrl is rendered into the customer's shipping email <a href> and
+// into the /track page's status-card link. Without a protocol allowlist,
+// an operator (or a compromised Studio session) could store a
+// `javascript:` URL that some email clients render live. Reject anything
+// that's not plain HTTP(S).
+export function isSafeHttpUrl(value: string): boolean {
+	let parsed: URL;
+	try {
+		parsed = new URL(value);
+	} catch {
+		return false;
+	}
+	return parsed.protocol === 'https:' || parsed.protocol === 'http:';
 }

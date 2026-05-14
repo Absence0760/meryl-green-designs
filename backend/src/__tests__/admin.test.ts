@@ -245,6 +245,43 @@ describe('PATCH /admin/orders/:ref/tracking', () => {
 		expect(ordersStore.updateOrderTracking).not.toHaveBeenCalled();
 	});
 
+	it.each([
+		'javascript:alert(1)',
+		'JavaScript:alert(1)',
+		'data:text/html,<script>alert(1)</script>',
+		'vbscript:msgbox(1)',
+		'file:///etc/passwd',
+		'not a url at all'
+	])('rejects trackingUrl=%s with 400 (XSS surface guard)', async (url) => {
+		const app = createApp();
+		const res = await app.request('/admin/orders/MG-260410-ABCD/tracking', {
+			method: 'PATCH',
+			headers: { ...authHeader(), 'Content-Type': 'application/json' },
+			body: JSON.stringify({ trackingUrl: url })
+		});
+		expect(res.status).toBe(400);
+		const body = (await res.json()) as { error: string };
+		expect(body.error).toMatch(/http/i);
+		expect(ordersStore.updateOrderTracking).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		'https://example.com/track/X',
+		'http://example.com/track/X',
+		'https://www.courierguy.co.za/track/CG-12345'
+	])('accepts trackingUrl=%s', async (url) => {
+		const app = createApp();
+		const res = await app.request('/admin/orders/MG-260410-ABCD/tracking', {
+			method: 'PATCH',
+			headers: { ...authHeader(), 'Content-Type': 'application/json' },
+			body: JSON.stringify({ trackingUrl: url })
+		});
+		expect(res.status).toBe(200);
+		expect(ordersStore.updateOrderTracking).toHaveBeenCalledWith('MG-260410-ABCD', {
+			trackingUrl: url
+		});
+	});
+
 	it('rejects invalid JSON with 400', async () => {
 		const app = createApp();
 		const res = await app.request('/admin/orders/MG-260410-ABCD/tracking', {

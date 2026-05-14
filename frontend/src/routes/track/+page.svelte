@@ -2,6 +2,7 @@
 	import { PUBLIC_API_URL } from '$env/static/public';
 	import { onMount } from 'svelte';
 	import Button from '$lib/Button.svelte';
+	import { safeHttpUrl } from '$lib/safeHttpUrl';
 
 	type Shipping = {
 		carrier: string | null;
@@ -282,9 +283,9 @@
 						{#if order.shipping.trackingNumber}
 							<p><strong>Tracking number:</strong> {order.shipping.trackingNumber}</p>
 						{/if}
-						{#if order.shipping.trackingUrl}
+						{#if safeHttpUrl(order.shipping.trackingUrl)}
 							<p>
-								<a href={order.shipping.trackingUrl} target="_blank" rel="noopener noreferrer">
+								<a href={safeHttpUrl(order.shipping.trackingUrl)} target="_blank" rel="noopener noreferrer">
 									Track your parcel
 								</a>
 							</p>
