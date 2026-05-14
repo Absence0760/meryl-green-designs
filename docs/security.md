@@ -166,6 +166,13 @@ to look up strangers' orders on `/track`.
   `orderRef + action + result`), but they may surface in API Gateway
   access logs if those are ever enabled — neither is currently configured
   to capture access logs.
+- The retry CTA on `/track` reads the email from in-memory Svelte state
+  (populated either by the customer typing it into the form or by the
+  `?email=` URL param the email-link uses). The retry POST uses
+  `fetch()`, not a navigation, so no Referer header is sent to PayFast.
+  The email-in-URL residual risk is the same one already accepted for
+  the track URL itself; this is an extension of that acceptance, not a
+  new exposure.
 
 ---
 
@@ -342,6 +349,17 @@ ends up encrypted with the wrong key.
   where possible, scoped IAM policies that only grant decrypt to
   identities that genuinely need it, CloudTrail alerting on unusual
   decrypt patterns.
+- **The Sanity API token is Editor-scope, not order-only.** The token
+  baked into both the main backend Lambda env and the daily auto-cancel
+  Lambda env grants read + write across the entire Sanity dataset,
+  not just the ability to patch `status` on `order` documents. A
+  compromised Lambda runtime could delete or modify any Sanity document
+  (products, gallery, testimonials). Sanity does not currently offer a
+  finer-grained token scope (per-document-type write); this is a
+  platform constraint, not a project gap. The auto-cancel Lambda's
+  trust boundary (no DynamoDB / Resend / PayFast access) still
+  meaningfully reduces blast radius compared to the main backend
+  runtime.
 - **Loss of AWS account access is catastrophic to this project** — both
   the secrets AND the Terraform state bucket AND the running
   infrastructure are gone. Mitigation is AWS account recovery hygiene:
