@@ -137,7 +137,11 @@ function getClient(): SanityClient {
 		// 200–400ms at the origin API. Shop/gallery tolerate the few-second
 		// staleness window, and the Sanity webhook still fires on publish
 		// for anything that needs an immediate rebuild.
-		useCdn: true,
+		//
+		// The e2e suite sets SANITY_USE_CDN=false so write-then-read flows
+		// (place an order, immediately look it up) don't race the CDN's
+		// propagation window. Production leaves the flag unset.
+		useCdn: process.env.SANITY_USE_CDN !== 'false',
 		token,
 		perspective: 'published'
 	});

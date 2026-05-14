@@ -36,6 +36,10 @@ const sharedServerEnv = {
 	SANITY_DATASET: must('SANITY_DATASET'),
 	SANITY_API_TOKEN: must('SANITY_API_TOKEN'),
 	SANITY_WEBHOOK_SECRET: must('SANITY_WEBHOOK_SECRET'),
+	// Bypass Sanity's CDN so write-then-read flows in specs (placeOrder
+	// → immediate /track lookup) see the just-written skeleton instead of
+	// a stale 404. Production keeps useCdn:true via backend/src/sanity.ts.
+	SANITY_USE_CDN: 'false',
 
 	// DynamoDB — LocalStack only
 	ORDERS_TABLE_NAME: must('ORDERS_TABLE_NAME'),
