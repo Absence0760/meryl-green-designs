@@ -1,6 +1,20 @@
-# Orders PII split — proposal
+# Orders PII split — implementation history
 
-**Status: Phase 0 in progress.** Days 1–6 are landed:
+**Status: Phase 1 live since 2026-05-13.** Customer PII now lives in
+DynamoDB; the Sanity order document carries only the non-PII skeleton
+(`orderRef`, `status`, `paymentMethod`, `amountZar`, `paymentId`). This
+document is the implementation history — read it as a record of how the
+cutover happened, not a forward-looking plan. For the current runtime
+behaviour, see [`architecture.md`](./architecture.md) and
+[`orders-and-tracking.md`](./orders-and-tracking.md).
+
+Subsequent phases (Phase 2 downgrade of the Sanity plan, reconciler
+cron) remain forward-looking — see the sections at the bottom of this
+file.
+
+## Implementation history (Days 1–8)
+
+Days 1–6 (Phase 0, pre-cutover) landed first:
 
 - Day 1 — Terraform scaffolding (empty DynamoDB table + Lambda IAM
   extension + `ORDERS_TABLE_NAME` env var). Applied.
@@ -68,7 +82,7 @@ block requiring one of those two literal strings.
 
 Dry-runs always bypass the script gates so previewing is cheap.
 
-**Day 7 — prod deploy prep: code landed AND applied.**
+**Day 7 — prod deploy prep: code landed AND applied. (Done.)**
 
 The Terraform code, tfvars example, and deployment docs are now updated:
 
@@ -82,7 +96,8 @@ The Terraform code, tfvars example, and deployment docs are now updated:
 - `docs/deployment.md` — env-var reference table and GHA-secrets table
   updated.
 
-What the operator still needs to do (Day 7 hand-off, not done yet):
+Operator hand-off steps for Day 7 (now historical — all done before the
+Day 8 cutover):
 
 1. `sops infra/terraform.tfvars.sops` — add real values for
    `admin_api_token` (generate with `openssl rand -hex 32`) and
@@ -104,10 +119,7 @@ What the operator still needs to do (Day 7 hand-off, not done yet):
    DynamoDB table (`aws dynamodb scan --table-name
    meryl-green-designs-orders --region af-south-1`).
 
-Day 8 cutover (Phase 1) still requires explicit go-ahead after Day 7
-has run cleanly in prod for at least one full order cycle.
-
-**Day 8 — Phase 1 cutover (code landed; deploys + scrub script pending).**
+**Day 8 — Phase 1 cutover (live since 2026-05-13).**
 
 Code changes that landed for Day 8:
 
@@ -146,48 +158,27 @@ Code changes that landed for Day 8:
 - Roughly 250 backend tests + 24 frontend tests still pass against
   the new architecture.
 
-What's outstanding for Day 8 (operator hands):
+Operator steps for Day 8 (historical — all completed before cutover
+went live 2026-05-13):
 
 1. **Sanity webhook filter — confirmed already compatible.** The
    actual filter in the Sanity dashboard is
    `_type == "order" && delta::changedAny(status)`. Both clauses still
    work post-cutover (`_type` is unchanged; `status` is one of the
-   five fields we kept on the Sanity doc). No change needed.
-2. **Cut a new release** (`gh release create vX.Y.0 --generate-notes
+   five fields we kept on the Sanity doc).
+2. **Cut a release** (`gh release create vX.Y.0 --generate-notes
    --target main`). The release-gated workflows fire
-   `deploy-studio.yml` and `deploy-backend.yml` in parallel; the
-   Studio deploy should land before customers see the new schema,
-   so the operator should verify `deploy-studio.yml` completed
-   before `deploy-backend.yml` flips the Lambda. If either workflow
-   run shows a green check before the other, fine; the issue would
-   be if backend deploy succeeded and Studio deploy failed.
-3. **Run the scrub script** against prod:
-   ```bash
-   pnpm scrub:sanity-pii:dry            # preview
-   pnpm scrub:sanity-pii --prod --yes   # writes
-   ```
-   This nulls the PII fields on every existing order doc. Re-runnable;
-   the second run reports `skipped=N` because the docs are already
-   scrubbed.
-4. **Decide on Sanity history strategy**: by default Sanity retains the
-   pre-scrub doc revision for ~30 days. Either (a) explicitly purge
-   history via the Sanity HTTP API's history endpoint so Phase 2
-   (the plan downgrade) can start after the 14-day observation
-   window, or (b) skip the purge and wait the full 30 days. Picking
-   (a) requires a manual API call documented in this file's "Phase 1
-   step 4" further down.
-5. **Smoke-test prod** after the scrub:
-   - Open ~5 orders in Studio — confirm the custom PII panels render
-     correctly and the native PII fields are gone.
-   - Place a fresh sandbox order — confirm it lands in both stores
-     (Sanity holds only the skeleton, DynamoDB holds the PII).
-   - Trigger a status change in Studio — confirm the Sanity webhook
-     still fires (the `delta::changedAny(status)` filter is the
-     trigger) AND the customer status email gets sent (this also
-     verifies the new DynamoDB join inside the webhook handler).
+   `deploy-studio.yml` and `deploy-backend.yml` in parallel; Studio
+   deploy must complete before backend flips the Lambda.
+3. **Run the scrub script** against prod (`pnpm scrub:sanity-pii:dry`
+   then `pnpm scrub:sanity-pii --prod --yes`). Re-runnable; idempotent.
+4. **Sanity history strategy** decided.
+5. **Smoke-test prod**: open ~5 orders in Studio, place a fresh
+   sandbox order, trigger a status change — all observed clean.
 
 Phase 2 (Sanity Free downgrade) waits for 14 calendar days of green
-metrics after step 5.
+metrics after the cutover — currently in the observation window
+(target window end ~2026-05-27).
 
 ## Why this exists
 
