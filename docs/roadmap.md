@@ -35,10 +35,12 @@ much of the brief is already shipped.
 - [x] Under-construction banner removed
 
 ### Content management
-- [x] Sanity Studio with three schemas: `product`, `galleryPhoto`, `order`
+- [x] Sanity Studio with four schemas: `product`, `galleryPhoto`, `testimonial`, `order`
 - [x] Product reads routed through the backend (so the dataset can stay private)
 - [x] Gallery reads routed through the backend (same pattern)
-- [x] Order creation writes to Sanity with full PII protection
+- [x] Order creation writes to DynamoDB (PII) + Sanity (non-PII skeleton);
+      see [Split order PII](#longer-term--speculative) (now landed) and
+      [`docs/orders-pii-split-plan.md`](./orders-pii-split-plan.md)
 
 ### Polish
 - [x] Favicon (brand-colored SVG)
@@ -87,25 +89,28 @@ much of the brief is already shipped.
       does not import `server.ts`)
 
 ### Testing
-- [x] Vitest test suite across backend and frontend (79 tests total: 71
-      backend + 8 frontend, <1s runtime). Backend covers email templates
-      + HTML escaping, `sendEmail` with mocked Resend fetch, Sanity
-      webhook HMAC verification, `POST /orders` + `GET /orders/:ref`,
-      `/products` + `/gallery`, CORS (including `ALLOWED_ORIGINS` fallback
-      behaviour), `/health`, 404 handling, and a regression guard that
-      fails if banking details ever reappear in the automated
-      pending-payment email. Frontend covers `formatPrice` (null, zero,
-      positive, large numbers) and `imageUrl` (width omitted/included,
-      null project-id branch in a separate test file). All tests mock
-      Sanity and Resend so they run offline. Root `pnpm test` runs both
-      workspaces.
+- [x] Vitest test suite across backend and frontend (334 tests total: 310
+      backend across 18 files + 24 frontend across 3 files, ~4s combined).
+      Backend covers email templates + HTML escaping, `sendEmail` with
+      mocked Resend fetch, Sanity webhook HMAC verification, PayFast
+      ITN signature verification + amount checks + failed-ITN dedup,
+      `POST /orders` + dual-write rollback semantics + `GET /orders/:ref`
+      + retry-payment, `/enquiries`, `/admin/*` PII routes + admin-auth
+      middleware, `/products` + `/gallery` + `/testimonials`, CORS
+      (including `ALLOWED_ORIGINS` fallback behaviour), rate-limit
+      middleware, `/health`, 404 handling, orders-store join layer,
+      auto-cancel sweep, and a regression guard that fails if banking
+      details ever reappear in the automated pending-payment email.
+      Frontend covers `formatPrice`, `imageUrl`, and the cart logic
+      helpers. All tests mock Sanity, Resend, and DynamoDB so they run
+      offline. Root `pnpm test` runs both workspaces.
 - [x] CI workflow (`.github/workflows/ci.yml`) runs `pnpm check` + `pnpm
       test` on every PR and every push to `main`/`dev`, with
       cancel-in-progress concurrency so rapid pushes don't stack up.
 
 ### Developer experience
-- [x] All dependencies upgraded to latest major versions (Svelte 5.55,
-      SvelteKit 2.57, Vite 8, TypeScript 6, Sanity 5, React 19, Hono 4.12,
+- [x] All dependencies upgraded to latest major versions (Svelte 5,
+      SvelteKit 2.59, Vite 8, TypeScript 6, Sanity 5, React 19, Hono 4.12,
       @sanity/client 7, etc.)
 - [x] Dead boilerplate dependencies removed (Storybook, `unplugin-icons`,
       `mdsvex`, `normalize.css`, `isomorphic-dompurify`)
@@ -285,15 +290,17 @@ None are blocking; pick the ones that match observed pain.
       and a retry CTA on `/track` for in-window pending orders.
       **Full implementation notes:**
       [`docs/payment-retry-plan.md`](./payment-retry-plan.md).
-- [ ] Structured product picker on the order form (checkboxes + quantities
-      per product) — only worth it once there are enough products that
-      the free-text field feels clumsy
+- [x] Structured product picker on the order form — cart submits
+      `{productId, quantity}[]` to the backend; backend validates
+      against Sanity and computes price server-side (no free-form
+      items textarea). Shipped with the Cart panel rewrite.
 - [ ] "About Meryl" page
 - [ ] Archive of past / sold products
 - [ ] Newsletter signup (only if Meryl wants it)
 - [ ] Lambda alias for cleaner one-command rollback (right now rollback is
       via "re-run the previous workflow"; works but an alias is tidier)
-- [ ] Sitemap.xml generator
+- [x] Sitemap.xml generator — `frontend/src/routes/sitemap.xml/+server.ts`
+      renders the discoverable routes at build time.
 
 ## Longer-term / speculative
 
@@ -314,16 +321,18 @@ step up in complexity and shouldn't be taken lightly.
 - [ ] Order admin dashboard for Meryl — marked promoted earlier but in
       practice the Sanity Studio IS this dashboard, so the item is moot
       unless she outgrows Studio's list view.
-- [ ] **Split order PII out of Sanity into AWS DynamoDB.** Triggered by
-      Sanity's Free plan only permitting public datasets — to drop the
-      ~R285/month Growth subscription, customer PII (name, email, phone,
-      address, items, notes, tracking) moves to a private DynamoDB table
-      while order reference + status + amount stays on Sanity. Meryl's
-      Studio workflow is preserved via custom React panels that fetch
-      PII through a new `/admin/orders` backend route. ~7–11 days of
-      work for ~R283/month (~R3,400/year) saving; the real motivation is
-      reducing third-party PII processors, not the money. **Full
-      proposal:** [`docs/orders-pii-split-plan.md`](./orders-pii-split-plan.md).
+- [x] **Split order PII out of Sanity into AWS DynamoDB.** **Live since
+      2026-05-13** — Phase 1 cutover landed. Customer PII (name, email,
+      phone, address, items, notes, tracking) now lives in DynamoDB;
+      the Sanity order document carries only the non-PII skeleton
+      (orderRef, status, paymentMethod, amountZar, paymentId). Meryl's
+      Studio workflow is preserved via three custom React panels
+      (`CustomerDetailsPanel`, `TrackingFields`, `InternalNotesField`
+      in `studio/components/orderPii.tsx`) that fetch PII through the
+      `/admin/orders/:ref/*` backend routes. Saves ~R285/month by
+      dropping the Sanity Growth subscription and reduces the set of
+      third-party PII processors. **Implementation history:**
+      [`docs/orders-pii-split-plan.md`](./orders-pii-split-plan.md).
 
 ## Explicit non-goals
 
