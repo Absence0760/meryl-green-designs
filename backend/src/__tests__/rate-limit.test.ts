@@ -126,6 +126,41 @@ describe('createRateLimiter', () => {
 		expect(b.status).toBe(200);
 		expect(c.status).toBe(429);
 	});
+
+	it('short-circuits to pass-through when RATE_LIMIT_DISABLED=true', async () => {
+		vi.stubEnv('RATE_LIMIT_DISABLED', 'true');
+		try {
+			// makeApp constructs the limiter — the env-flag check happens
+			// at construction, so this app gets the pass-through.
+			const app = makeApp({ windowMs: 60_000, max: 1 });
+
+			// 10 requests, far over the max of 1. None should be blocked.
+			for (let i = 0; i < 10; i++) {
+				const res = await app.request('/limited/probe');
+				expect(res.status).toBe(200);
+			}
+		} finally {
+			vi.unstubAllEnvs();
+		}
+	});
+
+	it('still rate-limits when RATE_LIMIT_DISABLED is anything other than "true"', async () => {
+		// Defence-in-depth: only the exact string 'true' bypasses; '1',
+		// 'yes', empty string, etc. all leave the limiter active so a
+		// typo in a deployed env var can't silently open the limiter.
+		for (const val of ['1', 'yes', 'TRUE', '', 'false']) {
+			vi.stubEnv('RATE_LIMIT_DISABLED', val);
+			try {
+				const app = makeApp({ windowMs: 60_000, max: 1 });
+				const ok = await app.request('/limited/probe');
+				const blocked = await app.request('/limited/probe');
+				expect(ok.status).toBe(200);
+				expect(blocked.status).toBe(429);
+			} finally {
+				vi.unstubAllEnvs();
+			}
+		}
+	});
 });
 
 describe('rate limiter integration', () => {

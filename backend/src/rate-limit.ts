@@ -19,6 +19,16 @@ export function createRateLimiter(opts: {
 	/** Override IP extraction — defaults to {@link getClientIp}. */
 	keyFn?: (c: Context) => string;
 }): MiddlewareHandler {
+	// E2E tests run every spec's POST /orders from the same `'unknown'`
+	// client-IP bucket (no x-forwarded-for in local-dev), so a long
+	// suite would trip the limiter long before exhausting real coverage.
+	// `RATE_LIMIT_DISABLED=true` short-circuits to a pass-through. The
+	// flag is only set by the playwright workspace's sharedServerEnv and
+	// is never present in Terraform's Lambda env block.
+	if (process.env.RATE_LIMIT_DISABLED === 'true') {
+		return async (_c, next) => next();
+	}
+
 	const buckets = new Map<string, Bucket>();
 	let cleanupCounter = 0;
 	const CLEANUP_EVERY = 100;

@@ -60,6 +60,12 @@ const sharedServerEnv = {
 	STUDIO_ORIGINS: `http://localhost:${FRONTEND_PORT}`,
 	ALLOWED_ORIGINS: `http://localhost:${FRONTEND_PORT}`,
 
+	// Disable rate limiting in the test backend — every spec hits localhost
+	// from the same `unknown` x-forwarded-for bucket and would otherwise
+	// trip the 5/15min cap mid-suite. The flag is only honoured by
+	// backend/src/rate-limit.ts; Terraform's Lambda env never sets it.
+	RATE_LIMIT_DISABLED: 'true',
+
 	// Site URLs
 	SITE_URL: `http://localhost:${FRONTEND_PORT}`,
 	API_URL: `http://localhost:${BACKEND_PORT}`,
