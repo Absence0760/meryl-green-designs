@@ -3,8 +3,8 @@
 Website for Meryl Green Designs — a small South African studio selling
 handcrafted screens and designs inspired by the African bush. A static
 brochure site with a gallery, a shop checkout via PayFast (cards, Apple
-Pay, SnapScan, Instant EFT), and a content management dashboard the shop
-owner uses to manage products herself.
+Pay, SnapScan), and a content management dashboard the shop owner uses
+to manage products herself.
 
 ## Stack
 

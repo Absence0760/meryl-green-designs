@@ -27,8 +27,8 @@
 			{/if}
 
 			<p>
-				If you'd still like to complete your order, you can return to the shop
-				and try again, or choose to pay by EFT instead.
+				If you'd still like to complete your order, return to the shop and
+				try again.
 			</p>
 
 			<div class="actions">

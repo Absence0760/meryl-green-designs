@@ -521,7 +521,7 @@ pending-payment email`) that fails if strings like `account number` or
 PayFast is integrated via the **redirect model** (hosted checkout). The
 customer clicks "Pay now" in the cart panel; PayFast's hosted checkout
 exposes the full set of supported payment methods (cards, Apple Pay,
-SnapScan, Instant EFT, etc.) on its own page.
+SnapScan, etc.) on its own page.
 
 ### Payment flow
 
@@ -585,7 +585,7 @@ for ITN callbacks), see
 
 | Field | Type | Purpose |
 |---|---|---|
-| `paymentMethod` | `'eft' \| 'payfast'` | Which payment path the customer chose |
+| `paymentMethod` | `'payfast'` (historical orders may carry `'eft'`) | Which payment path the customer chose |
 | `amountZar` | number | Server-computed total in ZAR |
 | `paymentId` | string | PayFast transaction ID (set by ITN handler) |
 

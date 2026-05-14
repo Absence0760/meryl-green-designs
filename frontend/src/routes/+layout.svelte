@@ -168,7 +168,7 @@
 		<ul class="footer-trust" aria-label="Shipping and checkout">
 			<li>Ships across South Africa</li>
 			<li>Secure checkout via PayFast</li>
-			<li>Card · Apple Pay · SnapScan · Instant EFT</li>
+			<li>Card · Apple Pay · SnapScan</li>
 		</ul>
 		<div class="footer-copyright">
 			<p>&copy; {new Date().getFullYear()} Meryl Green Designs. All rights reserved.</p>

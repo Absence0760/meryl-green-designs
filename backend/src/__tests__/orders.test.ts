@@ -37,7 +37,7 @@ function sanityOrder(overrides: Partial<SanityOrder> = {}): SanityOrder {
 		_updatedAt: '2026-04-10T12:00:00Z',
 		orderRef: 'MG-260410-ABCD',
 		status: 'pending_payment',
-		paymentMethod: 'eft',
+		paymentMethod: 'payfast',
 		amountZar: null,
 		paymentId: null,
 		customerName: 'Jane Smith',

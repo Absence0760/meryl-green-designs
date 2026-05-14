@@ -161,7 +161,7 @@ export async function createOrder(input: NewOrderInput): Promise<SanityOrder> {
 		_type: 'order',
 		orderRef: input.orderRef,
 		status: 'pending_payment',
-		paymentMethod: input.paymentMethod ?? 'eft',
+		paymentMethod: input.paymentMethod ?? 'payfast',
 		amountZar: input.amountZar ?? null,
 		customerName: input.customerName,
 		customerEmail: input.customerEmail,
