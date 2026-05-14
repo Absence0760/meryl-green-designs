@@ -12,7 +12,10 @@ export type SeedProduct = {
 	slug: string;
 	blurb: string;
 	description: string;
-	price: number;
+	// The Sanity schema field is `priceZar`, not `price` — keep the fixture
+	// type aligned so backend reads (which look up `product.priceZar`)
+	// succeed against seeded data.
+	priceZar: number;
 	available: boolean;
 	order: number;
 };
@@ -24,7 +27,7 @@ export const seedProducts: SeedProduct[] = [
 		slug: 'test-screen-small',
 		blurb: 'A compact panel for the cart spec.',
 		description: 'Used by the e2e suite to exercise the cart + checkout flow.',
-		price: 1200,
+		priceZar: 1200,
 		available: true,
 		order: 10,
 	},
@@ -34,7 +37,7 @@ export const seedProducts: SeedProduct[] = [
 		slug: 'test-screen-large',
 		blurb: 'A larger panel used to exercise quantity > 1 in the cart.',
 		description: 'Second available product so the cart spec can test multi-line totals.',
-		price: 3400,
+		priceZar: 3400,
 		available: true,
 		order: 20,
 	},
@@ -44,7 +47,7 @@ export const seedProducts: SeedProduct[] = [
 		slug: 'test-screen-sold',
 		blurb: 'Hidden from the public shop list.',
 		description: 'Used to verify the available=true filter on GET /products.',
-		price: 5600,
+		priceZar: 5600,
 		available: false,
 		order: 30,
 	},

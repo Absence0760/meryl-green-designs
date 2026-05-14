@@ -47,7 +47,7 @@ export async function wipeAndSeedSanity(): Promise<void> {
 			slug: { _type: 'slug', current: p.slug },
 			blurb: p.blurb,
 			description: p.description,
-			price: p.price,
+			priceZar: p.priceZar,
 			available: p.available,
 			order: p.order,
 			photos: [],
