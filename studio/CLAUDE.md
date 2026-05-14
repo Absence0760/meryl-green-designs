@@ -54,7 +54,7 @@ The token is baked into the Studio JS bundle at build time, so it's visible to a
 
 `resolveApiUrl()` in `orderPii.tsx` throws at module load if a production build has no `SANITY_STUDIO_API_URL` set, or if the value resolves to a loopback host (`localhost` / `127.0.0.1` / `0.0.0.0`). The check runs in the deployed JS bundle (Vite/esbuild has already substituted `process.env.NODE_ENV` to `'production'` by then). Belt-and-braces: `.github/workflows/deploy-studio.yml` also asserts `vars.PUBLIC_API_URL`, `secrets.ADMIN_API_TOKEN`, and `vars.PUBLIC_SANITY_PROJECT_ID` are all set before invoking `sanity deploy`. Development builds with no env set fall back to `http://localhost:3001`.
 
-Phase 0 keeps the native PII fields on the schema **and** renders these new panels — intentional duplication for parity validation. Phase 1 removes the native fields.
+Phase 1 cutover landed 2026-05-13: the native PII fields are gone from `order.ts`. The schema now carries only the non-PII skeleton (`orderRef`, `status`, `paymentMethod`, `amountZar`, `paymentId`) plus three placeholder slots (`customerDetailsPanel`, `trackingPanel`, `internalNotesPanel`) backed by the components above. The Phase 0 parity-validation step is historical — see `docs/orders-pii-split-plan.md`.
 
 ## Pointers
 
