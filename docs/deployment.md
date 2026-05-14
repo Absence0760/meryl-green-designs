@@ -836,6 +836,24 @@ Set manually in step 6 of the setup.
 | `SANITY_AUTH_TOKEN` | Deploy Studio | `deploy-studio.yml` (runs `sanity deploy`) |
 | `ADMIN_API_TOKEN` | Deploy Studio | `deploy-studio.yml` re-exports this as `SANITY_STUDIO_ADMIN_TOKEN` at build time and bakes it into the Studio JS bundle so the custom PII panels can call `/admin/*` on the Lambda. **Must equal the `admin_api_token` value in `infra/terraform.tfvars.sops`** (same secret, two places). Rotate both together. |
 
+### GitHub Actions environment for end-to-end tests (`e2e`)
+
+Distinct from the `production` environment so the test credentials
+can't accidentally point at real resources. Used by `.github/workflows/e2e.yml`
+on every PR and every push to `main`. Set under **Repository → Settings →
+Environments → New environment → `e2e`**.
+
+| Kind | Name | Purpose |
+|---|---|---|
+| Variable | `SANITY_E2E_PROJECT_ID` | The **dedicated test** Sanity project's project ID. Must not equal `sanity_project_id` from prod. |
+| Variable | `SANITY_E2E_DATASET` | The test dataset name — convention is `test-e2e`. The env-guard refuses to run if this is `production`. |
+| Secret | `SANITY_E2E_TOKEN` | Editor token on the test project, scoped to the test-e2e dataset. Used by the seed script to wipe + reseed at the start of each run. |
+| Secret | `SANITY_E2E_WEBHOOK_SECRET` | 32-byte hex value. The suite signs simulated Sanity webhook posts with this; no actual Sanity webhook is configured against the test project. |
+| Secret | `E2E_ADMIN_API_TOKEN` | Bearer token for the admin routes in the test backend. Any high-entropy string is fine; not the same as the production `ADMIN_API_TOKEN`. |
+
+PayFast values are not secrets — the e2e workflow hard-codes the
+public sandbox merchant (`10004002`) in `.github/workflows/e2e.yml`.
+
 ### Local development (not production)
 
 - `frontend/.env` — `PUBLIC_API_URL`, `PUBLIC_SANITY_PROJECT_ID`, `PUBLIC_SANITY_DATASET`

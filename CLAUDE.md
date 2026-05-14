@@ -14,6 +14,7 @@ Meryl Green Designs — website for a small South African studio selling handcra
 | `backend/` | Hono on Lambda + local Node | 3001 | `backend/CLAUDE.md` |
 | `studio/` | Sanity Studio (React 19) | 3333 | `studio/CLAUDE.md` |
 | `infra/` | Terraform (AWS + GitHub OIDC) | — | `infra/CLAUDE.md` |
+| `playwright/` | Playwright e2e suite | — | `playwright/CLAUDE.md` |
 
 ## Commands (run from repo root)
 
@@ -33,6 +34,14 @@ pnpm build                   # build all workspaces
 pnpm check                   # typecheck all
 pnpm test                    # vitest run across workspaces (frontend + backend)
 pnpm frontend|backend|studio <script>   # filter to one workspace
+
+# End-to-end (Playwright) — needs LocalStack + a test-e2e Sanity dataset.
+# See playwright/README.md for first-time setup. NEVER hits prod — the
+# env-guard in playwright/global-setup.ts aborts the run if anything
+# would point at production.
+pnpm --filter @meryl-green-designs/playwright test            # headless
+pnpm --filter @meryl-green-designs/playwright test:headed     # see the browser
+pnpm --filter @meryl-green-designs/playwright test:ui         # Playwright UI
 ```
 
 ## First-time setup
@@ -76,6 +85,6 @@ Treat "code changed, docs and tests unchanged" as an incomplete task — flag it
 - `docs/orders-pii-split-plan.md` — design + implementation notes for the Phase-1 cutover (live since 2026-05-13): order PII lives in DynamoDB, the Sanity doc carries only the non-PII skeleton (orderRef, status, paymentMethod, amountZar, paymentId)
 - `docs/security.md` — risk register, mitigations, incident playbook
 - `infra/README.md` — Terraform module specifics
-- `.github/workflows/` — `ci.yml` (PR + push typecheck/test), `codeql.yml` (SAST on JS/TS + GitHub Actions YAML, PR + push + weekly), `audit.yml` (weekly `pnpm audit`, auto-files an issue), `gitleaks.yml` (secret-scan on PR + push + weekly full-history sweep), `scorecard.yml` (weekly OpenSSF supply-chain posture), `terraform.yml` (`fmt -check` + `validate` + Trivy IaC on `infra/**` changes), three release-gated deploy workflows with skip-if-unchanged checks, `dependabot-lockfile.yml` (syncs root pnpm-lock.yaml on Dependabot PRs), `dependabot-auto-merge.yml` (auto-merges minor/patch Dependabot PRs once CI is green), `claude.yml` automation
+- `.github/workflows/` — `ci.yml` (PR + push typecheck/test), `e2e.yml` (PR + push to main, Playwright against LocalStack + test-e2e Sanity dataset), `codeql.yml` (SAST on JS/TS + GitHub Actions YAML, PR + push + weekly), `audit.yml` (weekly `pnpm audit`, auto-files an issue), `gitleaks.yml` (secret-scan on PR + push + weekly full-history sweep), `scorecard.yml` (weekly OpenSSF supply-chain posture), `terraform.yml` (`fmt -check` + `validate` + Trivy IaC on `infra/**` changes), three release-gated deploy workflows with skip-if-unchanged checks, `dependabot-lockfile.yml` (syncs root pnpm-lock.yaml on Dependabot PRs), `dependabot-auto-merge.yml` (auto-merges minor/patch Dependabot PRs once CI is green), `claude.yml` automation
 
 Prefer reading these over guessing. Update them when behaviour changes.

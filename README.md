@@ -83,6 +83,7 @@ and what still needs manual attention.
 - [`docs/orders-pii-split-plan.md`](./docs/orders-pii-split-plan.md) — Phase 1 PII split (DynamoDB + Sanity), live since 2026-05-13
 - [`docs/payment-retry-plan.md`](./docs/payment-retry-plan.md) — payment-retry flow for failed/cancelled orders
 - [`docs/security.md`](./docs/security.md) — risk register, mitigations, incident playbook
+- [`playwright/README.md`](./playwright/README.md) — end-to-end test suite
 - [`infra/README.md`](./infra/README.md) — Terraform module specifics
 
 ## Commands
@@ -93,6 +94,10 @@ pnpm dev:all                # + studio
 pnpm build                  # build all packages
 pnpm check                  # typecheck all packages
 pnpm test                   # vitest run across workspaces
+
+# End-to-end (Playwright) — needs LocalStack + a test-e2e Sanity dataset
+pnpm --filter @meryl-green-designs/playwright test            # headless run
+pnpm --filter @meryl-green-designs/playwright test:headed     # see the browser
 
 # Local dev infrastructure (LocalStack emulating DynamoDB on :4566)
 pnpm dev:db:up              # start LocalStack + create the orders table (idempotent)

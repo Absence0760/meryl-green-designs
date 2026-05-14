@@ -727,6 +727,38 @@ test setup files provide. The full suite runs in well under a second.
 : You haven't created `studio/.env` or you left `SANITY_STUDIO_PROJECT_ID`
   empty. Follow the Sanity setup steps above.
 
+## End-to-end tests (Playwright)
+
+The `playwright/` workspace drives the whole order flow through a
+real Chromium browser against the live backend + frontend + LocalStack
+DynamoDB + a dedicated `test-e2e` Sanity dataset.
+
+**First-time setup is documented in
+[`playwright/README.md`](../playwright/README.md)** — short version:
+
+1. Create a second Sanity project for testing (Free plan).
+2. `cp playwright/.env.example playwright/.env`, fill in
+   `SANITY_PROJECT_ID`, `SANITY_API_TOKEN`, plus a couple of
+   random `openssl rand -hex 32` values.
+3. `pnpm dev:db:up` (LocalStack on `:4566`).
+4. `pnpm --filter @meryl-green-designs/playwright install-browsers`.
+
+Then any of:
+
+```bash
+pnpm --filter @meryl-green-designs/playwright test            # headless
+pnpm --filter @meryl-green-designs/playwright test:headed     # watch the browser
+pnpm --filter @meryl-green-designs/playwright test:ui         # Playwright UI
+```
+
+Playwright's `webServer` config will spawn `pnpm backend dev` and
+`pnpm frontend dev` automatically (or reuse them if they're already
+running). The suite **never** touches production — `global-setup.ts`
+aborts the run with a clear error if the env points anywhere near
+real prod (Sanity dataset, DynamoDB endpoint, PayFast merchant id,
+email backend). See `playwright/helpers/env-guard.ts` for the full
+check.
+
 ## Next step: deploying
 
 Once the site runs correctly on your machine, see

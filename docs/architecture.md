@@ -537,6 +537,11 @@ targets `us-east-1`.
 
 CI/CD lives in `.github/workflows/`:
 - `ci.yml` — typecheck + vitest on every PR and push. Never deploys.
+- `e2e.yml` — Playwright end-to-end suite (LocalStack DynamoDB + a
+  dedicated `test-e2e` Sanity dataset + public PayFast sandbox)
+  on every PR + push to `main`. The env-guard in
+  `playwright/global-setup.ts` refuses to run if anything would
+  point at production. See `playwright/README.md`.
 - `codeql.yml` — CodeQL SAST on JS/TS + GitHub Actions YAML on every PR,
   push to main, and weekly. Findings surface in the Security tab.
 - `audit.yml` — `pnpm audit` weekly; auto-files a `dependency-audit`

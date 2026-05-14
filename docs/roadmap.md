@@ -89,6 +89,18 @@ much of the brief is already shipped.
       does not import `server.ts`)
 
 ### Testing
+- [x] **End-to-end Playwright suite** (`playwright/` workspace) — drives
+      Chromium against the live backend + frontend + LocalStack
+      DynamoDB + a dedicated `test-e2e` Sanity dataset. Covers
+      smoke renders of every public page, the cart + checkout dual-write
+      (DynamoDB PII row + Sanity skeleton + owner email + signed PayFast
+      form), `/track` lookups (happy + no-enumeration paths), PayFast
+      ITN simulation (COMPLETE / FAILED / invalid sig / amount mismatch),
+      and the Sanity status webhook. Runs on every PR + push to `main`
+      via `.github/workflows/e2e.yml`. **Cannot touch production** — the
+      env-guard in `playwright/global-setup.ts` aborts if any env var
+      would target a real resource (Sanity production dataset, non-loopback
+      DynamoDB endpoint, EMAIL_BACKEND≠file, PAYFAST_SANDBOX≠true).
 - [x] Vitest test suite across backend and frontend (334 tests total: 310
       backend across 18 files + 24 frontend across 3 files, ~4s combined).
       Backend covers email templates + HTML escaping, `sendEmail` with
