@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test';
-import { placeOrder } from '../helpers/place-order.ts';
-import { patchOrderStatus, getSanityOrder } from '../helpers/seed-sanity.ts';
-import { buildSanityWebhookHeader } from '../helpers/sign-sanity-webhook.ts';
-import { clearCapturedEmails, waitForEmail } from '../helpers/read-email.ts';
+import { placeOrder } from '../../helpers/place-order.ts';
+import { patchOrderStatus, getSanityOrder } from '../../helpers/seed-sanity.ts';
+import { buildSanityWebhookHeader } from '../../helpers/sign-sanity-webhook.ts';
+import { clearCapturedEmails, waitForEmail } from '../../helpers/read-email.ts';
 
 // Sanity fires a webhook to /webhooks/sanity-order whenever an order
 // document's status changes. The backend verifies the HMAC-SHA256

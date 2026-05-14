@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { placeOrder } from '../helpers/place-order.ts';
+import { placeOrder } from '../../helpers/place-order.ts';
 
 // /track is the customer's view of their order: lookup form, status
 // progress indicator, tracking info when shipped. The backend joins

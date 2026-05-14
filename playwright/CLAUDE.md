@@ -33,7 +33,13 @@ the backend's DynamoDB state.
 - `helpers/` — env-guard, Sanity seed, email reader, ITN signer, webhook
   signer. Reusable across specs.
 - `fixtures/` — deterministic product / gallery / testimonial seed data.
-- `tests/` — one spec file per feature area.
+- `tests/` — specs grouped by feature area:
+  - `tests/cross-cutting/` — tests that span multiple features (smoke,
+    accessibility scans, etc.).
+  - `tests/orders/` — order lifecycle (cart, checkout, tracking, webhooks).
+  - When a new feature area gets its first spec, add a sibling folder
+    (e.g. `tests/gallery/`, `tests/contact/`). Keep `cross-cutting/`
+    for genuinely-multi-area tests only.
 
 ## Pointers
 

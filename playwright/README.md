@@ -75,13 +75,22 @@ runs reuse the already-listening servers.
 
 ## What's covered
 
+Specs are grouped by feature area:
+
+- `tests/cross-cutting/` — tests that span multiple features
+- `tests/orders/` — order lifecycle (cart → checkout → tracking → webhooks)
+
+Future areas (gallery interactions, shop browsing, contact enquiry, etc.)
+get their own folder when their first spec lands; keep cross-cutting only
+for genuinely-multi-area tests.
+
 | Spec file | What it covers |
 |---|---|
-| `tests/smoke.spec.ts` | Static-page renders: home, gallery, shop, contact, /track shell, privacy, returns, terms |
-| `tests/cart-checkout.spec.ts` | Add-to-cart → checkout → DynamoDB PII row + Sanity skeleton + owner email + signed PayFast form |
-| `tests/track.spec.ts` | `/track?ref&email` happy path; wrong email returns 404 (no enumeration) |
-| `tests/payment-itn.spec.ts` | Simulate a PayFast ITN POST with a valid sandbox signature; verify status flips + customer email captured |
-| `tests/sanity-webhook.spec.ts` | Simulate a Sanity status-change webhook with a valid HMAC; verify correct customer template fires |
+| `tests/cross-cutting/smoke.spec.ts` | Static-page renders across the site: home, gallery, shop, product detail, contact, /track shell, privacy, returns, terms |
+| `tests/orders/cart-checkout.spec.ts` | Add-to-cart → checkout → DynamoDB PII row + Sanity skeleton + owner email + signed PayFast form |
+| `tests/orders/track.spec.ts` | `/track?ref&email` happy path; wrong email returns 404 (no enumeration) |
+| `tests/orders/payment-itn.spec.ts` | Simulate a PayFast ITN POST with a valid sandbox signature; verify status flips + customer email captured |
+| `tests/orders/sanity-webhook.spec.ts` | Simulate a Sanity status-change webhook with a valid HMAC; verify correct customer template fires |
 
 What's **not** covered:
 - Studio's custom PII panels (`studio/components/orderPii.tsx`). The

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
-import { getOrderPii } from '../helpers/dynamo-orders.ts';
-import { getSanityOrder } from '../helpers/seed-sanity.ts';
-import { clearCapturedEmails, waitForEmail } from '../helpers/read-email.ts';
+import { getOrderPii } from '../../helpers/dynamo-orders.ts';
+import { getSanityOrder } from '../../helpers/seed-sanity.ts';
+import { clearCapturedEmails, waitForEmail } from '../../helpers/read-email.ts';
 
 // End-to-end checkout: add a product, fill the form, submit, intercept
 // PayFast redirect. Verifies the full dual-write: DynamoDB PII row +

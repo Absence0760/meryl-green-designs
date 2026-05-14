@@ -1,9 +1,9 @@
 import { test, expect } from '@playwright/test';
-import { placeOrder } from '../helpers/place-order.ts';
-import { buildSignedItn } from '../helpers/sign-payfast-itn.ts';
-import { getOrderPii } from '../helpers/dynamo-orders.ts';
-import { getSanityOrder } from '../helpers/seed-sanity.ts';
-import { clearCapturedEmails, waitForEmail } from '../helpers/read-email.ts';
+import { placeOrder } from '../../helpers/place-order.ts';
+import { buildSignedItn } from '../../helpers/sign-payfast-itn.ts';
+import { getOrderPii } from '../../helpers/dynamo-orders.ts';
+import { getSanityOrder } from '../../helpers/seed-sanity.ts';
+import { clearCapturedEmails, waitForEmail } from '../../helpers/read-email.ts';
 
 // PayFast posts an ITN (Instant Transaction Notification) to the
 // backend after the customer pays. The backend verifies the MD5
