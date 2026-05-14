@@ -35,9 +35,13 @@ test.describe('cart + checkout', () => {
 		await page.goto('/shop');
 		await expect(page.getByText('Test Screen Small')).toBeVisible();
 
-		// Add the small + the large product; the cart panel opens automatically
+		// Add the small + the large product
 		await page.getByRole('button', { name: /add to order/i }).nth(0).click();
 		await page.getByRole('button', { name: /add to order/i }).nth(1).click();
+
+		// Open the cart panel — 'Add to order' adds the item but doesn't
+		// auto-open the slide-out.
+		await page.getByRole('button', { name: /open cart/i }).click();
 
 		// Fill the form inside the cart panel
 		await page.fill('#cart-name', 'E2E Customer');
@@ -93,6 +97,7 @@ test.describe('cart + checkout', () => {
 	test('cart quantity controls update the total live', async ({ page }) => {
 		await page.goto('/shop');
 		await page.getByRole('button', { name: /add to order/i }).first().click();
+		await page.getByRole('button', { name: /open cart/i }).click();
 		await expect(page.getByText(/total/i)).toBeVisible();
 		await page.getByRole('button', { name: /increase quantity/i }).click();
 		// Two units of the first product (1200 each) = 2400
@@ -109,6 +114,7 @@ test.describe('cart + checkout', () => {
 	test('terms checkbox gates submit', async ({ page }) => {
 		await page.goto('/shop');
 		await page.getByRole('button', { name: /add to order/i }).first().click();
+		await page.getByRole('button', { name: /open cart/i }).click();
 		await page.fill('#cart-name', 'E2E Customer');
 		await page.fill('#cart-email', 'customer@e2e.local');
 		await page.fill('#cart-address', '1 Test Lane');

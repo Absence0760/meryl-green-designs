@@ -31,6 +31,8 @@ export async function placeOrder(
 	const apiUrl = process.env.API_URL ?? `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3001}`;
 	const siteUrl = process.env.SITE_URL ?? `http://localhost:${process.env.E2E_FRONTEND_PORT ?? 7777}`;
 
+	const quantity = overrides.quantity ?? 1;
+
 	const res = await request.post(`${apiUrl}/orders`, {
 		headers: {
 			'content-type': 'application/json',
@@ -44,13 +46,26 @@ export async function placeOrder(
 			notes: overrides.notes ?? '',
 			website: '',
 			paymentMethod: 'payfast',
-			cart: [{ productId: product._id, quantity: overrides.quantity ?? 1 }],
+			cart: [{ productId: product._id, quantity }],
 		},
 	});
 	if (!res.ok()) {
 		throw new Error(`[placeOrder] POST /orders failed: ${res.status()} ${await res.text()}`);
 	}
-	const body = (await res.json()) as PlacedOrder & { success: boolean };
-	if (!body.success) throw new Error(`[placeOrder] response had success=false`);
-	return body;
+
+	// The backend's success response is `{ success: true, ref, payfast }` —
+	// no orderRef, no amountZar. Map to the PlacedOrder shape the specs
+	// expect, computing amountZar from the fixture's priceZar since the
+	// backend doesn't echo it back.
+	const body = (await res.json()) as { success: boolean; ref?: string; payfast?: PlacedOrder['payfast'] };
+	if (!body.success || !body.ref || !body.payfast) {
+		throw new Error(
+			`[placeOrder] unexpected success body: ${JSON.stringify(body)}`,
+		);
+	}
+	return {
+		orderRef: body.ref,
+		amountZar: product.priceZar * quantity,
+		payfast: body.payfast,
+	};
 }
