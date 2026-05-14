@@ -32,16 +32,27 @@ const ONE_YEAR_SECONDS = 365 * 24 * 60 * 60;
 // DeleteCommand even on a worst-case retry.
 const SANITY_WRITE_TIMEOUT_MS = 10_000;
 
-async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+// Runs `task(signal)` with a hard timeout. On timeout, the AbortSignal
+// is fired so the underlying fetch closes its socket — without this,
+// the Sanity SDK's HTTP request would keep running in the background
+// inside the Lambda container, holding a socket open until Sanity's
+// own server-side timeout. Promise.race alone wins the race for the
+// caller but doesn't reach inside the SDK to cancel the work.
+async function withTimeout<T>(
+	task: (signal: AbortSignal) => Promise<T>,
+	ms: number,
+	label: string
+): Promise<T> {
+	const controller = new AbortController();
 	let timer: ReturnType<typeof setTimeout> | undefined;
 	const timeoutPromise = new Promise<never>((_, reject) => {
-		timer = setTimeout(
-			() => reject(new Error(`${label} timed out after ${ms}ms`)),
-			ms
-		);
+		timer = setTimeout(() => {
+			controller.abort();
+			reject(new Error(`${label} timed out after ${ms}ms`));
+		}, ms);
 	});
 	try {
-		return await Promise.race([promise, timeoutPromise]);
+		return await Promise.race([task(controller.signal), timeoutPromise]);
 	} finally {
 		if (timer) clearTimeout(timer);
 	}
@@ -165,11 +176,15 @@ export async function createOrder(input: NewOrderInput): Promise<Order> {
 	let sanityOrder: SanityOrder;
 	try {
 		sanityOrder = await withTimeout(
-			createSanityOrder({
-				orderRef: input.orderRef,
-				paymentMethod: input.paymentMethod,
-				amountZar: input.amountZar
-			}),
+			(signal) =>
+				createSanityOrder(
+					{
+						orderRef: input.orderRef,
+						paymentMethod: input.paymentMethod,
+						amountZar: input.amountZar
+					},
+					{ signal }
+				),
 			SANITY_WRITE_TIMEOUT_MS,
 			'Sanity createOrder'
 		);

@@ -97,6 +97,12 @@ export function sanityWebhookRouter() {
 		try {
 			order = await getOrderByRef(webhookOrder.orderRef);
 		} catch (err) {
+			// Same defence-in-depth pattern as orders-store.ts: stringify
+			// err.message rather than passing the raw Error to console.error.
+			// At this call site the expected error content is a network/SDK
+			// error from DynamoDB or Sanity — neither SDK is documented to
+			// embed customer data in its message, but the guard costs
+			// nothing and matches the codebase-wide convention.
 			const message = err instanceof Error ? err.message : String(err);
 			console.error(
 				`Sanity webhook: DynamoDB/Sanity join failed for ${webhookOrder.orderRef}: ${message}`

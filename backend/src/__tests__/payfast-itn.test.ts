@@ -50,9 +50,12 @@ function sanityOrder(overrides: Partial<Order> = {}): Order {
 		paymentId: null,
 		// PII fields filled with placeholder values to satisfy the Order
 		// shape contract — the ITN route never reads any of these, but
-		// the joined type requires them all to be present.
+		// the joined type requires them all to be present. The email
+		// uses the RFC 5321 invalid TLD `.invalid` so a literal search
+		// for this address in production logs / databases is guaranteed
+		// to be a test artefact, never a real customer.
 		customerName: 'Test Customer',
-		customerEmail: 'test@example.com',
+		customerEmail: 'itn-test-placeholder@invalid',
 		customerPhone: null,
 		shippingAddress: '1 Test Street',
 		items: '1 x Test product',

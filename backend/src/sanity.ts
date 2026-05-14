@@ -144,15 +144,25 @@ function getClient(): SanityClient {
 	return cachedClient;
 }
 
-export async function createOrder(input: NewSanityOrderInput): Promise<SanityOrder> {
+export async function createOrder(
+	input: NewSanityOrderInput,
+	options?: { signal?: AbortSignal }
+): Promise<SanityOrder> {
 	const client = getClient();
-	const created = await client.create({
-		_type: 'order',
-		orderRef: input.orderRef,
-		status: 'pending_payment',
-		paymentMethod: input.paymentMethod ?? 'payfast',
-		amountZar: input.amountZar ?? null
-	});
+	const created = await client.create(
+		{
+			_type: 'order',
+			orderRef: input.orderRef,
+			status: 'pending_payment',
+			paymentMethod: input.paymentMethod ?? 'payfast',
+			amountZar: input.amountZar ?? null
+		},
+		// Propagate the abort signal into Sanity's underlying fetch so a
+		// timeout on the caller side actually closes the TCP socket
+		// rather than abandoning a still-pending request inside the
+		// Lambda container.
+		options?.signal ? { signal: options.signal } : undefined
+	);
 	return created as unknown as SanityOrder;
 }
 

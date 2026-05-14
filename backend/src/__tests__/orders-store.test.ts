@@ -130,11 +130,18 @@ describe('ordersStore.createOrder (Phase 1 split-write)', () => {
 
 		await ordersStore.createOrder(newOrderInput);
 
-		expect(sanity.createOrder).toHaveBeenCalledWith({
-			orderRef: 'MG-260410-ABCD',
-			paymentMethod: 'payfast',
-			amountZar: 450
-		});
+		// First positional arg is the doc (non-PII only); the second is
+		// the options bag carrying the AbortSignal for the timeout. We
+		// assert structurally on the first arg only and accept any
+		// options shape.
+		expect(sanity.createOrder).toHaveBeenCalledWith(
+			{
+				orderRef: 'MG-260410-ABCD',
+				paymentMethod: 'payfast',
+				amountZar: 450
+			},
+			expect.objectContaining({ signal: expect.any(AbortSignal) })
+		);
 		// No PII fields slipped into the Sanity call.
 		const args = vi.mocked(sanity.createOrder).mock.calls[0]![0];
 		expect(args).not.toHaveProperty('customerName');

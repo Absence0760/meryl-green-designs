@@ -26,11 +26,11 @@
 	    AWS af-south-1 with global control plane) reflects the actually-
 	    executed DPAs on Meryl's current plan tier with each provider.
 	    Tracked in docs/roadmap.md as a pre-launch DPA-verification task.
-	  - Sanity-check the concrete retention windows (12 months on
-	    terminal-state orders, 30-day auto-cancellation for stale
-	    pending_payment orders, 30-day backend log retention, 5-year
-	    SARS retention for transactional records) against current SARS
-	    guidance and the CGSO's reasonable-retention expectations.
+	  - Sanity-check the concrete retention windows (365 days on
+	    customer-detail rows in DynamoDB via per-item TTL, 30-day
+	    backend log retention, 5-year SARS retention for transactional
+	    records) against current SARS guidance and the CGSO's
+	    reasonable-retention expectations.
 
 	Update the "Last updated" date whenever the data flows or policy
 	text change.
@@ -297,13 +297,13 @@
 		<p>
 			<strong>Customer details</strong> (your name, email address,
 			phone number, shipping address, items, and any notes you sent
-			us) are kept for <strong>12 months</strong> from when you
-			placed the order. After 12 months, AWS DynamoDB
-			automatically deletes the entire record holding your details
-			via a per-row expiry timer set when the order is created.
-			This deletion happens at the storage layer, not via a
-			scheduled job — there is no separate sweep that could fail
-			or be paused.
+			us) are kept for <strong>365 days</strong> (about 12 months)
+			from when you placed the order. After that window, AWS
+			DynamoDB automatically deletes the entire record holding
+			your details via a per-row expiry timer set when the order
+			is created. This deletion happens at the storage layer, not
+			via a scheduled job — there is no separate sweep that
+			could fail or be paused.
 		</p>
 		<p>
 			We retain the order reference, status, amount, and payment
@@ -312,7 +312,7 @@
 		</p>
 		<p>
 			While your order is still being processed (within the first
-			12 months), we keep the full details so we can complete
+			365 days), we keep the full details so we can complete
 			fulfilment and respond to questions about your order.
 		</p>
 		<p>
@@ -326,7 +326,7 @@
 		</p>
 		<p>
 			If you ask us to delete your information sooner than the
-			12-month window, we will delete what is not required by law
+			365-day window, we will delete what is not required by law
 			to be kept. Statutory record-keeping (e.g. tax invoices) may
 			oblige us to retain certain transactional details for up to
 			5 years under SARS rules, even after a deletion request.
