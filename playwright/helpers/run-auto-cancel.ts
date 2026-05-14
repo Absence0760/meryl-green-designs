@@ -20,29 +20,39 @@ export type AutoCancelResult = {
 	stdout: string;
 	stderr: string;
 	exitCode: number;
+	/** Parsed result JSON extracted from the marker-bracketed stdout. */
+	result: { cutoffIso: string; found: number; cancelled: number; failed: number } | null;
 };
 
+const RESULT_RE = /__AUTO_CANCEL_RESULT__(\{[\s\S]*?\})__END__/;
+
 export function runAutoCancelHandler(
-	overrides: Record<string, string | undefined> = {},
+	opts: { days?: number; env?: Record<string, string | undefined> } = {},
 ): Promise<AutoCancelResult> {
 	return new Promise((resolve, reject) => {
-		const env = { ...process.env, ...overrides };
-		const child = spawn(
-			'pnpm',
-			[
-				'--filter',
-				'@meryl-green-designs/backend',
-				'exec',
-				'tsx',
-				'src/scripts/run-auto-cancel.ts',
-			],
-			{ cwd: repoRoot, env, stdio: ['ignore', 'pipe', 'pipe'] },
-		);
+		const env = { ...process.env, ...(opts.env ?? {}) };
+		const args = [
+			'--filter',
+			'@meryl-green-designs/backend',
+			'exec',
+			'tsx',
+			'src/scripts/run-auto-cancel.ts',
+		];
+		if (opts.days !== undefined) args.push('--days', String(opts.days));
+		const child = spawn('pnpm', args, {
+			cwd: repoRoot,
+			env,
+			stdio: ['ignore', 'pipe', 'pipe'],
+		});
 		let stdout = '';
 		let stderr = '';
 		child.stdout.on('data', (chunk: Buffer) => (stdout += chunk.toString()));
 		child.stderr.on('data', (chunk: Buffer) => (stderr += chunk.toString()));
 		child.on('error', reject);
-		child.on('close', (code) => resolve({ stdout, stderr, exitCode: code ?? -1 }));
+		child.on('close', (code) => {
+			const match = RESULT_RE.exec(stdout);
+			const result = match ? (JSON.parse(match[1]) as AutoCancelResult['result']) : null;
+			resolve({ stdout, stderr, exitCode: code ?? -1, result });
+		});
 	});
 }
