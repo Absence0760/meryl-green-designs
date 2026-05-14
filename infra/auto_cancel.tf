@@ -146,6 +146,14 @@ resource "aws_lambda_permission" "events_invoke_auto_cancel" {
 
 resource "aws_sns_topic" "ops_alerts" {
   name = "${local.project}-ops-alerts"
+
+  # Server-side encryption with the AWS-managed `aws/sns` key.
+  # Topic payloads are alarm metadata (function name + period + count)
+  # — no PII — but Trivy flags any unencrypted SNS topic by default
+  # (AVD-AWS-0095). Enabling AWS-managed encryption costs nothing,
+  # clears the finding, and keeps the at-rest defence parity with
+  # the other resources in this module (DynamoDB, SQS DLQ).
+  kms_master_key_id = "alias/aws/sns"
 }
 
 resource "aws_sns_topic_subscription" "ops_alerts_owner" {
