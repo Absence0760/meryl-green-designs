@@ -59,7 +59,15 @@ export function orderLookupRouter() {
 		try {
 			order = await getOrderByRef(ref);
 		} catch (err) {
-			console.error('Order lookup failed', err);
+			// Extract err.message rather than passing the raw Error to
+			// console.error — consistent with the codebase-wide
+			// convention (orders-store.ts, sanity-webhook.ts,
+			// payment-retry.ts, auto-cancel.ts). The raw Error's
+			// string representation includes the stack trace, which
+			// can pull in surrounding context — `err.message` keeps
+			// log lines bounded and customer-data-free.
+			const message = err instanceof Error ? err.message : String(err);
+			console.error(`Order lookup failed for ${ref}: ${message}`);
 			return c.json({ error: 'Order lookup failed. Please try again.' }, 500);
 		}
 
