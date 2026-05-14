@@ -116,14 +116,14 @@ pnpm dev:db:up    # or directly: ./bin/dynamodb-local-up.sh
 
 This is idempotent. It:
 
-1. Starts the `dynamodb-local` service from `docker-compose.yml` if it
+1. Starts the `localstack` service from `docker-compose.yml` if it
    isn't already running (port `8000`, persistent volume).
 2. Waits for the port to accept connections.
 3. Creates the `meryl-green-designs-orders` table on first run with the
    same schema as prod (`orderRef` hash key, `ttl` for auto-deletion).
 4. Enables TTL on the `ttl` attribute.
 
-The backend reads `DYNAMODB_ENDPOINT=http://localhost:8000` from
+The backend reads `DYNAMODB_ENDPOINT=http://localhost:4566` from
 `backend/.env` and routes the SDK there with dummy credentials. **If
 `DYNAMODB_ENDPOINT` is unset, the SDK falls back to the real AWS
 service** — only happens in prod, where the Lambda's IAM role provides
@@ -157,7 +157,7 @@ the same `SANITY_*` and `ORDERS_TABLE_NAME` / `DYNAMODB_ENDPOINT` env
 vars as the live backend, so by default it writes to whatever DynamoDB
 endpoint your `backend/.env` points at — meaning **the local
 `docker compose` container, not prod AWS**. Verify before running by
-glancing at the `DYNAMODB_ENDPOINT: http://localhost:8000` line in the
+glancing at the `DYNAMODB_ENDPOINT: http://localhost:4566` line in the
 script's startup banner.
 
 `--overwrite` forces an unconditional re-import (slower; only use if

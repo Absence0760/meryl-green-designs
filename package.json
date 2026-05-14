@@ -10,7 +10,7 @@
 		"dev:db:up": "./bin/dynamodb-local-up.sh",
 		"dev:db:down": "docker compose down",
 		"dev:db:reset": "docker compose down -v && ./bin/dynamodb-local-up.sh",
-		"dev:db:scan": "AWS_ACCESS_KEY_ID=local AWS_SECRET_ACCESS_KEY=local AWS_REGION=af-south-1 aws dynamodb scan --endpoint-url http://localhost:8000 --table-name meryl-green-designs-orders",
+		"dev:db:scan": "AWS_ACCESS_KEY_ID=local AWS_SECRET_ACCESS_KEY=local AWS_REGION=af-south-1 AWS_PAGER= aws dynamodb scan --endpoint-url http://localhost:4566 --table-name meryl-green-designs-orders --no-cli-pager",
 		"dev:emails": "./bin/dev-emails-open.sh",
 		"backfill:orders": "pnpm --filter @meryl-green-designs/backend backfill:orders",
 		"backfill:orders:dry": "pnpm --filter @meryl-green-designs/backend backfill:orders:dry",

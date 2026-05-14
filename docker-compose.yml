@@ -1,30 +1,35 @@
 # Local development services. Production runs on AWS — see infra/.
 #
-# Bring up: docker compose up -d
+# Bring up: docker compose up -d   (or `pnpm dev:db:up` for the full
+# one-shot bootstrap that also creates the orders table).
 # Tear down: docker compose down
-# One-shot table setup: bin/dynamodb-local-up.sh (idempotent — also starts
-# the container if it isn't running).
 #
-# Data persists in the dynamodb-local-data named volume across restarts.
-# `docker compose down -v` to wipe local order rows.
+# We use LocalStack (Python ASGI server) rather than amazon/dynamodb-
+# local (Java/Jetty). Both emulate the DynamoDB API; LocalStack was
+# chosen because amazon/dynamodb-local + Jetty 12 reproducibly hangs
+# the AWS SDK/CLI's HTTP layer on Fedora 43 / kernel 6.19 (curl works
+# but the SDK never receives the response).
+#
+# Only the DynamoDB service is enabled — see SERVICES below. The
+# LocalStack edge endpoint listens on :4566 for every AWS service.
+# Data is stored under /var/lib/localstack inside the container and
+# survives restarts via the named volume.
 
 services:
-  dynamodb-local:
-    image: amazon/dynamodb-local:2.5.4
-    container_name: meryl-dynamodb-local
+  localstack:
+    image: localstack/localstack:3.8
+    container_name: meryl-localstack
     ports:
-      - "8000:8000"
-    command:
-      - "-jar"
-      - "DynamoDBLocal.jar"
-      - "-sharedDb"
-      - "-dbPath"
-      - "/data"
+      - "4566:4566"
+    environment:
+      - SERVICES=dynamodb
+      - DEBUG=0
+      # Persist DynamoDB tables across container restarts. `docker
+      # compose down -v` to wipe.
+      - PERSISTENCE=1
     volumes:
-      - dynamodb-local-data:/data
+      - localstack-data:/var/lib/localstack
     restart: unless-stopped
-    # No healthcheck — the dynamodb-local image is minimal (no curl/wget/nc).
-    # bin/dynamodb-local-up.sh polls the host port instead.
 
 volumes:
-  dynamodb-local-data:
+  localstack-data:

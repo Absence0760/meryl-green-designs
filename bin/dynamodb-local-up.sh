@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 # Idempotent local-dev bootstrap for DynamoDB. Starts the docker-compose
-# service if it isn't already running and creates the `meryl-green-designs-
-# orders` table (matching the prod schema in infra/dynamodb.tf) if it's
-# missing. Safe to re-run.
+# LocalStack service if it isn't already running and creates the
+# `meryl-green-designs-orders` table (matching the prod schema in
+# infra/dynamodb.tf) if it's missing. Safe to re-run.
 #
-# Local dev runs against this — production hits the real AWS-hosted table.
-# See backend/src/dynamo.ts: DYNAMODB_ENDPOINT in the env routes the SDK
-# here; unset → real AWS.
+# Local dev runs against this — production hits the real AWS-hosted
+# table. See backend/src/dynamo.ts: DYNAMODB_ENDPOINT in the env routes
+# the SDK here; unset → real AWS.
+#
+# Why LocalStack instead of amazon/dynamodb-local: see docker-compose.yml.
 #
 # Requires: docker compose, AWS CLI v2. The AWS CLI calls below use
 # dummy creds because the local container doesn't verify them.
@@ -16,7 +18,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
-ENDPOINT="http://localhost:8000"
+ENDPOINT="http://localhost:4566"
 TABLE_NAME="meryl-green-designs-orders"
 REGION="af-south-1"
 
@@ -28,23 +30,26 @@ log() { printf '\n\033[1;36m==>\033[0m %s\n' "$*"; }
 ok()  { printf '\033[1;32m✓\033[0m %s\n' "$*"; }
 
 # --- container ---
-if docker compose ps --services --filter "status=running" 2>/dev/null | grep -qx dynamodb-local; then
-	ok "dynamodb-local already running"
+if docker compose ps --services --filter "status=running" 2>/dev/null | grep -qx localstack; then
+	ok "localstack already running"
 else
-	log "Starting dynamodb-local container"
-	docker compose up -d dynamodb-local
+	log "Starting localstack container (first pull is ~1 GB and slow)"
+	docker compose up -d localstack
 fi
 
-# Wait for the port to accept connections. The DynamoDB Local image
-# answers HTTP 400 to a bare GET, which is enough to confirm it's up.
-log "Waiting for $ENDPOINT to accept connections"
-for i in $(seq 1 30); do
-	if curl -s -o /dev/null -w '%{http_code}' "$ENDPOINT" 2>/dev/null | grep -qE '^[2-4][0-9]{2}$'; then
-		ok "DynamoDB Local ready"
+# Wait for LocalStack's edge gateway to report the dynamodb service
+# ready. The /_localstack/health endpoint returns JSON with each
+# service's status; we grep for dynamodb:"available" or "running".
+log "Waiting for $ENDPOINT (DynamoDB service ready)"
+for i in $(seq 1 60); do
+	if curl -s --max-time 2 "$ENDPOINT/_localstack/health" 2>/dev/null \
+		| grep -qE '"dynamodb"\s*:\s*"(available|running)"'; then
+		ok "LocalStack DynamoDB ready"
 		break
 	fi
-	if [ "$i" -eq 30 ]; then
-		echo "ERROR: DynamoDB Local did not respond within 30 seconds" >&2
+	if [ "$i" -eq 60 ]; then
+		echo "ERROR: LocalStack did not report DynamoDB ready within 60 seconds" >&2
+		echo "Check: docker compose logs localstack | tail" >&2
 		exit 1
 	fi
 	sleep 1
@@ -65,7 +70,10 @@ else
 	ok "Table created"
 fi
 
-# TTL settings can't be set via create-table — they need a separate call.
+# TTL settings can't be set via create-table — they need a separate
+# call. LocalStack accepts the API but doesn't actually expire items
+# (same as amazon/dynamodb-local) — TTL behaviour is only verified
+# against real prod DynamoDB.
 TTL_STATUS=$(aws dynamodb describe-time-to-live --endpoint-url "$ENDPOINT" --table-name "$TABLE_NAME" --query 'TimeToLiveDescription.TimeToLiveStatus' --output text 2>/dev/null || echo "DISABLED")
 if [ "$TTL_STATUS" = "ENABLED" ] || [ "$TTL_STATUS" = "ENABLING" ]; then
 	ok "TTL already enabled on \`ttl\` attribute"
