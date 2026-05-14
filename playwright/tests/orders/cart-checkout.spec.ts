@@ -106,8 +106,11 @@ test.describe('cart + checkout', () => {
 
 	test('cart empty state shows when nothing is added', async ({ page }) => {
 		await page.goto('/shop');
-		// Open the cart icon in the header without adding anything
-		await page.getByRole('button', { name: /cart/i }).first().click();
+		// Wait for the shop to hydrate so the Open-cart click reaches the
+		// reactive handler (the button renders in the static shell, but
+		// the click listener isn't bound until after hydration).
+		await expect(page.getByText('Test Screen Small')).toBeVisible();
+		await page.getByRole('button', { name: 'Open cart' }).click();
 		await expect(page.getByText(/your cart is empty/i)).toBeVisible();
 	});
 

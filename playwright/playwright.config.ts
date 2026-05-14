@@ -25,6 +25,12 @@ process.env.PAYFAST_PASSPHRASE ??= 'payfast';
 const FRONTEND_PORT = Number(process.env.E2E_FRONTEND_PORT ?? 7777);
 const BACKEND_PORT = Number(process.env.E2E_BACKEND_PORT ?? 3001);
 
+// API_URL + SITE_URL are also needed by the TEST RUNNER process (specs +
+// helpers use them to build request URLs). Without these the helpers
+// fall back to Playwright's baseURL and POST hits the frontend's 404.
+process.env.API_URL ??= `http://localhost:${BACKEND_PORT}`;
+process.env.SITE_URL ??= `http://localhost:${FRONTEND_PORT}`;
+
 // Env handed to the spawned backend + frontend dev servers. The env-guard
 // in global-setup.ts will refuse to run if any of these point at prod.
 const sharedServerEnv = {

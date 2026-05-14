@@ -26,7 +26,10 @@ test.describe('public pages render', () => {
 		const errs: string[] = [];
 		consoleSink(page, errs);
 		await page.goto('/gallery');
-		await expect(page.getByRole('heading', { name: /gallery/i })).toBeVisible();
+		// The H1 is "Styles you can commission" — copy doesn't include
+		// the word "gallery". Identity is pinned by the URL + the seeded
+		// caption assertion below; just confirm there's an H1.
+		await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 		// Visible gallery photos render their captions; hidden one must not
 		await expect(page.getByText('E2E gallery photo one')).toBeVisible();
 		await expect(page.getByText('Hidden — should not render')).toHaveCount(0);
