@@ -18,6 +18,17 @@ function siteUrl(): string {
 	return process.env.SITE_URL ?? 'http://localhost:7777';
 }
 
+// Strip CR/LF (and other control bytes) from customer-supplied fields
+// before interpolating them into an email Subject. RFC 5322 headers
+// terminate on CRLF — a name containing "Alice\r\nBcc: attacker@evil"
+// would let an attacker inject extra headers. Resend already
+// re-encodes the subject before transmission so the practical risk is
+// low, but the boundary belongs in our code, not the upstream SDK.
+function safeHeader(value: string): string {
+	// eslint-disable-next-line no-control-regex
+	return value.replace(/[\r\n\x00-\x1f\x7f]+/g, ' ').trim();
+}
+
 function trackingLink(order: { orderRef: string; customerEmail: string }): string {
 	const base = siteUrl().replace(/\/$/, '');
 	const ref = encodeURIComponent(order.orderRef);
@@ -37,7 +48,7 @@ export function ownerNotification(input: OwnerNotificationInput): { subject: str
 		: '';
 
 	return {
-		subject: `New order ${input.orderRef} — ${input.name}`,
+		subject: safeHeader(`New order ${input.orderRef} — ${input.name}`),
 		html: `
 			<h2>New order — ${escapeHtml(input.orderRef)}</h2>
 			${amountLine}
@@ -254,7 +265,7 @@ export function commissionEnquiry(input: CommissionEnquiryInput): { subject: str
 			: '';
 
 	return {
-		subject: `Commission enquiry — ${input.name}`,
+		subject: safeHeader(`Commission enquiry — ${input.name}`),
 		html: `
 			<div style="background:#fff7d6;border:1px solid #e2c769;padding:0.6rem 0.9rem;border-radius:4px;margin-bottom:1rem;">
 				<strong>Heads up:</strong> the name and email below were entered into

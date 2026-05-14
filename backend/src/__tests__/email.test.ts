@@ -133,6 +133,24 @@ describe('ownerNotification', () => {
 		expect(mail.html).toContain('&lt;script&gt;');
 	});
 
+	it('strips CR/LF from the subject so a malicious name cannot inject headers', () => {
+		const mail = ownerNotification({
+			orderRef: 'MG-260410-ABCD',
+			name: 'Jane\r\nBcc: attacker@evil.example',
+			email: 'jane@example.com',
+			phone: '',
+			address: 'a',
+			items: 'b',
+			notes: ''
+		});
+		// The header-injection vector is the raw CR/LF — without them the
+		// extra "Bcc:" text collapses into a harmless subject substring.
+		expect(mail.subject).not.toMatch(/[\r\n]/);
+		// And the cleaned subject still carries the original name + ref
+		expect(mail.subject).toContain('MG-260410-ABCD');
+		expect(mail.subject).toContain('Jane');
+	});
+
 	it('tells the owner that PayFast will handle payment', () => {
 		const mail = ownerNotification({
 			orderRef: 'MG-1',

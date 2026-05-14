@@ -89,6 +89,11 @@ cleanup() {
 	if (( DECRYPTED_TFVARS == 1 )) && [[ -f "$TFVARS_FILE" ]]; then
 		rm -f "$TFVARS_FILE"
 	fi
+	# Also remove any leftover Terraform plan file. The plan captures the
+	# decrypted tfvars context, so if the script exits between `terraform
+	# plan` and `terraform apply` the plan file would persist on disk
+	# alongside the now-shredded tfvars. Belt-and-braces.
+	rm -f "$INFRA_DIR/.setup.tfplan" 2>/dev/null || true
 }
 trap cleanup EXIT
 
