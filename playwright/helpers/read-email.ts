@@ -22,9 +22,12 @@ export type CapturedEmail = {
 	bodyHtml: string;
 };
 
-const RE_TO = /^<!--\s*To:\s*(.+?)\s*-->/m;
-const RE_SUBJECT = /^<!--\s*Subject:\s*(.+?)\s*-->/m;
-const RE_REPLY_TO = /^<!--\s*Reply-To:\s*(.+?)\s*-->/m;
+// The backend's file-backend emits a single multi-line HTML comment at
+// the top with `to:` / `from:` / `subject:` / `replyTo:` keys (lowercase,
+// indented). Match each field on its own line inside that comment.
+const RE_TO = /^\s*to:\s*(.+?)\s*$/im;
+const RE_SUBJECT = /^\s*subject:\s*(.+?)\s*$/im;
+const RE_REPLY_TO = /^\s*replyTo:\s*(.+?)\s*$/im;
 
 async function listEmailFiles(): Promise<string[]> {
 	try {

@@ -18,13 +18,32 @@ test.describe('cart + checkout', () => {
 	});
 
 	test('add to cart, check out, dual-write + email + signed form', async ({ page }) => {
-		const intercepted: { url: string; postData: string | null } = { url: '', postData: null };
+		// Capture POST /orders' JSON response — the backend echoes every
+		// PayFast form field there, so we can assert form signing without
+		// relying on Playwright capturing the navigation-form POST body
+		// to sandbox.payfast.co.za (which doesn't surface as postData()).
+		let backendBody: {
+			success: boolean;
+			ref: string;
+			payfast: { action: string; fields: Record<string, string> };
+		} | null = null;
+		page.on('response', async (response) => {
+			if (response.url().endsWith('/orders') && response.request().method() === 'POST') {
+				try {
+					backendBody = await response.json();
+				} catch {
+					/* ignore */
+				}
+			}
+		});
 
-		// Capture the auto-submitted form to sandbox.payfast.co.za and abort
-		// the navigation so CI doesn't hit an external service.
+		// Stub the auto-submitted form-redirect so CI doesn't hit an
+		// external service. We only need the navigation to land
+		// somewhere; the form's correctness is asserted from
+		// backendBody above.
+		let redirectedUrl = '';
 		await page.route(/.*sandbox\.payfast\.co\.za.*/, (route) => {
-			intercepted.url = route.request().url();
-			intercepted.postData = route.request().postData();
+			redirectedUrl = route.request().url();
 			return route.fulfill({
 				status: 200,
 				contentType: 'text/html',
@@ -41,7 +60,7 @@ test.describe('cart + checkout', () => {
 
 		// Open the cart panel — 'Add to order' adds the item but doesn't
 		// auto-open the slide-out.
-		await page.getByRole('button', { name: /open cart/i }).click();
+		await page.getByRole('button', { name: 'Open cart' }).click();
 
 		// Fill the form inside the cart panel
 		await page.fill('#cart-name', 'E2E Customer');
@@ -52,18 +71,22 @@ test.describe('cart + checkout', () => {
 
 		await page.getByRole('button', { name: /pay/i }).click();
 
-		// Wait for the redirect interception to fire
-		await expect.poll(() => intercepted.url, { timeout: 10_000 }).toContain('sandbox.payfast.co.za');
-		expect(intercepted.postData).toBeTruthy();
-		expect(intercepted.postData!).toContain('m_payment_id=MG-');
-		expect(intercepted.postData!).toContain('signature=');
-		expect(intercepted.postData!).toMatch(/amount=4600\.00/); // 1200 + 3400
+		// Wait for the backend response + the PayFast redirect interception
+		await expect.poll(() => backendBody, { timeout: 10_000 }).not.toBeNull();
+		await expect.poll(() => redirectedUrl, { timeout: 10_000 }).toContain('sandbox.payfast.co.za');
 
-		const formBody = new URLSearchParams(intercepted.postData ?? '');
-		const orderRef = formBody.get('m_payment_id')!;
-		expect(orderRef).toMatch(/^MG-\d{6}-[A-Z0-9]{6}$/);
-		expect(formBody.get('merchant_id')).toBe(process.env.PAYFAST_MERCHANT_ID);
-		expect(formBody.get('email_address')).toBe('customer@e2e.local');
+		expect(backendBody!.success).toBe(true);
+		expect(backendBody!.ref).toMatch(/^MG-\d{6}-[A-Z0-9]{6}$/);
+		expect(backendBody!.payfast.action).toContain('sandbox.payfast.co.za');
+
+		const fields = backendBody!.payfast.fields;
+		expect(fields.m_payment_id).toBe(backendBody!.ref);
+		expect(fields.merchant_id).toBe(process.env.PAYFAST_MERCHANT_ID);
+		expect(fields.email_address).toBe('customer@e2e.local');
+		expect(fields.amount).toBe('4600.00'); // 1200 + 3400
+		expect(fields.signature).toMatch(/^[0-9a-f]{32}$/);
+
+		const orderRef = backendBody!.ref;
 
 		// DynamoDB has the PII row
 		const dynRow = await getOrderPii(orderRef);
@@ -96,12 +119,15 @@ test.describe('cart + checkout', () => {
 
 	test('cart quantity controls update the total live', async ({ page }) => {
 		await page.goto('/shop');
+		await expect(page.getByText('Test Screen Small')).toBeVisible();
 		await page.getByRole('button', { name: /add to order/i }).first().click();
-		await page.getByRole('button', { name: /open cart/i }).click();
+		await page.getByRole('button', { name: 'Open cart' }).click();
 		await expect(page.getByText(/total/i)).toBeVisible();
 		await page.getByRole('button', { name: /increase quantity/i }).click();
-		// Two units of the first product (1200 each) = 2400
-		await expect(page.getByText(/R\s*2\s*400/)).toBeVisible();
+		// Two units of the first product (1200 each) = 2400. Scope to the
+		// cart-total row to avoid matching the line-item price + Pay button
+		// label, which also include "R 2 400" when quantity = 2.
+		await expect(page.locator('.total-amount')).toContainText(/R\s*2\s*400/);
 	});
 
 	test('cart empty state shows when nothing is added', async ({ page }) => {

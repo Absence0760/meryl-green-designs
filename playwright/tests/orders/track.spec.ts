@@ -41,6 +41,9 @@ test.describe('/track lookup', () => {
 		// Deep-linked /track page renders the customer's order
 		await page.goto(`/track?ref=${order.orderRef}&email=tracker@e2e.local`);
 		await expect(page.getByText(order.orderRef)).toBeVisible();
-		await expect(page.getByText(/pending payment/i)).toBeVisible();
+		// 'Pending payment' renders in two places (status badge + progress
+		// step label). Either one is fine for proving the status flowed
+		// through; .first() avoids the strict-mode-violation.
+		await expect(page.getByText(/pending payment/i).first()).toBeVisible();
 	});
 });
