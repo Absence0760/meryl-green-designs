@@ -13,18 +13,19 @@ Hono app deployed two ways: local Node server for dev, AWS Lambda (fronted by AP
 
 ```bash
 pnpm backend dev      # tsx watch src/server.ts on :3001
-pnpm backend build    # esbuild → dist/lambda.mjs
+pnpm backend build    # esbuild → dist/lambda.mjs + dist/auto-cancel.mjs
 pnpm backend check    # tsc --noEmit
 pnpm backend test     # vitest run
 ```
 
-## Three entry points (the most important thing on this page)
+## Four entry points (the most important thing on this page)
 
 - `src/app.ts` — `createApp()` builds the Hono app + middleware + routes. Pure logic.
 - `src/server.ts` — local dev entry. Imports `dotenv/config` and runs `@hono/node-server`.
-- `src/lambda.ts` — AWS Lambda entry. Wraps `createApp()` with `hono/aws-lambda`. **Deliberately does not import `server.ts`** so esbuild tree-shakes `dotenv` out of the Lambda bundle.
+- `src/lambda.ts` — AWS Lambda entry for the HTTP API. Wraps `createApp()` with `hono/aws-lambda`. **Deliberately does not import `server.ts`** so esbuild tree-shakes `dotenv` out of the Lambda bundle.
+- `src/auto-cancel-lambda.ts` — separate Lambda invoked daily by EventBridge to cancel stale `pending_payment` orders past `AUTO_CANCEL_DAYS`. Bundled to `dist/auto-cancel.mjs`. Shares the orders-store layer with the HTTP app but has no Hono surface.
 
-**Never add `dotenv` imports to any module reachable from `lambda.ts`.** It will end up in the deployment bundle and bloat cold starts. If you need an env var, read it from `process.env` directly inside the handler — `app.ts` and everything it imports must stay dotenv-free.
+**Never add `dotenv` imports to any module reachable from `lambda.ts` or `auto-cancel-lambda.ts`.** It will end up in the deployment bundle and bloat cold starts. If you need an env var, read it from `process.env` directly inside the handler — `app.ts` and everything it imports must stay dotenv-free.
 
 ## Routes
 
@@ -32,6 +33,7 @@ Mounted in `src/app.ts`. Each route file lives under `src/routes/` and exports a
 
 - `GET /health` — liveness
 - `GET /products`, `GET /products/:slug`, `GET /gallery`, `GET /testimonials` — Sanity reads
+- `POST /enquiries` — commission/contact enquiry form. Validates payload, sends a notification email to the owner. Rate-limited per IP.
 - `POST /orders` — validate, look up prices in Sanity (server-side total — never trust client amount), create order doc, send owner email, return signed PayFast form data
 - `GET /orders/:ref?email=` — email-verified track lookup. **Wrong email returns 404, not 403** (no enumeration).
 - `POST /orders/:ref/retry-payment?email=` — self-service payment retry. Same no-enumeration policy (every fail path is 404). Atomic per-orderRef lifetime cap of 5 (DynamoDB `ConditionExpression`); cap placed AFTER auth checks so a wrong-email spray can't lock out a legit customer. 7-day window. See `docs/payment-retry-plan.md`.
