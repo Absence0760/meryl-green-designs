@@ -107,6 +107,15 @@ resource "aws_cloudwatch_event_rule" "auto_cancel_daily" {
 resource "aws_cloudwatch_event_target" "auto_cancel" {
   rule = aws_cloudwatch_event_rule.auto_cancel_daily.name
   arn  = aws_lambda_function.auto_cancel.arn
+
+  # Dropped events (after the default 2 retries) land in the DLQ
+  # defined below. The CloudWatch alarms on the Lambda's Invocations
+  # metric will fire well before the DLQ becomes interesting, but the
+  # queue means operators can re-fire a missed sweep manually instead
+  # of waiting 24h for the next scheduled run.
+  dead_letter_config {
+    arn = aws_sqs_queue.auto_cancel_dlq.arn
+  }
 }
 
 resource "aws_lambda_permission" "events_invoke_auto_cancel" {
@@ -115,4 +124,123 @@ resource "aws_lambda_permission" "events_invoke_auto_cancel" {
   function_name = aws_lambda_function.auto_cancel.function_name
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.auto_cancel_daily.arn
+}
+
+# ----------------------------------------------------------------------------
+# Operational alerting (audit M-2)
+#
+# The daily auto-cancel job has no customer-facing feedback loop — if it
+# silently fails (missing env var, Sanity outage, cold-start exception),
+# abandoned orders pile up in `pending_payment` past the policy's 30-day
+# promise. Two alarms cover the gap:
+#   1. Errors > 0 over any one-hour window — the Lambda's own crashes.
+#   2. Invocations == 0 over a 26-hour window — EventBridge missed
+#      firing, or the rule was disabled. 26h > 24h cron interval so a
+#      single missed invocation crosses the threshold once we're
+#      definitely outside the schedule's nominal window.
+#
+# Both alarms publish to a single SNS topic that emails the owner.
+# AWS SNS email subscriptions need a one-time confirmation click — the
+# owner gets a `Subscription Confirmation` email on first apply.
+# ----------------------------------------------------------------------------
+
+resource "aws_sns_topic" "ops_alerts" {
+  name = "${local.project}-ops-alerts"
+}
+
+resource "aws_sns_topic_subscription" "ops_alerts_owner" {
+  topic_arn = aws_sns_topic.ops_alerts.arn
+  protocol  = "email"
+  endpoint  = var.owner_email
+}
+
+resource "aws_cloudwatch_metric_alarm" "auto_cancel_errors" {
+  alarm_name          = "${local.project}-auto-cancel-errors"
+  alarm_description   = "Daily auto-cancel Lambda errored at least once in the last hour."
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 1
+  metric_name         = "Errors"
+  namespace           = "AWS/Lambda"
+  period              = 3600
+  statistic           = "Sum"
+  threshold           = 0
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    FunctionName = aws_lambda_function.auto_cancel.function_name
+  }
+
+  alarm_actions = [aws_sns_topic.ops_alerts.arn]
+  ok_actions    = [aws_sns_topic.ops_alerts.arn]
+}
+
+resource "aws_cloudwatch_metric_alarm" "auto_cancel_no_recent_invocation" {
+  alarm_name          = "${local.project}-auto-cancel-no-recent-invocation"
+  alarm_description   = "Daily auto-cancel Lambda has not been invoked in 26h — EventBridge rule may be disabled or missing target."
+  comparison_operator = "LessThanThreshold"
+  evaluation_periods  = 1
+  metric_name         = "Invocations"
+  namespace           = "AWS/Lambda"
+  # 26h evaluation window absorbs the 24h cron interval plus some
+  # slack for the metric to publish; a single missed invocation
+  # exceeds it and triggers the alarm.
+  period             = 26 * 3600
+  statistic          = "Sum"
+  threshold          = 1
+  treat_missing_data = "breaching"
+
+  dimensions = {
+    FunctionName = aws_lambda_function.auto_cancel.function_name
+  }
+
+  alarm_actions = [aws_sns_topic.ops_alerts.arn]
+  ok_actions    = [aws_sns_topic.ops_alerts.arn]
+}
+
+# ----------------------------------------------------------------------------
+# Dead-letter queue for the EventBridge target (audit L-2)
+#
+# EventBridge's default retry policy for Lambda targets is two retries
+# over 24h; if both retries fail, the event is silently dropped. A DLQ
+# captures the dropped events so we can re-fire them (or at minimum
+# notice the drop via the CloudWatch alarms above).
+# ----------------------------------------------------------------------------
+
+resource "aws_sqs_queue" "auto_cancel_dlq" {
+  name = "${local.project}-auto-cancel-dlq"
+
+  # Same 365-day cap as the DynamoDB orders TTL — a dropped invocation
+  # older than the longest-lived order it could affect is no longer
+  # operationally interesting.
+  message_retention_seconds = 14 * 24 * 60 * 60
+
+  # Server-side encryption with the AWS-managed key — Trivy flags
+  # plaintext SQS as a finding. CMK would be the next step up if we
+  # ever needed customer-managed key rotation; the AWS-managed key
+  # is the right default for an ops queue at this scale.
+  sqs_managed_sse_enabled = true
+}
+
+# IAM policy permitting EventBridge to push dropped events to the SQS DLQ.
+data "aws_iam_policy_document" "auto_cancel_dlq_policy" {
+  statement {
+    actions   = ["sqs:SendMessage"]
+    resources = [aws_sqs_queue.auto_cancel_dlq.arn]
+
+    principals {
+      type        = "Service"
+      identifiers = ["events.amazonaws.com"]
+    }
+
+    condition {
+      test     = "ArnEquals"
+      variable = "aws:SourceArn"
+      values   = [aws_cloudwatch_event_rule.auto_cancel_daily.arn]
+    }
+  }
+}
+
+resource "aws_sqs_queue_policy" "auto_cancel_dlq" {
+  queue_url = aws_sqs_queue.auto_cancel_dlq.id
+  policy    = data.aws_iam_policy_document.auto_cancel_dlq_policy.json
 }
