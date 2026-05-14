@@ -202,6 +202,13 @@ Page copy and the closing CTA reflect that — visitors are guided to
   (`name="website"`, offscreen-absolute) deters simple bots. The
   cart-line items are submitted as a structured `cart` array
   (`{ productId, quantity }[]`) — there is no free-form items textarea.
+- **Clickwrap terms acceptance** — a required checkbox sits below the
+  notes textarea and above the Pay button. The label links to
+  `/terms`, `/returns`, and `/privacy` (each opens in a new tab). The
+  Pay button is disabled until the box is ticked, and `handleCheckout`
+  blocks submit with an explicit error if it's empty — defence in
+  depth against the disabled attribute being bypassed. The Terms page
+  explicitly references this tickbox as the act of agreement.
 - **Submission flow**: the form POSTs JSON to the backend's `/orders`
   endpoint. The backend validates, looks up product prices in Sanity,
   creates the Sanity order document (status `pending_payment`), sends
@@ -227,6 +234,17 @@ Page copy and the closing CTA reflect that — visitors are guided to
   in Sanity — triggering the existing automated status email. No card data
   ever touches our server. Supports credit/debit cards, Apple Pay, Google
   Pay, SnapScan, and 18+ other South African payment methods.
+- **Self-service payment retry** — if PayFast declines a card or the
+  customer hits Cancel, they land on `/payment/cancelled?ref=...`. The
+  page shows a retry form (email input + Retry button) that re-submits
+  the **same** order to PayFast — no duplicate order is created, the
+  eventual successful ITN updates the original document. A "Retry
+  payment" CTA also appears on `/track?ref=…&email=…` when the order
+  status is `pending_payment` and it's within the 7-day retry window.
+  Per-orderRef lifetime cap of 5 retries (atomic DynamoDB write).
+  Failed-payment emails carry a generic `/track?ref=X` link (no email
+  in URL) so a forwarded email doesn't leak credentials. Design and
+  threat model in `docs/payment-retry-plan.md`.
 - **"Secure checkout" panel** — single reassurance sentence noting
   PayFast handles payment and the site never sees card details, plus
   a row of accepted-method chips (cards, Apple Pay, SnapScan, Instant

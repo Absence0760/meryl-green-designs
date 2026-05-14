@@ -71,6 +71,12 @@ Edit `backend/.env` and set at minimum:
   email webhook locally (via ngrok or similar)
 - `SITE_URL` — base URL used in tracking link emails. Defaults to
   `http://localhost:7777`
+- `AUTO_CANCEL_DAYS` — number of days a `pending_payment` order may sit
+  before the daily auto-cancel sweep flips it to `cancelled`. Defaults
+  to **30** if unset. Only read by the standalone auto-cancel handler
+  (`backend/src/auto-cancel-lambda.ts`); the HTTP backend ignores it.
+  Set to a smaller value (e.g. `1`) if you're exercising the sweep
+  locally and don't want to wait 30 days.
 
 Edit `frontend/.env`:
 
