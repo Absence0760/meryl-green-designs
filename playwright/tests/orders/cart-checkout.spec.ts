@@ -88,15 +88,19 @@ test.describe('cart + checkout', () => {
 
 		const orderRef = backendBody!.ref;
 
-		// DynamoDB has the PII row
+		// DynamoDB has the PII row. The backend stores items as a single
+		// formatted string (`buildPiiItem` in orders-store.ts), not as an
+		// array — assert against both seeded product names instead of array
+		// shape.
 		const dynRow = await getOrderPii(orderRef);
 		expect(dynRow).not.toBeNull();
 		expect(dynRow!.customerName).toBe('E2E Customer');
 		expect(dynRow!.customerEmail).toBe('customer@e2e.local');
 		expect(dynRow!.customerPhone).toBe('0821234567');
 		expect(dynRow!.shippingAddress).toBe('1 Test Lane, Cape Town, 8001');
-		expect(Array.isArray(dynRow!.items)).toBe(true);
-		expect((dynRow!.items as unknown[]).length).toBe(2);
+		expect(typeof dynRow!.items).toBe('string');
+		expect(dynRow!.items as string).toContain('Test Screen Small');
+		expect(dynRow!.items as string).toContain('Test Screen Large');
 
 		// Sanity has the skeleton with no PII
 		const sanityDoc = await getSanityOrder(orderRef);
