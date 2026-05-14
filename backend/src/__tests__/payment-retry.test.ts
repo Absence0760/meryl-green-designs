@@ -274,6 +274,49 @@ describe('POST /orders/:ref/retry-payment', () => {
 			});
 		});
 
+		it('concurrency: N+1 simultaneous retries → exactly N succeed, 1 gets 429', async () => {
+			// Audit M-4. The design doc mandates this test: the
+			// DynamoDB ConditionExpression in incrementRetryAttempt is
+			// the only thing keeping the race closed when two retry
+			// requests arrive at the same instant. Simulate the
+			// boundary by having the mocked counter accept the first
+			// N calls and throw RetryLimitExceededError on the
+			// (N+1)th. Promise.all fires them in parallel so the
+			// handler sees them as concurrent.
+			//
+			// Note this exercises the route's handling of the
+			// RetryLimitExceededError, not DynamoDB's actual atomicity
+			// (which is a property of the storage layer we trust). The
+			// orders-store unit test covers the SDK-error-to-domain-
+			// error mapping separately.
+			vi.mocked(ordersStore.getOrderForRetry).mockResolvedValue(retryModel());
+			let calls = 0;
+			vi.mocked(ordersStore.incrementRetryAttempt).mockImplementation(async () => {
+				const n = ++calls;
+				if (n > 5) throw new RetryLimitExceededError(VALID_REF);
+			});
+
+			const sharedIp = '198.51.100.99';
+			const app = createApp();
+			const requests = Array.from({ length: 6 }, (_, i) =>
+				app.request(
+					`/orders/${VALID_REF}/retry-payment?email=${encodeURIComponent(CUSTOMER_EMAIL)}`,
+					{
+						method: 'POST',
+						// Different IP per request so the per-IP limit
+						// doesn't pre-empt the per-orderRef cap we're
+						// trying to test.
+						headers: { 'x-forwarded-for': `${sharedIp}.${i}` }
+					}
+				)
+			);
+			const responses = await Promise.all(requests);
+			const successes = responses.filter((r) => r.status === 200).length;
+			const limited = responses.filter((r) => r.status === 429).length;
+			expect(successes).toBe(5);
+			expect(limited).toBe(1);
+		});
+
 		it('per-IP rate limit eventually returns 429', async () => {
 			// 11 requests from the same IP — the 11th exceeds the
 			// configured 10-per-15-min window.
