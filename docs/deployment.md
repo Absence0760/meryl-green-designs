@@ -89,14 +89,14 @@ it again; it will pick up where it left off.
 
 **What it automates:**
 
-1. Verifies `aws`, `terraform`, `gh`, `jq`, `curl` are installed and that
+1. Verifies `aws`, `terraform`, `gh`, `jq`, `curl`, `sops` are installed and that
    `aws` + `gh` are authenticated
 2. Parses `infra/terraform.tfvars` for the values it needs
 3. Creates the Terraform state S3 bucket + DynamoDB lock table (first run only)
 4. Runs `terraform init` → `terraform plan` → interactive `apply` prompt
 5. Reads outputs from `terraform output -json`
 6. Creates the `production` GitHub Actions environment
-7. Populates all 8 GitHub Actions **variables** from the Terraform outputs
+7. Populates all 9 GitHub Actions **variables** from the Terraform outputs
 8. Flips the Sanity dataset to private and **verifies** the change took
    effect (fails the run otherwise — order documents must not be queryable
    anonymously)
@@ -120,7 +120,7 @@ setup completes.
 - Creating the content-rebuild Sanity webhook (needs a fine-grained GitHub PAT
   that can't be pulled from your local `gh` CLI — see step 4 below)
 - First interactive Sanity Studio deploy (`pnpm studio deploy`)
-- Adding the `SANITY_AUTH_TOKEN` GitHub Actions secret for CI studio deploys
+- Adding the `SANITY_AUTH_TOKEN` and `ADMIN_API_TOKEN` GitHub Actions secrets for CI studio deploys (the latter must equal the `admin_api_token` in `terraform.tfvars.sops`)
 - Entering initial content in the studio
 
 Detailed step-by-step with these manual parts interleaved is in
@@ -139,7 +139,7 @@ to understand what the script is doing under the hood, see
 │  3. Domain registered + Route 53 hosted zone                         │
 │  4. Sanity account + project                                         │
 │  5. Resend account + verified sending domain                         │
-│  6. Install CLI tools: terraform, aws, gh, jq                        │
+│  6. Install CLI tools: terraform, aws, gh, jq, sops                  │
 └──────────────────────────────────────────────────────────────────────┘
                                   │
                                   ▼
@@ -150,9 +150,10 @@ to understand what the script is doing under the hood, see
 │  sops infra/terraform.tfvars.sops   (fill in values in $EDITOR)      │
 │  sops backend/.env.sops             (same for local-dev secrets)     │
 │                                                                      │
-│  sops-init.sh generates an age keypair at                            │
-│  ~/.config/sops/age/keys.txt (one-time), wires the public recipient  │
-│  into .sops.yaml, and seeds encrypted files from the examples.       │
+│  sops-init.sh creates an AWS KMS key (alias                          │
+│  alias/meryl-green-designs-sops in af-south-1), wires its ARN into   │
+│  .sops.yaml, and seeds encrypted files from the examples. No local   │
+│  key material — SOPS calls KMS to encrypt/decrypt the data key.      │
 └──────────────────────────────────────────────────────────────────────┘
                                   │
                                   ▼
@@ -436,11 +437,14 @@ URL with Meryl (after inviting her to the project in Sanity's dashboard).
 Subsequent studio deploys are handled automatically by the
 `deploy-studio.yml` workflow on pushes that touch `studio/`.
 
-### Step 6. Add the `SANITY_AUTH_TOKEN` GitHub Actions secret
+### Step 6. Add the `SANITY_AUTH_TOKEN` and `ADMIN_API_TOKEN` GitHub Actions secrets
 
-This token is used by the `deploy-studio.yml` workflow to publish studio
-changes in CI. It needs **Deploy Studio** scope only — it's not the same as
-`SANITY_ADMIN_TOKEN` from step 3.
+`deploy-studio.yml` asserts both secrets exist before invoking `sanity
+deploy` — without them the workflow fails fast.
+
+**6a. `SANITY_AUTH_TOKEN`** is used by `deploy-studio.yml` to publish
+studio changes in CI. It needs **Deploy Studio** scope only — it's not
+the same as `SANITY_ADMIN_TOKEN` from step 3.
 
 1. Sanity dashboard → project → **API → Tokens → Add API token**
 2. Name: `github-actions-studio-deploy`
@@ -456,6 +460,25 @@ gh secret set SANITY_AUTH_TOKEN \
 
 The name `SANITY_AUTH_TOKEN` is what Sanity's own CLI reads from the
 environment — don't rename it.
+
+**6b. `ADMIN_API_TOKEN`** is the bearer token guarding the backend's
+`/admin/orders/:ref/*` routes. `deploy-studio.yml` re-exports it as
+`SANITY_STUDIO_ADMIN_TOKEN` at build time so the Studio's custom PII
+panels can call those routes. The **same value** must be in the Lambda
+env via `infra/terraform.tfvars.sops:admin_api_token` — same secret,
+two places. Pull it directly from the SOPS file:
+
+```bash
+sops -d infra/terraform.tfvars.sops | grep admin_api_token
+# copy the value (without quotes)
+
+gh secret set ADMIN_API_TOKEN \
+  --env production \
+  --body '<paste admin_api_token>' \
+  --repo <your owner>/<your repo>
+```
+
+Rotate both together if you ever need to change it.
 
 ### Step 7. Create the content-rebuild Sanity webhook
 
@@ -770,7 +793,7 @@ time; rebuilding is required to change them.
 | Variable | Source |
 |---|---|
 | `PUBLIC_API_URL` | `api_url` Terraform output (`https://<domain>/api` — the CloudFront-fronted path, not the raw API Gateway URL) |
-| `PUBLIC_SITE_URL` | tfvars `site_url` (e.g. `https://merylgreendesigns.com`) — used to build absolute Open Graph / Twitter Card URLs |
+| `PUBLIC_SITE_URL` | Terraform output `site_url` (derived from tfvars — defaults to `https://<domain_name>` if `site_url` is unset) — used to build absolute Open Graph / Twitter Card URLs |
 | `PUBLIC_SANITY_PROJECT_ID` | tfvars `sanity_project_id` |
 | `PUBLIC_SANITY_DATASET` | tfvars `sanity_dataset` |
 
@@ -786,6 +809,7 @@ All populated automatically by `bin/setup.sh`.
 | `CLOUDFRONT_DISTRIBUTION_ID` | TF output `cloudfront_distribution_id` | `deploy-frontend.yml` (invalidation) |
 | `LAMBDA_FUNCTION_NAME` | TF output `lambda_function_name` | `deploy-backend.yml` (update-function-code) |
 | `PUBLIC_API_URL` | derived in `bin/setup.sh` as `${SITE_URL}/api` | `deploy-frontend.yml` (build env) |
+| `PUBLIC_SITE_URL` | TF output `site_url` (derived from tfvars; defaults to `https://<domain_name>` when unset) | `deploy-frontend.yml` (build env — used for absolute OG/social URLs) |
 | `PUBLIC_SANITY_PROJECT_ID` | tfvars `sanity_project_id` | `deploy-frontend.yml` + `deploy-studio.yml` |
 | `PUBLIC_SANITY_DATASET` | tfvars `sanity_dataset` | `deploy-frontend.yml` + `deploy-studio.yml` |
 
@@ -920,7 +944,7 @@ alarms can deliver. If alarms fire while the subscription is still
 pending, SNS silently drops the notification.
 
 If you missed the confirmation email (spam, deleted, wrong address),
-go to the SNS console → Subscriptions, find the `ops-alerts`
+go to the SNS console → Subscriptions, find the `meryl-green-designs-ops-alerts`
 subscription, choose "Request confirmation", and re-click the link.
 
 **Expected first-deploy alarm.** The
@@ -1311,7 +1335,7 @@ corresponding step.
 ### A1. Prerequisite checks
 
 ```bash
-command -v aws terraform gh jq curl
+command -v aws terraform gh jq curl sops
 aws sts get-caller-identity    # must succeed
 gh auth status                 # must succeed
 test -f infra/terraform.tfvars # must exist
@@ -1371,6 +1395,7 @@ FRONTEND_BUCKET=$(echo "$OUTPUTS" | jq -r '.frontend_bucket_name.value')
 CLOUDFRONT_ID=$(echo "$OUTPUTS" | jq -r '.cloudfront_distribution_id.value')
 LAMBDA_NAME=$(echo "$OUTPUTS" | jq -r '.lambda_function_name.value')
 API_URL=$(echo "$OUTPUTS" | jq -r '.api_url.value')
+SITE_URL=$(echo "$OUTPUTS" | jq -r '.site_url.value')
 ROLE_ARN=$(echo "$OUTPUTS" | jq -r '.github_actions_role_arn.value')
 cd -
 
@@ -1385,6 +1410,7 @@ for pair in \
   "CLOUDFRONT_DISTRIBUTION_ID=$CLOUDFRONT_ID" \
   "LAMBDA_FUNCTION_NAME=$LAMBDA_NAME" \
   "PUBLIC_API_URL=$API_URL" \
+  "PUBLIC_SITE_URL=$SITE_URL" \
   "PUBLIC_SANITY_PROJECT_ID=$SANITY_PROJECT_ID" \
   "PUBLIC_SANITY_DATASET=production"
 do
