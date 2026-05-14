@@ -139,8 +139,23 @@ jobs:
         # in infra/auto_cancel.tf), so this is hardcoded rather than pulled
         # from a GitHub Actions variable. If the project local renames, both
         # sides update together.
+        #
+        # Pre-flight check: confirm the function actually exists in AWS
+        # before attempting the code upload. The auto-cancel Lambda is
+        # provisioned by Terraform (infra/auto_cancel.tf), so the very
+        # first release after that file landed needs `terraform apply`
+        # to have run first. Without this guard, `update-function-code`
+        # against a non-existent function returns ResourceNotFoundException
+        # mid-job and the deploy fails with a cryptic AWS error. The
+        # check below fails fast with an actionable message instead.
         run: |
+          set -euo pipefail
+          AUTO_CANCEL_FN="meryl-green-designs-auto-cancel"
+          if ! aws lambda get-function --function-name "$AUTO_CANCEL_FN" >/dev/null 2>&1; then
+            echo "::error::Lambda '$AUTO_CANCEL_FN' does not exist yet. Run 'cd infra && terraform apply' to create it before publishing a release that includes the daily auto-cancel feature. See docs/deployment.md § Release runbook."
+            exit 1
+          fi
           aws lambda update-function-code \
-            --function-name "meryl-green-designs-auto-cancel" \
+            --function-name "$AUTO_CANCEL_FN" \
             --zip-file "fileb://backend/dist/auto-cancel.zip" \
             --publish

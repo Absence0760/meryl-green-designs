@@ -884,6 +884,43 @@ this page is context and edge cases.
    deploy jobs either run or skip. Spot-check the live site if anything
    actually changed.
 
+### Releasing changes that include new infra
+
+When a release adds new AWS resources (a new Lambda, a new EventBridge
+rule, a new CloudWatch alarm, etc.), `terraform apply` **must** run
+before the release is published. The deploy workflows assume their
+target resources already exist:
+
+- `deploy-backend.yml` calls `aws lambda update-function-code` for each
+  Lambda. It now has a pre-flight `aws lambda get-function` check on
+  the auto-cancel Lambda so it fails fast with an actionable message
+  ("Run `cd infra && terraform apply` to create it") instead of failing
+  partway through with `ResourceNotFoundException`.
+- A future release that introduces a new Lambda should add a matching
+  pre-flight check.
+
+Order of operations:
+
+```bash
+cd infra
+terraform plan        # always; review the diff
+terraform apply       # creates the new infra
+# confirm any new SNS subscription emails (see below)
+cd ..
+gh release create v0.X.Y --generate-notes --target main
+```
+
+**SNS subscription confirmation.** The auto-cancel Lambda's CloudWatch
+alarms publish to an SNS topic with `owner_email` subscribed. AWS sends
+the owner a `Subscription Confirmation` email on the first apply that
+creates the topic — the operator must click the confirmation link
+**before** the alarms can deliver. If alarms fire while the
+subscription is still pending, SNS silently drops the notification.
+
+If you missed the confirmation email (spam, deleted, wrong address),
+go to the SNS console → Subscriptions, find the `ops-alerts`
+subscription, choose "Request confirmation", and re-click the link.
+
 ### Triggers summary
 
 | When this happens | What gets deployed | How it's triggered |
