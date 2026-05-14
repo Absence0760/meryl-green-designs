@@ -8,6 +8,15 @@
 	external font CDN. The document is written to be accurate to those
 	data flows rather than generated from a template.
 
+	Phase 0 dual-write note: the backend currently writes order PII to
+	BOTH Sanity (primary) AND DynamoDB (shadow copy in af-south-1) on
+	every order create — see docs/orders-pii-split-plan.md. Both bullets
+	("Sanity" and "AWS" under "Who we share it with") need to stay in
+	sync with each other while Phase 0 is live. After the Phase 1 cutover
+	(when Sanity stops holding PII and DynamoDB becomes the sole PII
+	store), the Sanity bullet must be rewritten to say it only holds the
+	order reference, status, amount, and payment method.
+
 	Even so, a privacy policy is a legal document. Before going live with
 	this under Meryl's name, have it reviewed by a South African legal
 	professional who can:
@@ -227,8 +236,13 @@
 			</li>
 			<li>
 				<strong>Amazon Web Services (AWS)</strong> — our hosting
-				provider. Handles website traffic and serves the backend
-				API; retains standard server logs.
+				provider. Serves the website, runs the backend API, and
+				stores a copy of your order (name, email, phone,
+				shipping address, items, notes, status, and any tracking
+				information added later) in a private DynamoDB table in
+				the AWS Cape Town region. Also retains standard
+				application server logs as described in "How long we
+				keep it" below.
 				<a href="https://aws.amazon.com/privacy/"
 					target="_blank"
 					rel="noopener noreferrer">AWS privacy notice</a>
