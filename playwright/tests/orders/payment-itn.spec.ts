@@ -3,7 +3,11 @@ import { placeOrder } from '../../helpers/place-order.ts';
 import { buildSignedItn } from '../../helpers/sign-payfast-itn.ts';
 import { getOrderPii } from '../../helpers/dynamo-orders.ts';
 import { getSanityOrder } from '../../helpers/seed-sanity.ts';
-import { clearCapturedEmails, waitForEmail } from '../../helpers/read-email.ts';
+import {
+	clearCapturedEmails,
+	listCapturedEmails,
+	waitForEmail,
+} from '../../helpers/read-email.ts';
 
 // PayFast posts an ITN (Instant Transaction Notification) to the
 // backend after the customer pays. The backend verifies the MD5
@@ -131,5 +135,150 @@ test.describe('PayFast ITN', () => {
 		// The retry link must not embed the email param (Referer-leak rule)
 		expect(emails[0].bodyHtml).toMatch(/\/track\?ref=MG-/);
 		expect(emails[0].bodyHtml).not.toMatch(/\/track\?ref=MG-[A-Z0-9-]+&email=/);
+	});
+
+	test('repeated identical FAILED ITN does NOT re-send the email (dedup marker works)', async ({
+		request,
+	}) => {
+		// Audit L-3: PayFast retries delivery of the same FAILED ITN
+		// every few minutes for up to 24h. Each retry carries the same
+		// pf_payment_id. The dedup marker on the DynamoDB row suppresses
+		// the email after the first delivery so the customer doesn't get
+		// "your payment didn't go through" 10 times in a day.
+		const order = await placeOrder(request, { email: 'dedup-same@e2e.local' });
+
+		const body = buildSignedItn(
+			{
+				m_payment_id: order.orderRef,
+				pf_payment_id: 'pf_e2e_dedup_same',
+				payment_status: 'FAILED',
+				amount_gross: order.amountZar.toFixed(2),
+			},
+			passphrase(),
+		);
+
+		// First delivery → email captured
+		await request.post(`${apiUrl()}/webhooks/payfast-itn`, {
+			headers: { 'content-type': 'application/x-www-form-urlencoded' },
+			data: body,
+		});
+		const first = await waitForEmail(
+			(e) => e.to === 'dedup-same@e2e.local' && /didn.t go through/i.test(e.subject),
+		);
+		expect(first).toHaveLength(1);
+
+		// Second delivery with the SAME pf_payment_id → no new email
+		await request.post(`${apiUrl()}/webhooks/payfast-itn`, {
+			headers: { 'content-type': 'application/x-www-form-urlencoded' },
+			data: body,
+		});
+		// Generous wait so a late delivery would surface; assert count
+		// stays at 1.
+		await new Promise((r) => setTimeout(r, 1000));
+		const all = await listCapturedEmails();
+		const failedEmailsForThisOrder = all.filter(
+			(e) => e.to === 'dedup-same@e2e.local' && /didn.t go through/i.test(e.subject),
+		);
+		expect(failedEmailsForThisOrder).toHaveLength(1);
+	});
+
+	test('FAILED ITN with a NEW pf_payment_id re-sends the email (customer retried + failed again)', async ({
+		request,
+	}) => {
+		// Customer attempts payment → FAILED → abandons. Tries again
+		// hours later → FAILED with a different pf_payment_id. This is
+		// a genuinely new failed-payment event, so the customer should
+		// hear about it — the dedup marker only suppresses retries of
+		// the SAME pf_payment_id.
+		const order = await placeOrder(request, { email: 'dedup-new@e2e.local' });
+
+		const itnA = buildSignedItn(
+			{
+				m_payment_id: order.orderRef,
+				pf_payment_id: 'pf_e2e_attempt_a',
+				payment_status: 'FAILED',
+				amount_gross: order.amountZar.toFixed(2),
+			},
+			passphrase(),
+		);
+		const itnB = buildSignedItn(
+			{
+				m_payment_id: order.orderRef,
+				pf_payment_id: 'pf_e2e_attempt_b',
+				payment_status: 'FAILED',
+				amount_gross: order.amountZar.toFixed(2),
+			},
+			passphrase(),
+		);
+
+		await request.post(`${apiUrl()}/webhooks/payfast-itn`, {
+			headers: { 'content-type': 'application/x-www-form-urlencoded' },
+			data: itnA,
+		});
+		const afterA = await waitForEmail(
+			(e) => e.to === 'dedup-new@e2e.local' && /didn.t go through/i.test(e.subject),
+		);
+		expect(afterA).toHaveLength(1);
+
+		await request.post(`${apiUrl()}/webhooks/payfast-itn`, {
+			headers: { 'content-type': 'application/x-www-form-urlencoded' },
+			data: itnB,
+		});
+		const afterB = await waitForEmail(
+			(e) => e.to === 'dedup-new@e2e.local' && /didn.t go through/i.test(e.subject),
+			{ count: 2 },
+		);
+		expect(afterB).toHaveLength(2);
+	});
+
+	test('FAILED ITN with empty pf_payment_id sends the email but does NOT poison-pill the dedup marker', async ({
+		request,
+	}) => {
+		// Audit M-X-2: PayFast normally always populates pf_payment_id
+		// but a sandbox quirk has been seen to omit it on rare FAILED
+		// callbacks. If the backend wrote `''` as the dedup marker on
+		// the first such ITN, EVERY subsequent empty-id FAILED ITN
+		// would match the marker and be suppressed forever — turning
+		// a one-off quirk into a permanent silent failure. The fix in
+		// payfast-itn.ts is to send the email but SKIP the marker write
+		// when pf_payment_id is empty. This e2e exercises the round-trip.
+		const order = await placeOrder(request, { email: 'poison-pill@e2e.local' });
+
+		// buildSignedItn filters empty-string fields out of the signed
+		// body — matching PayFast's sandbox behaviour, which omits the
+		// field entirely rather than sending `pf_payment_id=`.
+		const body = buildSignedItn(
+			{
+				m_payment_id: order.orderRef,
+				pf_payment_id: '',
+				payment_status: 'FAILED',
+				amount_gross: order.amountZar.toFixed(2),
+			},
+			passphrase(),
+		);
+
+		// First delivery
+		await request.post(`${apiUrl()}/webhooks/payfast-itn`, {
+			headers: { 'content-type': 'application/x-www-form-urlencoded' },
+			data: body,
+		});
+		const first = await waitForEmail(
+			(e) => e.to === 'poison-pill@e2e.local' && /didn.t go through/i.test(e.subject),
+		);
+		expect(first).toHaveLength(1);
+
+		// Second delivery of the SAME empty-id ITN. If the marker had
+		// been written (`''`), the dedup check would suppress this.
+		// Because the skip-write fix is in place, the customer hears
+		// about this second failure too.
+		await request.post(`${apiUrl()}/webhooks/payfast-itn`, {
+			headers: { 'content-type': 'application/x-www-form-urlencoded' },
+			data: body,
+		});
+		const second = await waitForEmail(
+			(e) => e.to === 'poison-pill@e2e.local' && /didn.t go through/i.test(e.subject),
+			{ count: 2 },
+		);
+		expect(second).toHaveLength(2);
 	});
 });
