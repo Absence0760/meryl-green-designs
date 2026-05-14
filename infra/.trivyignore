@@ -65,3 +65,12 @@ AVD-AWS-0025
 # carry the customer email URL param for retry calls (a privacy
 # downgrade we explicitly avoid — see docs/security.md § Risk 3).
 AVD-AWS-0001
+
+# SNS topic encryption uses the AWS-managed `aws/sns` KMS key
+# rather than a customer-managed key. Same blast-radius rationale
+# as AVD-AWS-0025 (DynamoDB also uses an AWS-managed key): the
+# ops-alerts topic carries Lambda alarm metadata (function name,
+# period, invocation count) — no PII — so CMK rotation would add
+# cost without changing the trust boundary. The AWS-managed key
+# is encrypted at rest and rotated by AWS on its own cadence.
+AVD-AWS-0136
