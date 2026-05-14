@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { seedProducts } from '../../fixtures/products.ts';
-import { listCapturedEmails, clearCapturedEmails } from '../../helpers/read-email.ts';
+import { listCapturedEmails } from '../../helpers/read-email.ts';
 import { scanOrders } from '../../helpers/dynamo-orders.ts';
 
 // Negative-path coverage for POST /orders. Each spec asserts the
@@ -35,9 +35,16 @@ function postOrder(
 }
 
 test.describe('POST /orders validation', () => {
-	test.beforeEach(async () => {
-		await clearCapturedEmails();
-	});
+	// No `clearCapturedEmails` beforeEach. The earlier version of this
+	// spec wiped the dir before each test and then asserted
+	// `emails.toHaveLength(0)` afterwards — but that's brittle when
+	// preceding specs in the run are still writing emails after the
+	// wipe lands (intermittent file-write races on file-backend
+	// captures). Instead: snapshot the captured-email count BEFORE the
+	// validation request and assert it didn't grow by the time we
+	// re-check. Catches a regression where validation accidentally lets
+	// a bad payload through to sendEmail without false-failing on
+	// unrelated emails from other specs.
 
 	for (const [label, overrides, expectedError] of [
 		['missing name', { name: '' }, /please enter your name/i],
@@ -50,6 +57,7 @@ test.describe('POST /orders validation', () => {
 	] as const) {
 		test(`rejects ${label} with 400 and writes nothing`, async ({ request }) => {
 			const ordersBefore = await scanOrders();
+			const emailsBefore = await listCapturedEmails();
 
 			const res = await postOrder(request, overrides);
 			expect(res.status()).toBe(400);
@@ -60,10 +68,14 @@ test.describe('POST /orders validation', () => {
 			const ordersAfter = await scanOrders();
 			expect(ordersAfter.length).toBe(ordersBefore.length);
 
-			// No owner-notification email fired
+			// No owner-notification email fired by THIS request. Compare
+			// the absolute count of captured emails; if validation let a
+			// bad payload through to sendEmail, the count grows by one.
+			// 200ms gives any in-flight write from this request time to
+			// land before the post-check.
 			await new Promise((r) => setTimeout(r, 200));
-			const emails = await listCapturedEmails();
-			expect(emails).toHaveLength(0);
+			const emailsAfter = await listCapturedEmails();
+			expect(emailsAfter.length).toBe(emailsBefore.length);
 		});
 	}
 
@@ -98,6 +110,7 @@ test.describe('POST /orders validation', () => {
 		request,
 	}) => {
 		const ordersBefore = await scanOrders();
+		const emailsBefore = await listCapturedEmails();
 
 		const res = await postOrder(request, { website: 'https://example.com/bot' });
 		expect(res.status()).toBe(200);
@@ -108,9 +121,11 @@ test.describe('POST /orders validation', () => {
 		const ordersAfter = await scanOrders();
 		expect(ordersAfter.length).toBe(ordersBefore.length);
 
+		// Same delta-not-zero check as the validation cases above —
+		// robust to leftover captures from other specs.
 		await new Promise((r) => setTimeout(r, 200));
-		const emails = await listCapturedEmails();
-		expect(emails).toHaveLength(0);
+		const emailsAfter = await listCapturedEmails();
+		expect(emailsAfter.length).toBe(emailsBefore.length);
 	});
 
 	test('rejects malformed JSON with 400', async ({ request }) => {
