@@ -25,8 +25,9 @@ Terraform configuration for the Meryl Green Designs AWS resources.
 - **GitHub OIDC provider** + IAM role for CI, trust-policied to the
   `production` GitHub Actions environment (environment-scoped rather than
   branch-scoped so release-triggered deploys on `refs/tags/*` work)
-- **AWS Budget** with email alerts at 50% / 80% / 100% of a configurable
-  monthly cap (default $30 — see `monthly_budget_usd` in `variables.tf`)
+- **AWS Budget** with email alerts at 50% / 80% / 100% **actual** plus a
+  100% **forecasted** notification, all of a configurable monthly cap
+  (default $30 — see `monthly_budget_usd` in `variables.tf`)
 - **DynamoDB table** (`meryl-green-designs-orders`) for customer order PII,
   joined to the Sanity order document by `orderRef`. Point-in-time recovery
   on, TTL on (drives POPIA retention — each row is deleted 365 days after
@@ -36,7 +37,17 @@ Terraform configuration for the Meryl Green Designs AWS resources.
   (`meryl-green-designs-auto-cancel`, 06:00 UTC daily) that flips
   `pending_payment` Sanity orders older than 30 days to `cancelled`.
   Honors the abandoned-checkout commitment in `/privacy`. Code in
-  `backend/src/auto-cancel-lambda.ts`; infra in `auto_cancel.tf`.
+  `backend/src/auto-cancel-lambda.ts`; infra in `auto_cancel.tf`. Has
+  `prevent_destroy` on, its own IAM role (Sanity write only), CloudWatch
+  alarms (Errors + no-recent-invocation) routed via an SNS topic
+  (`meryl-green-designs-ops-alerts`) to `ops_alerts_email`, and an SQS
+  dead-letter queue for EventBridge drops.
+- **Reserved concurrency** on the backend Lambda
+  (`lambda_reserved_concurrency`, default 20) caps blast radius from a
+  runaway loop or hostile burst — see `variables.tf`.
+- **Admin API token + Studio CORS origins** (`admin_api_token`,
+  `studio_origins`) feed the Lambda env for the `/admin/*` PII routes
+  consumed by the Studio's custom field components.
 
 For a full architectural picture see [`../docs/architecture.md`](../docs/architecture.md).
 For first-time deploy walkthrough see [`../docs/deployment.md`](../docs/deployment.md).
@@ -110,12 +121,27 @@ bucket/table names, so the next `terraform init` will pick them up.
 
 ## Configure
 
+Variables live in `terraform.tfvars.sops` — SOPS-encrypted with the
+project KMS key (`alias/meryl-green-designs-sops`). The plaintext
+`terraform.tfvars` file is gitignored and only exists transiently when
+`bin/setup.sh` decrypts it for `terraform apply`.
+
+To seed the encrypted file from the example (first-time only):
+
 ```bash
-cp terraform.tfvars.example terraform.tfvars
-$EDITOR terraform.tfvars  # fill in real values
+../bin/sops-init.sh   # creates the KMS key, .sops.yaml, and seeds *.sops files
 ```
 
-`terraform.tfvars` is gitignored.
+To edit:
+
+```bash
+sops terraform.tfvars.sops   # opens in $EDITOR, re-encrypts on save
+```
+
+Running `bin/setup.sh` decrypts to a scratch `terraform.tfvars`, runs
+the apply, and shreds the plaintext on exit. Don't manually decrypt for
+day-to-day use — `terraform plan` / `apply` from the repo's CI path
+goes through the same script.
 
 ## Apply
 
@@ -132,9 +158,16 @@ into your GitHub Actions workflow secrets/variables (see `docs/deployment.md`).
 
 ## Rotating secrets
 
-To rotate `resend_api_key`, update the value in `terraform.tfvars` and run
-`terraform apply`. This updates the Lambda's environment variables in place.
-No code redeploy needed.
+To rotate `resend_api_key` (or `admin_api_token`, PayFast credentials,
+Sanity write token, etc.):
+
+```bash
+sops terraform.tfvars.sops   # edit the value
+# then re-run setup.sh or apply manually with the decrypted scratch file
+```
+
+`terraform apply` updates the Lambda's environment variables in place —
+no code redeploy needed.
 
 ## Tearing down
 
@@ -142,9 +175,17 @@ No code redeploy needed.
 terraform destroy
 ```
 
-This removes everything Terraform created. It does **not** remove the state
-bucket or DynamoDB lock table — those were created manually in the bootstrap
-step and you must delete them by hand if you want a clean slate.
+This removes everything Terraform created — **but the orders DynamoDB
+table (`dynamodb.tf`) and the auto-cancel Lambda (`auto_cancel.tf`)
+both set `prevent_destroy = true`**, so a plain `destroy` will refuse
+to delete them. To actually tear down, you must flip those flags off
+first, run `terraform apply` to register the change, then
+`terraform destroy`. This guard is deliberate — the orders table holds
+customer PII subject to a 365-day retention commitment.
+
+`destroy` does **not** remove the state bucket or DynamoDB lock table —
+those were created manually in the bootstrap step and you must delete
+them by hand if you want a clean slate.
 
 ## Why not CDK?
 
