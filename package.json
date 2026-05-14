@@ -7,6 +7,7 @@
 	"scripts": {
 		"dev": "pnpm --filter @meryl-green-designs/frontend --filter @meryl-green-designs/backend --parallel run dev",
 		"dev:all": "pnpm -r --parallel run dev",
+		"//dev:db:up": "Starts LocalStack (DynamoDB emulator on :4566) and creates the orders table. See docker-compose.yml for the rationale on LocalStack vs amazon/dynamodb-local.",
 		"dev:db:up": "./bin/dynamodb-local-up.sh",
 		"dev:db:down": "docker compose down",
 		"dev:db:reset": "docker compose down -v && ./bin/dynamodb-local-up.sh",
