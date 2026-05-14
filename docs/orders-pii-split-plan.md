@@ -68,22 +68,44 @@ block requiring one of those two literal strings.
 
 Dry-runs always bypass the script gates so previewing is cheap.
 
-**Outstanding before prod deploy** (Day 7):
+**Day 7 — prod deploy prep (code landed; apply pending).**
 
-- Add `admin_api_token` and `studio_origins` to `infra/variables.tf`,
-  the encrypted `infra/terraform.tfvars.sops`, and the Lambda env in
-  `infra/lambda.tf`, then `terraform apply` again.
-- The `production` GitHub Actions environment needs an `ADMIN_API_TOKEN`
-  secret and a `PUBLIC_API_URL` variable so `deploy-studio.yml` can
-  bake them into the Sanity Studio bundle.
-- The IAM-narrowing change (Scan removed) requires a fresh
-  `terraform apply` — the existing prod role still has Scan until that
-  runs. The change is benign in isolation (no caller uses Scan yet).
-- Local dev uses the values in `backend/.env` and `studio/.env`
-  (templates updated).
+The Terraform code, tfvars example, and deployment docs are now updated:
 
-Day 7 (prod deploy) and the cutover (Phase 1) still require explicit
-go-ahead.
+- `infra/variables.tf` — `admin_api_token` (sensitive) +
+  `studio_origins` variables added.
+- `infra/lambda.tf` — `ADMIN_API_TOKEN` and `STUDIO_ORIGINS` wired into
+  the Lambda env block.
+- `infra/terraform.tfvars.example` — both fields documented with the
+  expected shape and a pointer at the GHA secret/var they must
+  match.
+- `docs/deployment.md` — env-var reference table and GHA-secrets table
+  updated.
+
+What the operator still needs to do (Day 7 hand-off, not done yet):
+
+1. `sops infra/terraform.tfvars.sops` — add real values for
+   `admin_api_token` (generate with `openssl rand -hex 32`) and
+   `studio_origins` (the deployed Sanity Studio URL, e.g.
+   `https://meryl-green-designs.sanity.studio`).
+2. Set the `production` GHA environment secret `ADMIN_API_TOKEN` to
+   the same value (`gh secret set ADMIN_API_TOKEN --env production`).
+   `deploy-studio.yml` re-exports it as `SANITY_STUDIO_ADMIN_TOKEN`
+   at build time. `PUBLIC_API_URL` should already be set by an
+   earlier `bin/setup.sh` run.
+3. `cd infra && terraform plan` — review. Should show only the new env
+   vars on the Lambda (the DynamoDB table itself was provisioned on
+   the Day 1 apply); the IAM narrowing (Scan removed) lands here too
+   if it hadn't already.
+4. `terraform apply` — after reviewing the plan. **Never apply without
+   reading the plan first** — see `infra/CLAUDE.md`.
+5. Smoke-test prod: place a sandbox PayFast order against the live
+   site, verify the order lands in both Sanity and the production
+   DynamoDB table (`aws dynamodb scan --table-name
+   meryl-green-designs-orders --region af-south-1`).
+
+Day 8 cutover (Phase 1) still requires explicit go-ahead after Day 7
+has run cleanly in prod for at least one full order cycle.
 
 ## Why this exists
 

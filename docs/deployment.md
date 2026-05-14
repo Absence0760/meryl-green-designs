@@ -741,6 +741,9 @@ environment block. Update by editing tfvars and re-running `terraform apply`.
 | `PAYFAST_PASSPHRASE` | tfvars `payfast_passphrase` | PayFast signature passphrase (sensitive) |
 | `PAYFAST_SANDBOX` | tfvars `payfast_sandbox` | `'true'` for sandbox, `'false'` for production |
 | `API_URL` | derived from tfvars `site_url` / `domain_name` | Public base URL used to build PayFast `notify_url` (defaults to `https://<domain_name>/api`). In local dev this can be set to an ngrok tunnel URL to receive PayFast sandbox ITN callbacks — see `docs/run-locally.md`. |
+| `ORDERS_TABLE_NAME` | derived from `aws_dynamodb_table.orders.name` | DynamoDB table holding order PII (Phase 0 shadow / Phase 1 source of truth). Never set manually — Terraform wires it from the resource directly. |
+| `ADMIN_API_TOKEN` | tfvars `admin_api_token` | Bearer token gating `/admin/*` routes that power the Studio's custom PII panels. Constant-time compared in `middleware/admin-auth.ts`. Must match the `ADMIN_API_TOKEN` GHA secret in the `production` environment (which `deploy-studio.yml` re-exports as `SANITY_STUDIO_ADMIN_TOKEN` at build time so the Studio bundle can call this Lambda). |
+| `STUDIO_ORIGINS` | tfvars `studio_origins` | Comma-separated origins permitted to call `/admin/*` (CORS scope, defence-in-depth alongside the bearer token). Empty disables the Studio's browser-side admin access without disabling direct API calls. |
 
 ### Frontend build-time env
 
@@ -791,6 +794,7 @@ Set manually in step 6 of the setup.
 | Secret | Scope | Used by |
 |---|---|---|
 | `SANITY_AUTH_TOKEN` | Deploy Studio | `deploy-studio.yml` (runs `sanity deploy`) |
+| `ADMIN_API_TOKEN` | Deploy Studio | `deploy-studio.yml` re-exports this as `SANITY_STUDIO_ADMIN_TOKEN` at build time and bakes it into the Studio JS bundle so the custom PII panels can call `/admin/*` on the Lambda. **Must equal the `admin_api_token` value in `infra/terraform.tfvars.sops`** (same secret, two places). Rotate both together. |
 
 ### Local development (not production)
 

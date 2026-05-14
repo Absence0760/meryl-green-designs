@@ -105,6 +105,12 @@ resource "aws_lambda_function" "backend" {
       # same /api/* path the browser uses.
       API_URL           = var.site_url != "" ? "${var.site_url}/api" : "https://${var.domain_name}/api"
       ORDERS_TABLE_NAME = aws_dynamodb_table.orders.name
+      # Phase 0 orders-PII-split: admin routes that power the Studio's
+      # custom PII panels. ADMIN_API_TOKEN gates them via constant-time
+      # bearer compare; STUDIO_ORIGINS narrows CORS to the Studio's
+      # deployed URL. Both come from terraform.tfvars.sops.
+      ADMIN_API_TOKEN = var.admin_api_token
+      STUDIO_ORIGINS  = var.studio_origins
     }
   }
 

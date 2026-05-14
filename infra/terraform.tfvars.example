@@ -47,6 +47,18 @@ payfast_merchant_key = ""
 payfast_passphrase   = ""
 payfast_sandbox      = "true"
 
+# Phase 0 orders-PII-split — admin routes that power the Sanity Studio
+# custom PII panels. Generate with `openssl rand -hex 32`. Must match the
+# ADMIN_API_TOKEN GitHub Actions secret in the `production` environment
+# (deploy-studio.yml re-exports it as SANITY_STUDIO_ADMIN_TOKEN at build
+# time so the Studio bundle can call /admin/* on the Lambda).
+admin_api_token = ""
+
+# Comma-separated origins permitted to call /admin/* on the Lambda.
+# Tighter than ALLOWED_ORIGINS — only the Studio's deployed URL belongs
+# here. Example: "https://meryl-green-designs.sanity.studio"
+studio_origins = ""
+
 # Cap on concurrent Lambda invocations. Default 20 is far above expected
 # organic load and caps blast radius for traffic spikes / abuse attempts.
 # Set to -1 to remove the cap (falls back to the AWS account default).

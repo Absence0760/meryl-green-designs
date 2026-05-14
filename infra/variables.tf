@@ -109,6 +109,44 @@ variable "payfast_sandbox" {
   }
 }
 
+# --- Admin / Studio integration (Phase 0 orders-PII-split) ---
+
+variable "admin_api_token" {
+  description = <<-EOT
+    Bearer token guarding the /admin/* routes that power the Sanity
+    Studio custom panels for order PII. Generate with `openssl rand
+    -hex 32`. Must match the ADMIN_API_TOKEN GitHub Actions secret in
+    the `production` environment — deploy-studio.yml re-exports it as
+    SANITY_STUDIO_ADMIN_TOKEN at build time and bakes it into the
+    Studio JS bundle so the panels can call the API.
+
+    The token is baked into the Studio bundle and therefore readable
+    by anyone who inspects the bundle — the backend bearer-token check
+    (constant-time compare in middleware/admin-auth.ts) is the actual
+    security gate, not the secrecy of this value. Rotate alongside the
+    Studio deploy if you suspect leakage.
+  EOT
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "studio_origins" {
+  description = <<-EOT
+    Comma-separated list of origins permitted to call /admin/* on the
+    Lambda. Tighter than ALLOWED_ORIGINS — only the Studio's deployed
+    URL should be on this list. Example:
+    "https://meryl-green-designs.sanity.studio".
+
+    Empty string disables admin-route CORS entirely (admin routes still
+    work for direct API calls bearing the token; the browser-side
+    Studio just can't reach them). The bearer-token check is the real
+    gate; this CORS scope is defence-in-depth — see backend/src/app.ts.
+  EOT
+  type        = string
+  default     = ""
+}
+
 # --- Monthly budget alerts ---
 
 variable "lambda_reserved_concurrency" {
