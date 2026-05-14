@@ -138,9 +138,11 @@ describe('piiItemFromSanity', () => {
 	});
 
 	it('substitutes empty strings for null required PII fields (scrubbed orders)', () => {
-		// pii-cleanup may have null-ed these on terminal orders past 365
-		// days. The DynamoDB shape requires string for these fields;
-		// empty is the deliberate "PII gone by design" sentinel.
+		// PII may be null because the pre-Phase-1 pii-cleanup nulled it on
+		// terminal orders past 365 days, OR because the Phase-1 scrub
+		// script nulled it across the board. The DynamoDB shape requires
+		// string for these fields; empty is the deliberate "PII gone by
+		// design" sentinel.
 		const scrubbed = {
 			...baseSanityOrder,
 			customerName: null,

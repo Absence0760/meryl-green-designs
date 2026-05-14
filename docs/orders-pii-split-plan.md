@@ -950,13 +950,16 @@ breaks post-cutover within the 2-week buffer window:
 
 ### Reconciler cron
 
-**Implementation**: the same backend Lambda, with a new dispatch branch
-in `backend/src/lambda.ts` that calls `runReconciler()` from a new
-`backend/src/reconciler.ts` (mirrors the existing pii-cleanup pattern
-that lives in `backend/src/pii-cleanup.ts` and is dispatched from the
-Lambda's main handler). Schedule via a new `aws_cloudwatch_event_rule`
-in `infra/reconciler.tf` — daily, e.g. `cron(0 5 * * ? *)` (one hour
-offset from any other scheduled jobs to avoid cold-start clashes).
+**Implementation**: a separate Lambda function (the API Lambda is
+now HTTP-only; the dispatcher branch that pre-Phase-1 routed
+EventBridge events to the deleted pii-cleanup was removed at the
+Day 8 cutover). New entry point at `backend/src/reconciler.ts`,
+deployed as a second `aws_lambda_function` resource in
+`infra/reconciler.tf`, scheduled via `aws_cloudwatch_event_rule` —
+daily, e.g. `cron(0 5 * * ? *)`. Keeping HTTP and the cron in
+separate Lambdas avoids cold-start interference and makes IAM
+narrowing easier (the reconciler needs `dynamodb:Scan`, which the
+API Lambda deliberately does not).
 
 **What it does**:
 
@@ -982,8 +985,7 @@ rate rather than table size.
   24-hour window**. Rate-based alarms don't work at this volume — Meryl
   hits the admin API a handful of times per day, so a single 500 from a
   cold-start blip is 25% of traffic for that hour. Absolute count over
-  a longer window matches the signal-to-noise. Same shape as the
-  pii-cleanup failure alarm in `infra/pii_cleanup.tf`.
+  a longer window matches the signal-to-noise.
 - CloudWatch alarm on reconciler-detected orphans/gaps.
 - CloudWatch logs: admin endpoints log `orderRef + action + result`;
   **never log PII field values** (matches the existing convention; the

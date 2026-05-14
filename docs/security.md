@@ -551,23 +551,26 @@ If something goes wrong:
 
 ## PII retention (POPIA Section 14)
 
-The site stores customer PII on Sanity order documents: `customerName`,
-`customerEmail`, `customerPhone`, `shippingAddress`, `customerNotes`, and
-the operator-only `internalNotes`. POPIA requires retention to be tied to
-a documented purpose, so the longer this PII sits in Sanity past
-fulfilment, the weaker the legal posture.
+Customer PII is stored in a private AWS DynamoDB table
+(`meryl-green-designs-orders`, hash key `orderRef`): `customerName`,
+`customerEmail`, `customerPhone`, `shippingAddress`, `items`,
+`customerNotes`, `trackingNumber`, `trackingUrl`, `shippingCarrier`, and
+the operator-only `internalNotes`. The Sanity order document is
+PII-free post-Phase-1 — it holds only the non-PII skeleton
+(`orderRef`, `status`, `paymentMethod`, `amountZar`, `paymentId`).
 
 ### The policy
 
-- **Retention window**: 12 months after `_updatedAt`, for orders in a
-  terminal state (`delivered` or `cancelled`).
-- **What gets cleared**: `customerName`, `customerEmail`,
-  `customerPhone`, `shippingAddress`, `customerNotes`, `internalNotes`
-  → all set to `null`.
-- **What's preserved**: `orderRef`, `status`, `amountZar`,
-  `paymentMethod`, `paymentId`, `_createdAt`, and `items` (the line-item
-  product summary, no PII). Sufficient for SARS audit, dispute resolution,
-  and revenue accounting; insufficient for re-identifying the customer.
+- **Retention window**: 365 days from order creation, applied to the
+  DynamoDB row only. The Sanity skeleton (no PII) is kept indefinitely
+  for SARS audit, dispute resolution, and revenue accounting.
+- **What gets cleared**: every PII attribute on the DynamoDB row goes
+  with the row itself when the TTL fires — the row is deleted, not
+  patched.
+- **What's preserved**: the matching Sanity skeleton (`orderRef`,
+  `status`, `amountZar`, `paymentMethod`, `paymentId`, `_createdAt`).
+  Sufficient for tax/accounting; insufficient for re-identifying the
+  customer.
 - **Declared in the public privacy policy** at
   `frontend/src/routes/privacy/+page.svelte` § "How long we keep it".
   Required by POPIA — the retention period must be visible to the data
@@ -575,56 +578,77 @@ fulfilment, the weaker the legal posture.
 
 ### Automated enforcement
 
-`backend/src/pii-cleanup.ts` runs the sweep. The same Lambda function
-that serves the API is invoked once a month by an EventBridge schedule
-rule (`infra/pii_cleanup.tf`, `cron(0 4 1 * ? *)` — 04:00 UTC on the 1st).
-The dispatcher in `backend/src/lambda.ts` detects
-`event.source === 'aws.events'` and routes to `runPiiCleanup()` instead of
-the Hono HTTP handler.
+DynamoDB per-item TTL handles this with no Lambda involvement. Each
+row written by `orders-store.ts:writeOrderPii` carries a `ttl`
+attribute set to `createdAt + 365 days` (Unix seconds). AWS sweeps
+expired items asynchronously — typically within 48 hours of the TTL
+timestamp, never longer than 4 days.
 
-The cleanup is idempotent — clearing PII updates `_updatedAt`, so
-already-cleaned orders self-exclude from the next month's query. Per-order
-failures are logged and the run continues; the summary line in CloudWatch
-Logs shows `cutoff=`, `scanned=`, `cleared=`, `failed=`.
+The TTL attribute and its enabled flag are declared in
+`infra/dynamodb.tf`:
 
-Override the retention period via the `RETENTION_DAYS` env var on the
-Lambda if the legal posture changes. Default is 365 days.
+```hcl
+ttl {
+  attribute_name = "ttl"
+  enabled        = true
+}
+```
+
+There is no operator action required for the routine case. No Lambda
+schedule, no monthly cron, no manual sweep. The pre-Phase-1
+`backend/src/pii-cleanup.ts` Lambda + EventBridge schedule that did
+this on Sanity is gone — the move to DynamoDB replaced it with
+storage-layer enforcement that can't drift or fail silently.
+
+### Verifying it works
+
+DynamoDB exposes TTL metrics in CloudWatch under the
+`AWS/DynamoDB` namespace — the relevant one is
+`TimeToLiveDeletedItemCount`. Expect a non-zero count starting ~365
+days after the table received its first PII row. Before that window,
+the count is zero because nothing has aged out yet.
+
+Spot-check by:
+
+```bash
+AWS_REGION=af-south-1 aws dynamodb scan \
+  --table-name meryl-green-designs-orders \
+  --filter-expression '#t < :cutoff' \
+  --expression-attribute-names '{"#t":"ttl"}' \
+  --expression-attribute-values "{\":cutoff\":{\"N\":\"$(date +%s)\"}}" \
+  --no-cli-pager
+```
+
+A non-empty result for items whose `ttl` is in the past indicates AWS
+hasn't reaped them yet — that's normal up to ~4 days. A persistent
+result older than a week means TTL is disabled or misconfigured —
+check the table in the AWS console under **Additional settings → TTL**.
 
 ### Manual fallback
 
-If the automated sweep is disabled (EventBridge rule paused, Lambda
-broken, retention policy under review), the same outcome can be achieved
-by hand from the Sanity Studio. Quarterly is a reasonable cadence;
-monthly matches the automated schedule.
+If TTL is disabled or a specific record needs deleting ahead of its
+scheduled expiry (e.g. a deletion request under POPIA s24), use the
+AWS CLI:
 
-1. Open Sanity Studio → **Orders**.
-2. Filter by `status` = `delivered` OR `cancelled`.
-3. Sort by `_updatedAt` ascending.
-4. For every order whose `_updatedAt` is more than 12 months ago:
-   - Open the document.
-   - Clear (delete the value of) every field in this list:
-     `customerName`, `customerEmail`, `customerPhone`, `shippingAddress`,
-     `customerNotes`, `internalNotes`.
-   - Click **Publish**.
-5. Note the date of the manual sweep in the operator runbook.
-
-The fields to keep, even during the manual sweep, are the same as the
-automated job: `orderRef`, `status`, `amountZar`, `paymentMethod`,
-`paymentId`, `items`. **Do not delete the order document itself** — that
-removes the audit trail for tax purposes.
-
-### Verifying it ran
-
-CloudWatch Logs for the Lambda will show a line like:
-
-```
-[pii-cleanup] cutoff=2026-04-16T04:00:00.000Z scanned=12 cleared=12 failed=0
+```bash
+AWS_REGION=af-south-1 aws dynamodb delete-item \
+  --table-name meryl-green-designs-orders \
+  --key '{"orderRef":{"S":"MG-260413-AB12"}}' \
+  --no-cli-pager
 ```
 
-once a month. If it doesn't appear for two consecutive months, something
-broke — either the EventBridge rule is disabled, the Lambda permission is
-missing, or the function itself is failing silently. Fall back to the
-manual procedure above and investigate.
+This removes the PII row. The matching Sanity skeleton stays — that's
+deliberate (the orderRef + status + amount are accounting data, not
+PII). If the customer also wants the Sanity skeleton gone, delete the
+document from Studio after confirming the deletion request is a
+legitimate POPIA s24 request from the actual data subject.
+
+Note for old orders: orders that pre-date Phase 1 had PII fields
+populated directly on the Sanity document. The `scrub-sanity-pii.ts`
+script that ran at Phase 1 cutover patched all of those to `null`, so
+no current Sanity doc holds PII regardless of age. If you ever find
+one with a populated `customerName` / `customerEmail` etc., re-run
+`pnpm scrub:sanity-pii --prod --yes` — that's the recovery procedure.
 
 ---
 

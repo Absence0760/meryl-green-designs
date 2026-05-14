@@ -186,6 +186,27 @@ async function main(): Promise<void> {
 	console.log(
 		`Done. scrubbed=${counts.scrubbed} skipped=${counts.skipped} errors=${counts.errors}`
 	);
+	if (!args.dryRun && counts.scrubbed > 0) {
+		console.log('');
+		console.log(
+			'Reminder: Sanity retains the pre-scrub document revision in its'
+		);
+		console.log(
+			'history endpoint for ~30 days. Decide whether to explicitly purge'
+		);
+		console.log(
+			'history now (Phase 2 plan downgrade unblocks after the 14-day'
+		);
+		console.log(
+			'observation window) or wait the full 30 days for natural rollover.'
+		);
+		console.log(
+			'See docs/orders-pii-split-plan.md § Phase 1 step 4 for the'
+		);
+		console.log(
+			'history-purge runbook.'
+		);
+	}
 	if (counts.errors > 0) process.exitCode = 1;
 }
 

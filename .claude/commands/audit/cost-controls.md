@@ -51,7 +51,7 @@ A static site with poor cache-hit ratio can be drained on egress; a chatty Lambd
 
 - Every `aws_cloudwatch_log_group` in `infra/*.tf` has `retention_in_days` ≤ 90 (default = forever = $0.50/GB/month forever).
 - The Lambda log group specifically — `/aws/lambda/<function-name>` — has it set.
-- The `pii_cleanup` schedule's invocation logs are captured (so failures don't disappear silently) but capped.
+- (Historical: the Phase-0 EventBridge `pii_cleanup` schedule was deleted at the Day 8 cutover. PII retention is now handled by DynamoDB per-item TTL in `infra/dynamodb.tf`, which has no log group of its own. If you see this comment still mentioning a `pii_cleanup` schedule, that's the stale reference to flag.)
 
 ### 5. CloudFront cost guardrails
 
@@ -79,7 +79,7 @@ Verify:
 Sanity charges per-dataset row count and asset storage on paid plans. At current scale we're on Growth ($15/month, comfortable). The migration to Free (per `docs/orders-pii-split-plan.md`) caps things differently — Free is 2 datasets, 20 user seats. Neither is hit at current scale.
 
 Verify:
-- No automated process is hammering Sanity writes. The PII cleanup job (`backend/src/pii-cleanup.ts`) runs monthly — that's fine. Any other scheduled write? Read `infra/pii_cleanup.tf` and surrounding `.tf` files for EventBridge rules that target the Lambda.
+- No automated process is hammering Sanity writes. (Phase 1+ note: there is no scheduled job touching Sanity at all — PII retention is now DynamoDB-side TTL. Any EventBridge rule still targeting the backend Lambda is unexpected; flag.)
 - The Sanity webhook on order changes fires per-mutation — bounded by Meryl's editing rate. Safe.
 - Customer-facing surfaces (`POST /orders`) write one Sanity doc per call. With backend rate limiting + API Gateway throttling in front of it, Sanity write volume is bounded.
 

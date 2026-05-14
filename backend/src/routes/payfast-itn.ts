@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { validateItn } from '../payfast.js';
-import { getOrderByRef, updateOrderPayment } from '../sanity.js';
+import { getOrderByRef, updateOrderStatus } from '../orders-store.js';
 import { createRateLimiter } from '../rate-limit.js';
 
 /**
@@ -90,7 +90,7 @@ export function payfastItnRouter() {
 		}
 
 		try {
-			await updateOrderPayment(result.orderRef, {
+			await updateOrderStatus(result.orderRef, {
 				status: 'payment_received',
 				paymentId: result.pfPaymentId
 			});

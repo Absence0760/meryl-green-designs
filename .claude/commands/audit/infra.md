@@ -17,8 +17,8 @@ All ten `.tf` files plus the encrypted tfvars + template:
 - `outputs.tf` — exported values (the source of the GitHub Actions repo vars)
 - `s3_cloudfront.tf` — static site hosting + distribution + ACM cert + Route 53 records
 - `api_gateway.tf` — backend API surface
-- `lambda.tf` — backend function + IAM role + log group + EventBridge dispatch for pii-cleanup
-- `pii_cleanup.tf` — EventBridge rule + target + Lambda permission for the monthly PII sweep
+- `lambda.tf` — backend function + IAM role + log group (HTTP-only handler post-Phase-1; the EventBridge-dispatch branch that handled the old monthly PII sweep was removed at the Day 8 cutover)
+- `dynamodb.tf` — orders table with per-item TTL (the `ttl` attribute drives PII retention now; there is no longer a `pii_cleanup.tf` — the file was deleted at Phase 1)
 - `security_headers.tf` — CloudFront response-headers policy (CSP, HSTS, frame-options, etc.)
 - `github_oidc.tf` — GitHub OIDC federation + deploy role
 - `budget.tf` — AWS Budgets monthly cap + notifications
@@ -72,10 +72,11 @@ All ten `.tf` files plus the encrypted tfvars + template:
    - `aws_cloudwatch_log_group` for the Lambda has `retention_in_days` set (default infinite is a cost trap; recommend 30 or 90).
    - If a `lifecycle.ignore_changes` exists, the list is **minimal** — anything beyond `filename`/`source_code_hash` is suspicious.
 
-6. **PII cleanup schedule (`pii_cleanup.tf`).**
-   - `aws_cloudwatch_event_rule.pii_cleanup` schedule is `cron(0 4 1 * ? *)` (monthly) — matches `docs/security.md § PII retention`.
-   - The Lambda permission is scoped to this specific rule's ARN, not `*`.
-   - Note: if the `docs/orders-pii-split-plan.md` proposal is ever implemented, this file goes away entirely (replaced by DynamoDB TTL). Flag if both the old EventBridge + a new DynamoDB TTL coexist — they shouldn't.
+6. **PII retention on the DynamoDB orders table (`dynamodb.tf`).**
+   - The table has a `ttl` block: `attribute_name = "ttl"`, `enabled = true`. Matches `docs/security.md § PII retention`.
+   - The `ttl` attribute on each row is set to `createdAt + 365 days` (Unix seconds) by `backend/src/orders-store.ts:buildPiiItem`. Verify the math hasn't drifted.
+   - The pre-Phase-1 `pii_cleanup.tf` (EventBridge schedule + Lambda permission) was deleted at the Day 8 cutover. If you see that file, the Phase 1 migration is incomplete — flag.
+   - Same for the Lambda's old scheduled-event dispatcher branch in `backend/src/lambda.ts` — the Phase 1 handler is HTTP-only.
 
 7. **API Gateway (`api_gateway.tf`).**
    - HTTP API (not REST API — cheaper, no edge cases we need).

@@ -295,28 +295,25 @@
 
 		<h2>How long we keep it</h2>
 		<p>
-			<strong>Customer details on completed orders</strong> (your
-			name, email address, phone number, shipping address, and any
-			notes you sent us) are kept for <strong>12 months</strong>
-			after an order reaches a final state — either delivered or
-			cancelled. After 12 months, those personal details are
-			automatically removed from our records by a scheduled cleanup
-			job. We retain the order reference, status, amount, and
-			payment method indefinitely for accounting and audit
-			purposes — none of those identify you personally.
+			<strong>Customer details</strong> (your name, email address,
+			phone number, shipping address, items, and any notes you sent
+			us) are kept for <strong>12 months</strong> from when you
+			placed the order. After 12 months, AWS DynamoDB
+			automatically deletes the entire record holding your details
+			via a per-row expiry timer set when the order is created.
+			This deletion happens at the storage layer, not via a
+			scheduled job — there is no separate sweep that could fail
+			or be paused.
 		</p>
 		<p>
-			While an order is still in progress (pending payment, payment
-			received, shipped), we keep the full details so we can
-			complete the fulfilment and respond to questions.
+			We retain the order reference, status, amount, and payment
+			method indefinitely on a separate database for accounting
+			and audit purposes — none of those identify you personally.
 		</p>
 		<p>
-			Orders that remain in the &ldquo;pending payment&rdquo; state
-			for more than 30 days without a successful payment are
-			automatically cancelled by the same cleanup job. The
-			12-month deletion window then starts from that cancellation
-			date — so no abandoned-checkout details linger indefinitely
-			on our records.
+			While your order is still being processed (within the first
+			12 months), we keep the full details so we can complete
+			fulfilment and respond to questions about your order.
 		</p>
 		<p>
 			Application logs from our serverless backend are retained

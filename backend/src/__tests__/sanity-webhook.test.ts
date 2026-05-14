@@ -213,6 +213,30 @@ describe('POST /webhooks/sanity-order', () => {
 		expect(email.sendEmail).not.toHaveBeenCalled();
 	});
 
+	it('returns 503 (transient) when the DynamoDB/Sanity join throws — Sanity will retry', async () => {
+		// Phase 1: distinguish "DynamoDB threw" (transient, retry) from
+		// "DynamoDB returned null" (permanent, skip). On a throw, return
+		// 503 so the Sanity webhook infrastructure retries — a transient
+		// throttle or network blip is recoverable, but acking 200 would
+		// have permanently lost the customer's status email.
+		vi.mocked(ordersStore.getOrderByRef).mockRejectedValueOnce(
+			new Error('throttled')
+		);
+		const body = JSON.stringify(makeOrderDoc());
+		const signature = signPayload(body);
+		const app = createApp();
+		const res = await app.request('/webhooks/sanity-order', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				'sanity-webhook-signature': signature
+			},
+			body
+		});
+		expect(res.status).toBe(503);
+		expect(email.sendEmail).not.toHaveBeenCalled();
+	});
+
 	it('skips documents that are not orders (200, no email sent)', async () => {
 		const body = JSON.stringify({ _type: 'product', name: 'Not an order' });
 		const signature = signPayload(body);

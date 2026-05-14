@@ -75,23 +75,28 @@ export const order = defineType({
 		// components a slot in the form layout — they never persist any
 		// value to the Sanity document. The components fetch their data
 		// from /admin/orders/:ref (DynamoDB) and save back through PATCH
-		// endpoints.
+		// endpoints. readOnly:true is belt-and-braces: it stops the
+		// Studio from emitting field-level writes for these slots even
+		// if the custom component were ever swapped for a default input.
 		defineField({
 			name: 'customerDetailsPanel',
 			title: 'Customer details',
 			type: 'string',
+			readOnly: true,
 			components: { field: CustomerDetailsPanel as never }
 		}),
 		defineField({
 			name: 'trackingPanel',
 			title: 'Tracking',
 			type: 'string',
+			readOnly: true,
 			components: { field: TrackingFields as never }
 		}),
 		defineField({
 			name: 'internalNotesPanel',
 			title: 'Internal notes',
 			type: 'string',
+			readOnly: true,
 			components: { field: InternalNotesField as never }
 		})
 	],

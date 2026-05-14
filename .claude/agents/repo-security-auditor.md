@@ -22,7 +22,7 @@ Cross-cutting:
 - **Secrets are SOPS-encrypted.** `backend/.env.sops`, `infra/terraform.tfvars.sops` are committed; plaintext siblings (`backend/.env`, `infra/terraform.tfvars`) are gitignored. KMS key alias: `alias/meryl-green-designs-sops` in `af-south-1`.
 - **Static frontend constraint.** `frontend/CLAUDE.md` forbids SSR adapters, server-only env vars, and direct Sanity document queries from the frontend. Anything that breaks this is High at minimum.
 - **No banking details in any automated email.** Regression-guarded by a test in `backend/src/__tests__/email.test.ts`. The rationale is `docs/security.md § Risk 1` (impersonation).
-- **PII retention.** Today: a scheduled cleanup job at `backend/src/pii-cleanup.ts` (EventBridge monthly, see `infra/pii_cleanup.tf`). Proposed alternative: DynamoDB TTL (see `docs/orders-pii-split-plan.md`).
+- **PII retention.** DynamoDB per-item TTL (`ttl` attribute on each row in `infra/dynamodb.tf`, set by `orders-store.ts:buildPiiItem` to `createdAt + 365 days`). The PII lives in the DynamoDB orders table; the Sanity order doc holds only the non-PII skeleton. The pre-Phase-1 scheduled cleanup job (`backend/src/pii-cleanup.ts` + `infra/pii_cleanup.tf`) was deleted at the Day 8 cutover — flag any reference to it as stale.
 - **No emojis, no comments, no preemptive abstractions** — the house rules in the root `CLAUDE.md` apply to anything you write.
 
 ## Audit areas you handle

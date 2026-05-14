@@ -23,6 +23,30 @@ import {
 
 const ONE_YEAR_SECONDS = 365 * 24 * 60 * 60;
 
+// Lambda runs with a 30s timeout (infra/lambda.tf). If the Sanity HTTPS
+// call hangs (CDN edge, maintenance, slow TLS handshake) until the
+// Lambda budget expires, the runtime terminates the invocation
+// mid-flight and the compensating-delete catch block never runs — we
+// end up with an orphaned PII row in DynamoDB. Bounding the Sanity
+// call to 10s gives the catch block at least 20s to issue the
+// DeleteCommand even on a worst-case retry.
+const SANITY_WRITE_TIMEOUT_MS = 10_000;
+
+async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	const timeoutPromise = new Promise<never>((_, reject) => {
+		timer = setTimeout(
+			() => reject(new Error(`${label} timed out after ${ms}ms`)),
+			ms
+		);
+	});
+	try {
+		return await Promise.race([promise, timeoutPromise]);
+	} finally {
+		if (timer) clearTimeout(timer);
+	}
+}
+
 export type OrderPii = {
 	orderRef: string;
 	customerName: string;
@@ -140,11 +164,15 @@ export async function createOrder(input: NewOrderInput): Promise<Order> {
 
 	let sanityOrder: SanityOrder;
 	try {
-		sanityOrder = await createSanityOrder({
-			orderRef: input.orderRef,
-			paymentMethod: input.paymentMethod,
-			amountZar: input.amountZar
-		});
+		sanityOrder = await withTimeout(
+			createSanityOrder({
+				orderRef: input.orderRef,
+				paymentMethod: input.paymentMethod,
+				amountZar: input.amountZar
+			}),
+			SANITY_WRITE_TIMEOUT_MS,
+			'Sanity createOrder'
+		);
 	} catch (err) {
 		try {
 			await deleteOrderPii(input.orderRef);

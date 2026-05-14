@@ -3,6 +3,15 @@
 // dual-write deploy. Idempotent — re-running skips rows that are already
 // present.
 //
+// **Phase 1 note:** after the Day 8 cutover, the Sanity order document
+// no longer holds PII (the scrub-sanity-pii.ts script nulls those
+// fields). Running this backfill post-cutover would therefore write
+// rows with mostly-empty PII into DynamoDB — not useful in steady
+// state. The script is preserved as an archival/audit tool for
+// historical Phase 0 backfills and as a debugging aid; in normal
+// Phase 1 operations there is nothing to backfill because
+// orders-store.ts writes the DynamoDB row at order-creation time.
+//
 // Run from backend/ with
 //   pnpm backfill:orders [--dry-run] [--overwrite] [--prod]
 //
@@ -34,9 +43,12 @@ import type { OrderPii } from '../orders-store.js';
 
 const ONE_YEAR_SECONDS = 365 * 24 * 60 * 60;
 
-// Matches the field set on the existing Sanity order schema. PII fields
-// are optional because pii-cleanup.ts may have already null-ed them out
-// on terminal-state orders older than 365 days.
+// Matches the Phase-0-era field set on the Sanity order schema. PII
+// fields are optional because (a) the pre-Phase-1 pii-cleanup job may
+// have null-ed them on terminal orders past 365 days, and (b) the
+// Phase-1 scrub script nulls every PII field on every order doc. The
+// script's logic predates Phase 1 — empty strings are the deliberate
+// "no PII to copy" sentinel.
 type SanityOrderForBackfill = {
 	_id: string;
 	_createdAt: string;
@@ -61,8 +73,9 @@ export function piiItemFromSanity(order: SanityOrderForBackfill): OrderPii {
 	return {
 		orderRef: order.orderRef,
 		// Empty-string fallback for required-on-the-DynamoDB-shape fields
-		// that may have been scrubbed by pii-cleanup. Empty is correct here
-		// — the row exists for join-key purposes; the customer data is
+		// that may have been scrubbed by either the old pii-cleanup
+		// (Phase 0) or the Phase-1 scrub script. Empty is correct here —
+		// the row exists for join-key purposes; the customer data is
 		// gone by design, not by accident.
 		customerName: order.customerName ?? '',
 		customerEmail: order.customerEmail ?? '',

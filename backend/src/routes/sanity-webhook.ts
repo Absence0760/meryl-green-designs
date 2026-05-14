@@ -83,7 +83,26 @@ export function sanityWebhookRouter() {
 		// (the Sanity doc itself is now PII-free). Join with DynamoDB to
 		// recover customerEmail + customerName + tracking info before
 		// rendering the status email.
-		const order = await getOrderByRef(webhookOrder.orderRef);
+		//
+		// Two distinct failure cases need different HTTP responses:
+		//   - getOrderByRef throws (transient — DynamoDB throttling,
+		//     network blip, Sanity timeout). Return 503 so the Sanity
+		//     webhook infrastructure retries; a successful second
+		//     attempt produces the email the customer expects.
+		//   - getOrderByRef returns null (permanent — TTL fired, manual
+		//     delete, orphan row). Return 200 + skipped so the webhook
+		//     stops retrying; no amount of retrying brings back a
+		//     deleted PII row.
+		let order: Awaited<ReturnType<typeof getOrderByRef>>;
+		try {
+			order = await getOrderByRef(webhookOrder.orderRef);
+		} catch (err) {
+			const message = err instanceof Error ? err.message : String(err);
+			console.error(
+				`Sanity webhook: DynamoDB/Sanity join failed for ${webhookOrder.orderRef}: ${message}`
+			);
+			return c.json({ error: 'Order lookup failed, please retry' }, 503);
+		}
 		if (!order) {
 			console.warn(
 				`Sanity webhook for order ${webhookOrder.orderRef} could not be joined with DynamoDB — skipping`
