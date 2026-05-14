@@ -16,8 +16,18 @@ terraform {
 
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.70"
+      source = "hashicorp/aws"
+      # Provider v6 — major bump from v5 done 2026-05-14. Survey:
+      #   - aws_cloudfront_response_headers_policy.etag is now
+      #     computed-only (we never set it; no edit needed).
+      #   - aws_s3_bucket exposes `bucket_region` alongside the
+      #     repurposed `region` arg. We read neither; no edit needed.
+      #   - No state migrations required for our resource set —
+      #     none of the v6 forced-re-imports (api_gateway_deployment
+      #     v1, appflow, cognito_user_in_group, sagemaker_image_version,
+      #     redshift snapshot_copy/logging) are in our infra.
+      # See https://registry.terraform.io/providers/hashicorp/aws/latest/docs/guides/version-6-upgrade
+      version = "~> 6.45"
     }
   }
 }
