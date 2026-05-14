@@ -36,19 +36,21 @@ on:
     # 06:00 UTC Monday — same tide as audit.yml / codeql.yml / scorecard.yml.
     - cron: '0 6 * * 1'
 
-permissions:
-  # The action POSTs SARIF findings via the same security-events
-  # permission CodeQL uses — keeps the Security tab the single pane
-  # of glass.
-  contents: read
-  security-events: write
-  pull-requests: read
+permissions: read-all
 
 jobs:
   scan:
     name: gitleaks
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
+      # The action POSTs SARIF findings via the same security-events
+      # permission CodeQL uses — keeps the Security tab the single
+      # pane of glass.
+      security-events: write
+      # PR metadata for inline annotations.
+      pull-requests: read
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:

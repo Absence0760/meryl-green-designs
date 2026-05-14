@@ -25,11 +25,7 @@ on:
   pull_request_target:
     branches: [main]
 
-permissions:
-  # `pull_request_target` runs in the base-branch context — needs
-  # explicit grants for the few things gh/dependabot do here.
-  contents: write
-  pull-requests: write
+permissions: read-all
 
 jobs:
   auto-merge:
@@ -41,6 +37,13 @@ jobs:
     # branches, but a belt-and-braces author gate costs nothing.
     if: github.actor == 'dependabot[bot]'
     timeout-minutes: 5
+    permissions:
+      # `pull_request_target` runs in the base-branch context — needs
+      # explicit write grants for `gh pr review --approve` and
+      # `gh pr merge --auto`. Scoped to this job only so a future
+      # job in this workflow doesn't silently inherit them.
+      contents: write
+      pull-requests: write
     steps:
       - name: Read dependabot metadata
         id: meta

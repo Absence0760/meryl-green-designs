@@ -34,19 +34,26 @@ concurrency:
   group: codeql-${{ github.ref }}
   cancel-in-progress: true
 
-permissions:
-  contents: read
-  security-events: write
-  # `actions: read` is needed by the analyze step's workflow-run lookup
-  # (without it the action errors with "Resource not accessible by
-  # integration" even when the analysis itself succeeded).
-  actions: read
+# Workflow-level permission is the least-privilege baseline; the analyze
+# job below requests the additional scopes it actually needs. Per
+# Scorecard Token-Permissions guidance: prefer per-job permission blocks
+# over a single elevated top-level set.
+permissions: read-all
 
 jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      # SARIF upload requires `security-events: write` for the
+      # analyze step to publish findings into the Security tab.
+      security-events: write
+      # `actions: read` is needed by the analyze step's workflow-run
+      # lookup (without it the action errors with "Resource not
+      # accessible by integration" even when analysis itself succeeded).
+      actions: read
     strategy:
       fail-fast: false
       matrix:

@@ -31,19 +31,16 @@ on:
       - 'infra/**'
       - '.github/workflows/terraform.yml'
 
-permissions:
-  contents: read
-  security-events: write
-  # `pull-requests: write` lets us post the `terraform validate`
-  # summary as a PR comment if we ever wire one up (today the only
-  # output is the workflow log + the Security tab).
-  pull-requests: write
+permissions: read-all
 
 jobs:
   fmt-validate:
     name: fmt + validate
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      # fmt + validate touch nothing privileged — read access only.
+      contents: read
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -81,6 +78,10 @@ jobs:
     name: Trivy IaC scan
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
+      # SARIF upload to the Security tab requires security-events:write.
+      security-events: write
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 

@@ -10,6 +10,12 @@ on:
   pull_request_review:
     types: [submitted]
 
+# Top-level read-all per Scorecard Token-Permissions guidance — the
+# claude job below requests the elevated scopes it actually needs.
+# Any future job added to this workflow inherits the read-only
+# default unless it explicitly opts into more.
+permissions: read-all
+
 jobs:
   claude:
     # Authorisation gate. Both conditions must hold:
