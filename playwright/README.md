@@ -121,3 +121,74 @@ public PayFast sandbox merchant, and the `test-e2e` Sanity dataset
 
 If a spec fails in CI, the workflow uploads the Playwright HTML report
 as an artifact — open it locally to see traces / screenshots / video.
+
+### GitHub Actions `e2e` environment — first-time setup + reset runbook
+
+The workflow targets a dedicated `e2e` GitHub Actions environment
+(separate from the `production` environment the deploy workflows use,
+so test credentials cannot reach prod). The environment must exist
+and carry two variables + three secrets before the workflow can pass.
+
+The full table of what each value is for lives in
+[`docs/deployment.md § GitHub Actions environment for end-to-end tests`](../docs/deployment.md#github-actions-environment-for-end-to-end-tests-e2e).
+This section is the **how-to-set-it-up** runbook — re-run any of
+these commands to rotate a value.
+
+**Prerequisites:** a separate Sanity account (see [One-time local setup](#one-time-local-setup)
+step 1) with a project + Editor API token already created.
+
+#### Create the environment and populate it
+
+```bash
+# Create the e2e environment (idempotent — succeeds if it already exists)
+gh api -X PUT repos/Absence0760/meryl-green-designs/environments/e2e
+
+# Variables (public, visible in workflow logs)
+gh variable set SANITY_E2E_PROJECT_ID --env e2e --body '<paste your test project id>'
+gh variable set SANITY_E2E_DATASET    --env e2e --body 'test-e2e'
+
+# Secrets (masked in logs, set value-by-stdin for the Sanity token so it
+# doesn't end up in your shell history)
+gh secret set SANITY_E2E_TOKEN          --env e2e   # prompts; paste the Sanity Editor token
+gh secret set SANITY_E2E_WEBHOOK_SECRET --env e2e --body "$(openssl rand -hex 32)"
+gh secret set E2E_ADMIN_API_TOKEN       --env e2e --body "$(openssl rand -hex 32)"
+```
+
+`SANITY_E2E_WEBHOOK_SECRET` and `E2E_ADMIN_API_TOKEN` are random hex
+values shared only between the test runner and the test backend the
+workflow spawns. Neither is configured on the Sanity side — the suite
+**simulates** the Sanity webhook by signing payloads itself.
+`SANITY_E2E_TOKEN` is the one real Sanity-issued credential, generated
+in the Sanity dashboard (Manage → API → Tokens, Editor scope).
+
+#### Inspect what's currently set
+
+```bash
+gh variable list --env e2e
+gh secret list   --env e2e   # values are never returned, only names + last-updated
+```
+
+#### Rotate a single value
+
+Re-run the matching `set` command from the create block above —
+GitHub overwrites the existing variable / secret in place.
+
+After rotating, re-run the most recent failed workflow run so it
+picks up the new value:
+
+```bash
+gh run list --workflow e2e.yml --limit 5
+gh run rerun <run-id>
+```
+
+#### Reset the whole environment
+
+If something has drifted and you want to start fresh:
+
+```bash
+gh api -X DELETE repos/Absence0760/meryl-green-designs/environments/e2e
+# then re-run the "Create the environment and populate it" block above
+```
+
+Deleting the environment also drops every variable and secret stored
+in it — no separate cleanup step needed.

@@ -860,6 +860,10 @@ it leaks.
 PayFast values are not secrets — the e2e workflow hard-codes the
 public sandbox merchant (`10004002`) in `.github/workflows/e2e.yml`.
 
+The exact `gh` commands to create + populate (or reset / rotate) this
+environment live in
+[`playwright/README.md § GitHub Actions e2e environment — first-time setup + reset runbook`](../playwright/README.md#github-actions-e2e-environment--first-time-setup--reset-runbook).
+
 ### Local development (not production)
 
 - `frontend/.env` — `PUBLIC_API_URL`, `PUBLIC_SANITY_PROJECT_ID`, `PUBLIC_SANITY_DATASET`
