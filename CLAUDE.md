@@ -76,6 +76,6 @@ Treat "code changed, docs and tests unchanged" as an incomplete task — flag it
 - `docs/orders-pii-split-plan.md` — proposal (not implemented) for moving order PII off Sanity into DynamoDB so the Sanity Free plan suffices
 - `docs/security.md` — risk register, mitigations, incident playbook
 - `infra/README.md` — Terraform module specifics
-- `.github/workflows/` — `ci.yml` (PR + push typecheck/test), `codeql.yml` (SAST on PR + push + weekly), `audit.yml` (weekly `pnpm audit`, auto-files an issue), three release-gated deploy workflows with skip-if-unchanged checks, `dependabot-lockfile.yml` (syncs root pnpm-lock.yaml on Dependabot PRs), `claude.yml` automation
+- `.github/workflows/` — `ci.yml` (PR + push typecheck/test), `codeql.yml` (SAST on JS/TS + GitHub Actions YAML, PR + push + weekly), `audit.yml` (weekly `pnpm audit`, auto-files an issue), `gitleaks.yml` (secret-scan on PR + push + weekly full-history sweep), `scorecard.yml` (weekly OpenSSF supply-chain posture), `terraform.yml` (`fmt -check` + `validate` + Trivy IaC on `infra/**` changes), three release-gated deploy workflows with skip-if-unchanged checks, `dependabot-lockfile.yml` (syncs root pnpm-lock.yaml on Dependabot PRs), `dependabot-auto-merge.yml` (auto-merges minor/patch Dependabot PRs once CI is green), `claude.yml` automation
 
 Prefer reading these over guessing. Update them when behaviour changes.

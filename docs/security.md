@@ -432,9 +432,26 @@ injection in JSX `style` rendering): no advisory until someone finds it.
 **Current mitigations:**
 - **CodeQL** (`.github/workflows/codeql.yml`) runs the
   `security-and-quality` query suite on every PR to `main`, every push
-  to `main`, and on a weekly cron (Sunday 06:00 UTC). Findings surface
-  in the repo's Security tab under "Code scanning alerts" with line-
-  level annotations on the PR diff.
+  to `main`, and on a weekly cron (Sunday 06:00 UTC). Two matrix legs:
+  `javascript-typescript` covers backend / frontend / studio, and
+  `actions` covers the workflow YAML itself (workflow-injection sinks,
+  unpinned action references). Findings surface in the repo's Security
+  tab under "Code scanning alerts" with line-level annotations on the
+  PR diff.
+- **gitleaks** (`.github/workflows/gitleaks.yml`) regex-scans the
+  working tree on every PR + push to `main`, and the entire git
+  history on a weekly cron (Monday 06:00 UTC). Catches stray pastes of
+  AWS keys, Sanity API tokens, Resend keys, PayFast passphrase, admin
+  tokens — anything matching the gitleaks default ruleset.
+- **OpenSSF Scorecard** (`.github/workflows/scorecard.yml`) measures
+  branch-protection, action-pinning, vulnerability-management posture,
+  etc. against an OpenSSF-maintained rubric. Weekly cron, advisory
+  only — drops are usually a 30-second triage, not a blocker.
+- **Trivy IaC scan** (`.github/workflows/terraform.yml`) runs the
+  tfsec-derived config ruleset across `infra/` on every PR + push that
+  touches the stack. Flags public S3 buckets, IAM `Action: *`,
+  missing encryption-at-rest, and similar known-bad patterns before
+  `terraform apply`.
 - **GitHub-native secret scanning + push protection** are enabled at
   the repo level — pushes containing recognised provider tokens
   (AWS keys, GitHub PATs, etc.) are rejected at the API.
@@ -448,6 +465,13 @@ injection in JSX `style` rendering): no advisory until someone finds it.
   `<script>` blocks of components is scanned; template-only data flows
   may not be. Most of our security-relevant code lives in the backend
   (`backend/src/`), which is plain TypeScript and fully covered.
+- gitleaks catches *patterns* — a high-entropy custom-format token
+  (e.g. an internal HMAC key encoded as base64url) may pass the default
+  ruleset unflagged. Repository-wide push protection at the GitHub
+  level catches the providers we care about most.
+- Trivy IaC scans known-bad patterns — a logically-insecure but
+  syntactically-clean construct (overly broad bucket policy that
+  passes the ruleset) needs manual review.
 - SAST finds patterns it knows. Novel vulnerabilities and logic bugs
   (e.g. the ITN amount mismatch class in risk 10) need manual review.
 

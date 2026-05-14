@@ -121,3 +121,22 @@ updates:
       all-actions:
         patterns:
           - "*"
+
+  # ---------------------------------------------------------------------------
+  # Terraform (infra/)
+  # ---------------------------------------------------------------------------
+  # Tracks the AWS provider lock in `infra/.terraform.lock.hcl`. Dependabot
+  # only bumps provider versions here (not the `required_version` for the
+  # terraform binary itself); bump that manually when a stack-wide upgrade
+  # is intentional. Aligned with the new workflows/terraform.yml gate.
+  - package-ecosystem: "terraform"
+    directory: "/infra"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Africa/Johannesburg"
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: "chore(infra)"
+      include: "scope"

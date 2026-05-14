@@ -1,0 +1,66 @@
+name: gitleaks
+
+# Secret-scan every push to main, every PR, and the full history once
+# a week. Catches accidentally-committed AWS keys, Sanity API tokens,
+# Resend API keys, PayFast passphrase, admin tokens — anything an
+# automated pattern can recognise.
+#
+# Complements existing controls:
+#   - CodeQL (workflows/codeql.yml) — finds source-level injection
+#     vulns, not secrets.
+#   - pnpm audit (workflows/audit.yml) — flags CVEs in dependencies,
+#     not committed secrets.
+#   - SOPS + AWS KMS for the secrets we mean to keep
+#     (`infra/terraform.tfvars.sops`, `backend/.env.sops`) — defends
+#     correctly-stored secrets, doesn't catch a stray paste.
+#
+# What gitleaks adds: regex-matching against the entire working tree
+# AND git history, with a built-in rule set tuned for common token
+# shapes (AWS, Sanity, GitHub, Resend, generic API keys, etc.).
+#
+# False positives go in `.gitleaks.toml` at the repo root (not yet
+# created — add it on first false hit rather than pre-empt). The
+# example secrets in `backend/.env.example`, `studio/.env.example`,
+# and `frontend/.env.example` use obviously-placeholder values that
+# the default ruleset already passes.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Weekly full-history sweep. The push / PR triggers above only
+    # diff against the base, so a secret that landed on a forgotten
+    # branch and got merged via fast-forward could slip through.
+    # 06:00 UTC Monday — same tide as audit.yml / codeql.yml / scorecard.yml.
+    - cron: '0 6 * * 1'
+
+permissions:
+  # The action POSTs SARIF findings via the same security-events
+  # permission CodeQL uses — keeps the Security tab the single pane
+  # of glass.
+  contents: read
+  security-events: write
+  pull-requests: read
+
+jobs:
+  scan:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          # `fetch-depth: 0` is required for the full-history scan
+          # on the scheduled run. Push/PR triggers ignore the depth
+          # because they have access to the base ref via the
+          # workflow event itself.
+          fetch-depth: 0
+
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # GITLEAKS_LICENSE is intentionally unset — public-repo free
+          # tier covers everything we need.
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: 'false'

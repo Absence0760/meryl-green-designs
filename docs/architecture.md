@@ -446,6 +446,17 @@ an S3 bucket with a DynamoDB lock table (created manually once; see
 
 CI/CD lives in `.github/workflows/`:
 - `ci.yml` — typecheck + vitest on every PR and push. Never deploys.
+- `codeql.yml` — CodeQL SAST on JS/TS + GitHub Actions YAML on every PR,
+  push to main, and weekly. Findings surface in the Security tab.
+- `audit.yml` — `pnpm audit` weekly; auto-files a `dependency-audit`
+  issue on findings and auto-closes on next clean run.
+- `gitleaks.yml` — secret-scan on every PR + push + weekly full-history
+  sweep. Catches accidentally-committed tokens.
+- `scorecard.yml` — weekly OpenSSF Scorecard supply-chain posture
+  analysis (advisory only).
+- `terraform.yml` — `terraform fmt -check` + `terraform validate`
+  (`-backend=false`, no AWS creds) + Trivy IaC scan on every PR + push
+  that touches `infra/**`.
 - `deploy-frontend.yml` — runs on `release: published`. Check job diffs the
   release tag against the previous release, scoped to `frontend/**` + shared
   files; deploys only if anything relevant changed. Also responds to
@@ -462,6 +473,9 @@ CI/CD lives in `.github/workflows/`:
   itself only rewrites per-workspace `package.json` and leaves the shared
   root lockfile stale (which otherwise breaks `ci.yml`'s `--frozen-lockfile`).
   Requires a `DEPENDABOT_LOCKFILE_PAT` repo secret — see the workflow file.
+- `dependabot-auto-merge.yml` — squash-merges minor + patch Dependabot
+  PRs once CI is green. Major bumps stay manual (audit history shows
+  they need code changes). Repo setting required: "Allow auto-merge".
 
 All three deploy workflows authenticate to AWS via **GitHub OIDC federation** — no
 long-lived access keys are stored in the repo. The IAM role's trust policy
