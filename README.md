@@ -12,7 +12,7 @@ to manage products herself.
   + CloudFront
 - **Backend**: Hono on AWS Lambda fronted by API Gateway (HTTP API), sends
   order emails via Resend
-- **CMS**: Sanity Studio v3, hosted at `*.sanity.studio`
+- **CMS**: Sanity Studio v5 (React 19), hosted at `*.sanity.studio`
 - **Infrastructure**: Terraform (`infra/`) — S3, CloudFront, Lambda, API
   Gateway, IAM, Route 53, ACM, GitHub OIDC
 - **CI/CD**: GitHub Actions (`.github/workflows/`) deploying via OIDC
@@ -26,6 +26,7 @@ meryl-green-designs/
 ├── backend/        Hono API (local Node server + AWS Lambda entry)
 ├── studio/         Sanity Studio (content management UI)
 ├── infra/          Terraform — all AWS resources
+├── bin/            Setup + ops scripts (sops-init.sh, setup.sh, dev helpers)
 ├── .github/
 │   └── workflows/  Deploy pipelines + Claude Code automation
 └── docs/           Architecture, features, roadmap, run-locally, deployment
@@ -78,7 +79,9 @@ and what still needs manual attention.
 - [`docs/run-locally.md`](./docs/run-locally.md) — getting it running on your machine
 - [`docs/deployment.md`](./docs/deployment.md) — first-time AWS deploy walkthrough
 - [`docs/roadmap.md`](./docs/roadmap.md) — what's planned, what's not
-- [`docs/orders-and-tracking.md`](./docs/orders-and-tracking.md) — orders as Sanity docs + public track page
+- [`docs/orders-and-tracking.md`](./docs/orders-and-tracking.md) — order schema, status webhook, public track page
+- [`docs/orders-pii-split-plan.md`](./docs/orders-pii-split-plan.md) — Phase 1 PII split (DynamoDB + Sanity), live since 2026-05-13
+- [`docs/payment-retry-plan.md`](./docs/payment-retry-plan.md) — payment-retry flow for failed/cancelled orders
 - [`docs/security.md`](./docs/security.md) — risk register, mitigations, incident playbook
 - [`infra/README.md`](./infra/README.md) — Terraform module specifics
 
@@ -89,6 +92,19 @@ pnpm dev                    # frontend + backend in parallel
 pnpm dev:all                # + studio
 pnpm build                  # build all packages
 pnpm check                  # typecheck all packages
+pnpm test                   # vitest run across workspaces
+
+# Local dev infrastructure (LocalStack emulating DynamoDB on :4566)
+pnpm dev:db:up              # start LocalStack + create the orders table (idempotent)
+pnpm dev:db:down            # stop the container, keep data
+pnpm dev:db:reset           # wipe volume + bring back up fresh
+pnpm dev:db:scan            # scan the local orders table (quick view)
+pnpm dev:emails             # open the most recent captured email (EMAIL_BACKEND=file)
+
+# One-off ops (PII split + retry/backfill)
+pnpm backfill:orders[:dry]      # copy Sanity order PII back into DynamoDB
+pnpm restore:sanity-pii[:dry]   # restore PII onto Sanity orders (Phase-1 rollback)
+pnpm scrub:sanity-pii[:dry]     # delete PII from historical Sanity order docs
 
 pnpm frontend <script>      # shortcut: pnpm --filter @meryl-green-designs/frontend
 pnpm backend <script>       # shortcut: pnpm --filter @meryl-green-designs/backend
