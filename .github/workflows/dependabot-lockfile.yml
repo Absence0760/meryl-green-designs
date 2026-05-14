@@ -10,8 +10,20 @@ name: Dependabot lockfile sync
 #   1. Create a fine-grained PAT scoped to this repo with "Contents: Write"
 #      permission (Settings → Developer settings → Personal access tokens →
 #      Fine-grained tokens). Expiry up to you — rotate when it expires.
-#   2. Add it as a repo secret named `DEPENDABOT_LOCKFILE_PAT`
-#      (Settings → Secrets and variables → Actions → New repository secret).
+#   2. Add it as a **Dependabot** secret named `DEPENDABOT_LOCKFILE_PAT`:
+#      Settings → Secrets and variables → **Dependabot** → New repository
+#      secret. NOT the Actions tab.
+#      CLI: `gh secret set DEPENDABOT_LOCKFILE_PAT --app dependabot`
+#
+# Why the Dependabot store (gotcha that bit us once already): GitHub
+# treats Dependabot-authored PRs as forks for permission purposes.
+# Workflows triggered by them get a read-only GITHUB_TOKEN and CANNOT
+# read secrets from the regular Actions store — only from the separate
+# Dependabot secrets store. A PAT stashed under Settings → Actions
+# secrets is invisible to this workflow when Dependabot opens a PR;
+# the gate step below sees an empty value and skips, ci.yml then
+# fails --frozen-lockfile, and the PR has to be landed manually.
+# `gh api repos/:owner/:repo/dependabot/secrets` lists the right store.
 #
 # Why a PAT and not GITHUB_TOKEN: pushes made with GITHUB_TOKEN do not retrigger
 # workflows — GitHub blocks that path to prevent infinite loops. A PAT push is

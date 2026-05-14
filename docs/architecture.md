@@ -568,7 +568,11 @@ CI/CD lives in `.github/workflows/`:
   `pnpm install --lockfile-only` and commits it back, because Dependabot
   itself only rewrites per-workspace `package.json` and leaves the shared
   root lockfile stale (which otherwise breaks `ci.yml`'s `--frozen-lockfile`).
-  Requires a `DEPENDABOT_LOCKFILE_PAT` repo secret — see the workflow file.
+  Requires a `DEPENDABOT_LOCKFILE_PAT` **Dependabot** secret (Settings →
+  Secrets and variables → Dependabot, NOT the Actions tab — workflows
+  triggered by Dependabot PRs can't read Actions secrets). Set via
+  `gh secret set DEPENDABOT_LOCKFILE_PAT --app dependabot`. See the
+  workflow file for the rest of the setup.
 - `dependabot-auto-merge.yml` — squash-merges minor + patch Dependabot
   PRs once CI is green. Major bumps stay manual (audit history shows
   they need code changes). Repo setting required: "Allow auto-merge".

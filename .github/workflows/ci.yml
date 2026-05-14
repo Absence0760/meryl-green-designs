@@ -47,4 +47,10 @@ jobs:
         run: pnpm check
 
       - name: Run tests
-        run: pnpm test
+        # Filter out the playwright workspace — its `test` script invokes
+        # `playwright test` which loads playwright.config.ts, and the
+        # config's env-guard throws without SANITY_PROJECT_ID etc.
+        # The e2e suite is covered by e2e.yml (which provides those
+        # env vars). Locally `pnpm test` still runs everything because
+        # playwright/.env populates the same vars.
+        run: pnpm --filter '!@meryl-green-designs/playwright' -r run test
