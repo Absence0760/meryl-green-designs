@@ -1,0 +1,40 @@
+# gitleaks configuration for Meryl Green Designs.
+#
+# The repo's gitleaks workflow (.github/workflows/gitleaks.yml) runs the
+# default ruleset across the working tree and full git history. This
+# file extends the defaults with narrowly-scoped allowlist entries so
+# the weekly cron doesn't fire false positives on values that are
+# documented as public sandbox credentials.
+#
+# Add to this file only when a real false-positive lands. Prefer
+# pattern-narrow regex matches over broad path exclusions, so a real
+# secret that arrives in the same file still gets flagged.
+
+title = "Meryl Green Designs"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = """
+PayFast public sandbox merchant credentials — safe to commit.
+
+PayFast publishes these values for end-to-end testing against
+sandbox.payfast.co.za. They cannot be used to move real money:
+the sandbox merchant has no settlement attached. They appear
+in the e2e workflow env, the Playwright config, the backend
+PayFast unit tests, and the local-dev walkthrough.
+
+Reference: https://developers.payfast.co.za/docs#sandbox
+"""
+
+# Match only the literal sandbox values, NOT entire files. If a real
+# token ever lands in the same file, gitleaks still catches it.
+regexes = [
+  # Sandbox merchant key (13 alphanumeric chars published by PayFast)
+  '''q1cd2rdny4a53''',
+  # Sandbox merchant id
+  '''10004002''',
+  # Sandbox passphrase (the literal word; matched in context of PAYFAST_PASSPHRASE)
+  '''PAYFAST_PASSPHRASE\s*[:=]\s*["']?payfast["']?'''
+]
