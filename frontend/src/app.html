@@ -9,11 +9,15 @@
 		     meta tags for routes that keep SSR on. -->
 		<link rel="icon" type="image/svg+xml" href="%sveltekit.assets%/favicon.svg" />
 		<meta name="theme-color" content="#2f4a25" />
-		<link rel="preconnect" href="https://fonts.googleapis.com" />
-		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<!-- Fraunces is self-hosted (see app.css @font-face). Preload the
+		     latin roman subset to keep first-contentful-paint snappy now
+		     that we no longer benefit from Google Fonts' edge caching. -->
 		<link
-			href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..700&display=swap"
-			rel="stylesheet"
+			rel="preload"
+			href="%sveltekit.assets%/fonts/fraunces-normal-latin.woff2"
+			as="font"
+			type="font/woff2"
+			crossorigin
 		/>
 		%sveltekit.head%
 	</head>
