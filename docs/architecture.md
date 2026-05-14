@@ -14,14 +14,20 @@ and GitHub Actions workflows for CI/CD:
 - `backend/` — Hono app, written once and deployed two ways: as a local Node HTTP
   server for development and as an AWS Lambda handler for production. Bundled
   with esbuild.
-- `studio/` — Sanity Studio v3, a dashboard where the shop owner manages products
+- `studio/` — Sanity Studio v5 (React 19), a dashboard where the shop owner manages products
   (name, price, photos, availability). Runs locally or as a free hosted app at
   `*.sanity.studio`.
 - `infra/` — Terraform module that provisions all AWS resources (S3, CloudFront,
-  Lambda, API Gateway HTTP API, IAM, Route 53, ACM, GitHub OIDC). Not a workspace package.
-- `.github/workflows/` — three deploy workflows (frontend, backend, studio)
-  that authenticate to AWS via OIDC and run when a GitHub release is published
-  (release-gated, with skip-if-unchanged checks per workspace).
+  Lambda, API Gateway HTTP API, DynamoDB for order PII, auto-cancel Lambda +
+  EventBridge schedule, SNS ops alerts + SQS DLQ, CloudWatch budget, IAM,
+  Route 53, ACM, GitHub OIDC). Not a workspace package.
+- `.github/workflows/` — twelve workflows total: three release-gated deploy
+  workflows (frontend, backend, studio) that authenticate to AWS via OIDC,
+  plus CI (typecheck + test), CodeQL SAST, weekly dependency audit, Gitleaks
+  secret-scan, OpenSSF Scorecard, Terraform fmt/validate/Trivy, two Dependabot
+  helpers, and the Claude Code automation. The deploy workflows run on
+  `release: published` with skip-if-unchanged checks per workspace. Full
+  inventory at the bottom of this file.
 
 The three app packages are decoupled. The frontend knows the backend only by its
 URL (`PUBLIC_API_URL`), and knows Sanity only by a project ID
@@ -80,18 +86,26 @@ meryl-green-designs/
 │       ├── app.ts            Hono app factory + CORS + route mounting
 │       ├── server.ts         Local dev entry (runs on :3001)
 │       ├── lambda.ts         AWS Lambda entry (wraps app with hono/aws-lambda)
+│       ├── auto-cancel-lambda.ts  Daily EventBridge-invoked Lambda: cancels stale pending_payment orders
 │       ├── email.ts          Resend API wrapper + HTML escaping
 │       ├── email-templates.ts Status-keyed customer email templates
+│       ├── email-match.ts    Constant-time email-equality for track-page lookups
 │       ├── payfast.ts        PayFast signature generation, ITN validation, form-data builder
-│       ├── sanity.ts         @sanity/client wrapper: createOrder, getOrderByRef, getProducts, etc.
+│       ├── dynamo.ts         DynamoDB client + endpoint override for local LocalStack
+│       ├── orders-store.ts   Combined orders read/write layer (DynamoDB PII + Sanity skeleton)
+│       ├── sanity.ts         @sanity/client wrapper (low-level Sanity reads/writes)
+│       ├── rate-limit.ts     Per-IP token-bucket middleware
+│       ├── middleware/       admin-auth.ts (bearer token + constant-time compare for /admin/*)
+│       ├── scripts/          backfill-orders.ts, restore-sanity-pii.ts, scrub-sanity-pii.ts (Phase-1 ops)
 │       └── routes/
 │           ├── products.ts         GET /products + GET /products/:slug from Sanity
 │           ├── gallery.ts          GET /gallery — list visible gallery photos from Sanity
 │           ├── testimonials.ts     GET /testimonials — list visible testimonials from Sanity
-│           ├── orders.ts           POST /orders — validate + create Sanity doc + PayFast/email
-│           ├── order-lookup.ts     GET /orders/:ref?email= — track page lookup
+│           ├── orders.ts           POST /orders — validate + DynamoDB PII write + Sanity skeleton + PayFast/email
+│           ├── order-lookup.ts     GET /orders/:ref?email= — track page lookup (joins DynamoDB + Sanity)
 │           ├── payment-retry.ts    POST /orders/:ref/retry-payment?email= — self-service retry
 │           ├── enquiries.ts        POST /enquiries — commission enquiry form → owner email
+│           ├── admin.ts            GET/PATCH /admin/orders/:ref/* — Studio-only PII routes (bearer token)
 │           ├── payfast-itn.ts      POST /webhooks/payfast-itn — PayFast payment confirmation
 │           └── sanity-webhook.ts   POST /webhooks/sanity-order — verify sig + dispatch email
 ├── studio/
@@ -104,24 +118,42 @@ meryl-green-designs/
 │       ├── product.ts        Product schema (name, price, photos, availability, order)
 │       ├── galleryPhoto.ts   Gallery photo schema (image, caption, visible, order)
 │       ├── testimonial.ts    Testimonial schema (quote, author, location, visible, order)
-│       └── order.ts          Order schema (ref, status, customer, shipping, internal notes)
+│       └── order.ts          Order schema, Phase-1 skeleton (orderRef, status, paymentMethod, amountZar, paymentId + DynamoDB-backed panel slots)
 ├── infra/
 │   ├── README.md             Bootstrap + apply walkthrough
 │   ├── main.tf               Providers (af-south-1 + us-east-1 alias), state backend
 │   ├── variables.tf
 │   ├── outputs.tf            Values CI reads (bucket, distribution id, role ARN, etc.)
 │   ├── s3_cloudfront.tf      Bucket + OAC + cert + CloudFront (incl. /api/* → API Gateway behavior) + Route 53 records
-│   ├── lambda.tf             Backend HTTP function + exec role + log group
-│   ├── auto_cancel.tf        Daily Lambda (EventBridge cron) that cancels stale pending_payment orders
+│   ├── security_headers.tf   CloudFront response-headers policy (HSTS, X-Frame-Options, Referrer-Policy, etc.)
+│   ├── lambda.tf             Backend HTTP function + exec role + log group + reserved concurrency
+│   ├── auto_cancel.tf        Daily Lambda (EventBridge cron) that cancels stale pending_payment orders + SNS alerts + SQS DLQ
 │   ├── api_gateway.tf        HTTP API + AWS_PROXY integration + default stage + invoke permission
+│   ├── dynamodb.tf           Orders PII table (prevent_destroy, PITR, TTL, AWS-managed encryption)
+│   ├── budget.tf             CloudWatch monthly budget + email alerts (50/80/100% actual + 100% forecast)
 │   ├── github_oidc.tf        GitHub OIDC provider + CI role (trust-policied to `production` env) + scoped policy
-│   └── terraform.tfvars.example
+│   ├── terraform.tfvars.example  Plaintext example; real values live in terraform.tfvars.sops (KMS-encrypted)
+│   └── terraform.tfvars.sops     SOPS-encrypted secrets (resend_api_key, payfast_*, admin_api_token, sanity tokens, etc.)
+├── bin/
+│   ├── setup.sh              One-command production bootstrap (state backend + apply + GH Actions vars + Sanity webhook)
+│   ├── sops-init.sh          Provisions the KMS key + .sops.yaml + seeds *.sops files (idempotent)
+│   ├── dynamodb-local-up.sh  Local-dev bootstrap: LocalStack DynamoDB on :4566 + orders table (idempotent)
+│   └── dev-emails-open.sh    Opens the most recent captured email (when EMAIL_BACKEND=file)
+├── docker-compose.yml        LocalStack service for local-dev DynamoDB emulation
 └── .github/
     └── workflows/
-        ├── deploy-frontend.yml   Build + sync to S3 + CloudFront invalidation
-        ├── deploy-backend.yml    esbuild bundle + zip + update Lambda
-        ├── deploy-studio.yml     `sanity deploy` with auth token
-        └── claude.yml            (Claude Code issue/PR automation)
+        ├── deploy-frontend.yml          Build + sync to S3 + CloudFront invalidation
+        ├── deploy-backend.yml           esbuild bundle + zip + update Lambda
+        ├── deploy-studio.yml            `sanity deploy` with auth token
+        ├── ci.yml                       Typecheck + vitest on every PR + push
+        ├── codeql.yml                   CodeQL SAST on JS/TS + GitHub Actions YAML
+        ├── audit.yml                    Weekly pnpm audit (auto-files issue)
+        ├── gitleaks.yml                 Secret-scan on PR + push + weekly full-history sweep
+        ├── scorecard.yml                Weekly OpenSSF Scorecard
+        ├── terraform.yml                fmt -check + validate + Trivy IaC on infra/** changes
+        ├── dependabot-lockfile.yml      Syncs root pnpm-lock.yaml on Dependabot PRs
+        ├── dependabot-auto-merge.yml    Auto-merges minor/patch Dependabot PRs
+        └── claude.yml                   Claude Code issue/PR automation
 ```
 
 ## Frontend
@@ -221,14 +253,30 @@ difference is how requests reach the app.
   empty or the fetch fails.
 - `POST /orders` — accepts an order JSON body with a `cart` array, validates
   it, looks up product prices in Sanity, generates a reference `MG-YYMMDD-XXXXXX`,
-  **creates a Sanity `order` document**, sends the owner notification email,
-  and returns signed PayFast form data for redirect:
-  `{ success, ref, payfast: { action, fields } }`
-- `GET /orders/:ref?email=…` — customer-facing order lookup. Queries Sanity
-  by `orderRef`, verifies the provided email matches the stored email, and
-  returns a sanitised subset (no internal notes, no phone, no shipping
-  address). 404 on both missing ref and email mismatch to prevent
-  enumeration.
+  **writes the PII row to DynamoDB first**, **then creates the Sanity
+  skeleton document** (`orderRef`, `status`, `paymentMethod`, `amountZar`,
+  `paymentId` — no customer PII), sends the owner notification email, and
+  returns signed PayFast form data for redirect:
+  `{ success, ref, payfast: { action, fields } }`. The dual-write goes
+  through `orders-store.ts` so a Sanity failure rolls back the DynamoDB row.
+- `GET /orders/:ref?email=…` — customer-facing order lookup. Joins
+  DynamoDB (PII) + Sanity (status + payment metadata), verifies the
+  provided email matches the stored email, and returns a sanitised
+  subset: `orderRef`, `status`, `customerName`, `items` (productId +
+  name + qty), `amountZar`, `paymentMethod`, `createdAt`, `updatedAt`,
+  and tracking info (carrier, number, URL) when shipped. Excludes
+  `customerPhone`, `shippingAddress`, `internalNotes`. 404 on both
+  missing ref and email mismatch to prevent enumeration.
+- `POST /orders/:ref/retry-payment?email=…` — self-service payment retry
+  for orders stuck in `pending_payment` or `payment_failed`. Same
+  no-enumeration policy. Per-orderRef lifetime cap of 5 (atomic
+  DynamoDB `ConditionExpression`), 7-day window. See
+  `docs/payment-retry-plan.md`.
+- `GET /admin/orders/:ref`, `PATCH /admin/orders/:ref/tracking`,
+  `PATCH /admin/orders/:ref/internal-notes` — Studio-only PII routes.
+  Gated by `Authorization: Bearer <ADMIN_API_TOKEN>` (constant-time
+  compare) and CORS-narrowed to `STUDIO_ORIGINS`. Consumed by the
+  custom field components in `studio/components/orderPii.tsx`.
 - `POST /enquiries` — commission enquiry form on `/contact`. Validates
   the body (required name/email/message + length limits, honeypot, valid
   email regex), then sends a single notification email to `OWNER_EMAIL`
@@ -242,11 +290,15 @@ difference is how requests reach the app.
   `SANITY_WEBHOOK_SECRET`, then dispatches the appropriate status-change
   email to the customer via Resend.
 - `POST /webhooks/payfast-itn` — receives PayFast Instant Transaction
-  Notifications after a customer pays. Validates the MD5 signature and
-  confirms the amount matches the stored order. On a valid COMPLETE
-  payment, updates the Sanity order status to `payment_received` — which
-  triggers the Sanity webhook above and sends the customer their
-  confirmation email.
+  Notifications after a customer pays. Validates the MD5 signature
+  **over the raw body** (PayFast signs with PHP `urlencode` and includes
+  empty fields; re-encoding from the parsed body produces a mismatch)
+  and confirms the amount matches the stored order. On a valid COMPLETE
+  payment, updates the Sanity order status to `payment_received` and
+  records `paymentId` — which triggers the Sanity webhook above and
+  sends the customer their confirmation email. Failed-ITN dedup marker
+  (`recordFailedItn`) lives in DynamoDB to suppress duplicate failure
+  emails across PayFast's 24h retry window.
 
 ### CORS
 
@@ -274,21 +326,31 @@ Each customer email includes a tracking link deep-linked with the customer's
 ref and email (`/track?ref=…&email=…`) so they can bookmark or revisit at any
 time.
 
-### Sanity client
+### Orders store + Sanity client
 
-`src/sanity.ts` wraps `@sanity/client` and exposes `createOrder()`,
-`updateOrderPayment()`, `getOrderByRef()`, `getProducts()`,
-`getProductBySlug()`, `getProductsByIds()`, `getGalleryPhotos()`, and
-`getTestimonials()`. Uses `SANITY_API_TOKEN` for authentication — writes
-and reads both require the token, because the dataset is configured as
-private in the Sanity dashboard.
+The order read/write surface is fronted by `src/orders-store.ts`. It
+owns the DynamoDB-PII + Sanity-skeleton split — every order create,
+status patch, payment-ID write, tracking update, and lookup goes
+through this module, which joins the two stores at the application
+layer. The two underlying clients (`src/dynamo.ts`,
+`src/sanity.ts`) are low-level wrappers; callers outside the orders
+store should not import them directly.
+
+`src/sanity.ts` exposes `createOrder()`, `updateOrderStatus()`,
+`updateOrderPaymentId()`, `deleteOrder()` (compensating delete),
+`getOrderByRef()`, `getProducts()`, `getProductBySlug()`,
+`getProductsByIds()`, `getGalleryPhotos()`, and `getTestimonials()`.
+Uses `SANITY_API_TOKEN` for authentication — writes and reads both
+require the token, because the dataset is configured as private in
+the Sanity dashboard.
+
 The frontend never talks to Sanity's query API directly; it only builds
 image URLs from the public asset CDN using the project ID baked into its
 bundle.
 
 ## Studio
 
-Sanity Studio v3, configured in `studio/sanity.config.ts`. It is a standalone React
+Sanity Studio v5 (React 19), configured in `studio/sanity.config.ts`. It is a standalone React
 application, not part of the SvelteKit app. It runs in one of three places:
 
 - **Locally** via `pnpm studio dev` on `http://localhost:3333`. Used during
@@ -303,6 +365,16 @@ Schemas are defined in `studio/schemas/`. Adding a new schema means creating a
 file, registering it in `schemas/index.ts`, and (usually) adding a backend
 route that fetches it via the authenticated Sanity client. Four schemas
 currently exist: `product`, `galleryPhoto`, `testimonial`, and `order`.
+
+The `order` schema is the post-cutover Phase-1 skeleton (live since
+2026-05-13). Customer PII — name, email, phone, shipping address,
+cart items, internal notes — lives in DynamoDB; the Sanity document
+carries only `orderRef`, `status`, `paymentMethod`, `amountZar`, and
+`paymentId`, plus three placeholder slots backed by custom field
+components (`CustomerDetailsPanel`, `TrackingFields`,
+`InternalNotesField` in `studio/components/orderPii.tsx`). The panels
+read/write the backend's `/admin/orders/:ref/*` routes directly,
+bypassing Sanity. See `docs/orders-pii-split-plan.md`.
 
 The studio reads `SANITY_STUDIO_PROJECT_ID` and `SANITY_STUDIO_DATASET` from its
 own `.env`. The frontend reads the *same* project via `PUBLIC_SANITY_PROJECT_ID`
@@ -358,7 +430,9 @@ Browser (shop.html + JS)
 Backend Hono app
     │
     │ validate → look up product prices in Sanity → compute total
-    │ generate ref → create Sanity order (pending_payment, paymentMethod: payfast)
+    │ generate ref → write DynamoDB PII row → create Sanity skeleton
+    │   (orderRef, status=pending_payment, paymentMethod=payfast, amountZar)
+    │   (Sanity write failure ⇒ compensating DynamoDB delete)
     │ send owner notification email
     │ generate signed PayFast form data
     ▼
@@ -374,12 +448,15 @@ Customer pays on PayFast's hosted page
     │
     └──▶ ITN (server-to-server POST) → /webhooks/payfast-itn
               │
-              │ validate signature + amount
+              │ validate signature (raw body) + amount
               ▼
-         Update Sanity order: status → payment_received
+         Update Sanity order: status → payment_received, set paymentId
               │
               ▼
          Existing Sanity webhook fires → "payment received" email
+              (Failed ITN? recordFailedItn marker in DynamoDB
+              suppresses duplicate failure emails across PayFast's
+              24h retry window.)
 ```
 
 ## Order status-update flow
@@ -394,6 +471,7 @@ Sanity (filter: _type == "order" && delta::changedAny(status))
 Backend Hono app
     │ verify HMAC-SHA256 over raw body
     │ look up email template for new status
+    │ join DynamoDB to fetch customerEmail (no PII in webhook payload)
     ▼
 Resend API
     │
@@ -410,17 +488,22 @@ Customer clicks tracking link in email (or visits /track directly)
     │ GET /orders/:ref?email=…
     ▼
 Backend
-    │ query Sanity by orderRef, verify email matches, sanitise fields
+    │ join DynamoDB (PII) + Sanity (status), verify email matches, sanitise fields
     ▼
 Customer sees status, progress indicator, tracking info (if shipped)
 ```
 
-Orders live as structured documents in Sanity. Meryl manages their lifecycle
-in Studio; the backend creates documents, reads documents for lookups, and
-receives status-change webhooks. Customer PII is stored on the order
-document and must not live on a public Sanity dataset in production — see
-`orders-and-tracking.md` for the fix before launch. Payment is via PayFast
-(card, Apple Pay, etc.) with automatic confirmation via ITN.
+Orders are split across two stores: a DynamoDB row holds customer PII
+(name, email, phone, shipping address, line items, internal notes,
+tracking info) and a Sanity document holds the non-PII skeleton
+(`orderRef`, `status`, `paymentMethod`, `amountZar`, `paymentId`).
+The two are joined by `orderRef` in `backend/src/orders-store.ts`.
+Meryl manages order lifecycle in Studio — status changes write
+Sanity; the panel components for customer details / tracking /
+internal notes hit the backend's `/admin/orders/:ref/*` routes
+which write DynamoDB. The customer-facing PII never lives on Sanity
+in production. Payment is via PayFast (card, Apple Pay, etc.) with
+automatic confirmation via ITN.
 
 ## Deployment targets
 
@@ -441,10 +524,16 @@ document and must not live on a public Sanity dataset in production — see
   `pnpm studio deploy`. No AWS resources involved.
 
 Infrastructure is defined in Terraform at `infra/`. One apply creates all AWS
-resources above plus the GitHub OIDC provider and CI role. State is stored in
-an S3 bucket with a DynamoDB lock table (created manually once; see
-`infra/README.md` for the bootstrap commands). The primary region is
-`af-south-1` (Cape Town); the ACM cert provider alias targets `us-east-1`.
+resources above plus the GitHub OIDC provider and CI role. Terraform state
+is stored in an S3 bucket (`meryl-green-designs-tfstate`) with a
+DynamoDB lock table (`meryl-green-designs-tfstate-lock`) — both
+created manually once by `bin/setup.sh` (see `infra/README.md`).
+Terraform also manages the application-level DynamoDB table
+(`meryl-green-designs-orders`, holding order PII; partition key
+`orderRef`, TTL on `ttl` driving 365-day POPIA retention) and the
+auto-cancel Lambda + EventBridge daily cron in `auto_cancel.tf`. The
+primary region is `af-south-1` (Cape Town); the ACM cert provider alias
+targets `us-east-1`.
 
 CI/CD lives in `.github/workflows/`:
 - `ci.yml` — typecheck + vitest on every PR and push. Never deploys.
