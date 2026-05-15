@@ -195,11 +195,15 @@ traffic. Most are external, and each is documented with exact steps in
       portal at inforegulator.org.za. The page-level designation alone
       is not enough; the portal registration is a separate compliance
       step Meryl needs to complete before launch. Concrete steps:
-      (1) Create a portal account at
-      https://inforegulator.org.za/orms (Online Registration and
-      Management System), business email + South African ID number.
-      (2) Submit the IO registration form for Meryl Green Designs as
-      a sole proprietor with Meryl as both responsible party and IO.
+      (1) Create an account on the Information Regulator's
+      eServices portal at https://eservices.inforegulator.org.za
+      (the older `registrations.inforegulator.org.za` portal was
+      retired in May 2024 — make sure to use the eServices URL).
+      Account creation needs a business email + South African ID
+      number.
+      (2) Submit the Information Officer registration form for
+      Meryl Green Designs as a sole proprietor with Meryl as both
+      responsible party and IO.
       Required fields: full business name (`Meryl Green Designs`),
       legal status (Sole Proprietor), physical address (`Unit 2
       Nordyk Park, Commercial Street, Malmesbury, 7300`), telephone
