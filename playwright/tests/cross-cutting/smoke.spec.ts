@@ -66,6 +66,40 @@ test.describe('public pages render', () => {
 		await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 	});
 
+	// /track surfaces the manual recovery path for customers who lost
+	// their order reference (no email-only self-service lookup exists
+	// yet — that's filed in roadmap.md under the resend-confirmation
+	// follow-up). If this line silently disappears, customers whose
+	// order email bounced have no discoverable path back to their
+	// order; the only fallback is /contact, but only if they know to
+	// go there. Pin the copy + the link target.
+	test('track page exposes the lost-reference recovery path', async ({ page }) => {
+		await page.goto('/track');
+		await expect(page.getByText(/lost your order reference/i)).toBeVisible();
+		const recoveryLink = page.getByRole('link', { name: /get in touch/i });
+		await expect(recoveryLink).toBeVisible();
+		await expect(recoveryLink).toHaveAttribute('href', '/contact');
+	});
+
+	// /payment/complete is the post-PayFast landing page. If a customer
+	// closes the tab before this renders AND the order email never
+	// arrives, they've lost their order reference for good — so this
+	// page is the last chance to (a) show them the ref, (b) tell them
+	// to save it, and (c) point them at a fallback if the email
+	// doesn't show up. Pin all three.
+	test('payment-complete shows ref + save hint + contact fallback', async ({ page }) => {
+		await page.goto('/payment/complete?ref=MG-TEST-RECOVERY');
+		await expect(page.getByText('MG-TEST-RECOVERY')).toBeVisible();
+		await expect(page.getByText(/save this for your records/i)).toBeVisible();
+		// Two links live on the page: "Track your order" (existing) and
+		// "get in touch" (the new email-not-arriving fallback). Pin both
+		// — the recovery flow breaks if either disappears.
+		await expect(page.getByRole('link', { name: /track your order/i })).toBeVisible();
+		const fallbackLink = page.getByRole('link', { name: /get in touch/i });
+		await expect(fallbackLink).toBeVisible();
+		await expect(fallbackLink).toHaveAttribute('href', '/contact');
+	});
+
 	test('privacy / returns / terms render', async ({ page }) => {
 		for (const route of ['/privacy', '/returns', '/terms']) {
 			await page.goto(route);
