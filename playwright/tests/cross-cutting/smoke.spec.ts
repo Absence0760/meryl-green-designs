@@ -86,6 +86,7 @@ test.describe('public pages render', () => {
 		await expect(page.getByText('merylgreendesigns.com')).toBeVisible();
 		await expect(page.getByText('Industry membership')).toBeVisible();
 		await expect(page.getByText('Dispute resolution')).toBeVisible();
+		await expect(page.getByText('Access to your order record')).toBeVisible();
 	});
 
 	// POPIA s22 obliges the responsible party to notify the Information

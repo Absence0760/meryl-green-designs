@@ -352,6 +352,17 @@
 				for the consumer's right to elect between CGSO, the
 				National Consumer Commission, and the courts.
 			</dd>
+
+			<dt>Access to your order record</dt>
+			<dd>
+				Available on the <a href="/track">track-order page</a>
+				using your order reference and email, or by emailing
+				us, for 365 days from the order date (after which the
+				record holding your personal details is automatically
+				deleted &mdash; see the
+				<a href="/privacy">Privacy Policy</a> for the full
+				retention schedule).
+			</dd>
 		</dl>
 		<p>
 			For questions about this policy, an order, or any other matter,
