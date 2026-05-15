@@ -52,15 +52,29 @@
 	// NOT auto-wire to imported rune-store reads, so a `$: if
 	// (cart.items.length === 0)` watcher would only fire once at
 	// mount, not when the cart actually empties. Reset state inline
-	// at the action point instead (remove-button click) — fires
-	// reliably and the dependency is obvious.
-	function handleRemove(productId: string) {
-		cart.remove(productId);
+	// at every action point that can drain the cart instead.
+	function resetIfCartEmpty() {
+		// CPA s49 hygiene: a fresh "transaction" starts with no accepted
+		// terms and no leftover error from the previous one.
 		if (cart.items.length === 0) {
 			error = null;
 			errorIsValidation = false;
 			acceptedTerms = false;
 		}
+	}
+
+	function handleRemove(productId: string) {
+		cart.remove(productId);
+		resetIfCartEmpty();
+	}
+
+	// cartLogic.decrementItem auto-removes at qty 0, so the `-` button
+	// is a second path to an empty cart (decrement on a qty-1 item).
+	// Without this wrapper, that path leaves acceptedTerms + stale
+	// errors in place — same bug as the missing-remove case.
+	function handleDecrement(productId: string) {
+		cart.decrement(productId);
+		resetIfCartEmpty();
 	}
 
 	function handleBrowseShop() {
@@ -151,6 +165,16 @@
 			if (data.payfast) {
 				redirecting = true;
 				cart.clear();
+				// Same hygiene rule applies here as it does to remove +
+				// decrement-to-0: when the cart drains, the next
+				// transaction should start clean. In the happy path the
+				// PayFast redirect navigates away immediately and this
+				// state is never re-read. The defensive value is the
+				// failure-mode where the redirect doesn't fire — the
+				// user closes the panel, adds new items, reopens, and
+				// shouldn't see leftover acceptedTerms from the
+				// previous attempt.
+				resetIfCartEmpty();
 				redirectToPayFast(data.payfast);
 				return;
 			}
@@ -207,7 +231,7 @@
 								<span class="item-name">{item.name}</span>
 							</div>
 							<div class="item-controls">
-								<button class="qty-btn" on:click={() => cart.decrement(item.productId)} aria-label="Decrease quantity">&minus;</button>
+								<button class="qty-btn" on:click={() => handleDecrement(item.productId)} aria-label="Decrease quantity">&minus;</button>
 								<span class="qty">{item.quantity}</span>
 								<button class="qty-btn" on:click={() => cart.increment(item.productId)} aria-label="Increase quantity">+</button>
 							</div>

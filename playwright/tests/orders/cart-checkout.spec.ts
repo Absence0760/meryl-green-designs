@@ -205,4 +205,27 @@ test.describe('cart + checkout', () => {
 		await expect(page.locator('#cart-terms')).not.toBeChecked();
 		await expect(page.locator('.form-error')).toHaveCount(0);
 	});
+
+	// The `-` button calls cartLogic.decrementItem which auto-removes the
+	// item at qty 0. That's a second path to an empty cart — distinct
+	// from clicking the × remove button — and must reset the same state.
+	// Pinning it so the handleDecrement wiring can't silently regress
+	// (the test above covers handleRemove only).
+	test('decrementing the last item to zero also resets terms + errors', async ({ page }) => {
+		await page.goto('/shop');
+		await page.getByRole('button', { name: /add to order/i }).first().click();
+		await page.getByRole('button', { name: /open cart/i }).click();
+		await page.check('#cart-terms');
+		await expect(page.locator('#cart-terms')).toBeChecked();
+		await page.getByRole('button', { name: /pay/i }).click();
+		await expect(page.locator('.form-error')).toContainText(/please fill in/i);
+		// Drain via the `-` (decrement) button — qty 1 minus = auto-remove.
+		await page.getByRole('button', { name: /decrease quantity/i }).click();
+		await expect(page.getByText(/your cart is empty/i)).toBeVisible();
+		await page.getByRole('button', { name: /close cart/i }).click();
+		await page.getByRole('button', { name: /add to order/i }).first().click();
+		await page.getByRole('button', { name: /open cart/i }).click();
+		await expect(page.locator('#cart-terms')).not.toBeChecked();
+		await expect(page.locator('.form-error')).toHaveCount(0);
+	});
 });
