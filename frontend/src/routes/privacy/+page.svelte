@@ -145,8 +145,13 @@
 				rel="noopener noreferrer">PayFast</a>. You are redirected to
 			PayFast's own hosted payment page to enter your card or payment
 			details. <strong>We never see, store, or process your card
-			details.</strong> PayFast sends us back only a confirmation that
-			payment has been received, along with your order reference.
+			details.</strong> Once payment is confirmed, PayFast sends us
+			an authenticated notification containing your order reference,
+			the amount and payment ID, and the name and email address you
+			entered on PayFast's payment page, so we can match the payment
+			to your order. Receiving these details back from PayFast (rather
+			than from you directly at that step) is disclosed here in line
+			with section 18(1)(c) of POPIA.
 		</p>
 
 		<h3>When you track an order</h3>
@@ -155,6 +160,18 @@
 			when placing the order. The email is used only to confirm that
 			the order belongs to you — we do not store anything new as a
 			result of a track-order lookup.
+		</p>
+
+		<h3>When you send a commission enquiry</h3>
+		<p>
+			If you contact us through the <a href="/contact">contact page</a>,
+			we receive your name, email address, any phone number you choose
+			to add, and the contents of the enquiry. This information is
+			used solely to reply to you about the enquiry. The message is
+			relayed to us by Resend (see "Who we share it with" below)
+			and is not written to a separate database on our side;
+			retention is governed by Resend's retention policy and the
+			365-day cap that applies if the enquiry later becomes an order.
 		</p>
 
 		<h3>When you visit the site</h3>
@@ -356,6 +373,12 @@
 				committed to source control.
 			</li>
 		</ul>
+		<p>
+			If a security compromise involving your personal information
+			were to occur, we would notify you and the Information
+			Regulator as soon as reasonably possible, in line with
+			section 22 of POPIA.
+		</p>
 
 		<h2>Cookies and tracking</h2>
 		<p>
