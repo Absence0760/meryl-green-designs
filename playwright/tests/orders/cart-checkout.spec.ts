@@ -134,7 +134,7 @@ test.describe('cart + checkout', () => {
 		await expect(page.locator('.total-amount')).toContainText(/R\s*2\s*400/);
 	});
 
-	test('cart empty state shows when nothing is added', async ({ page }) => {
+	test('cart empty state shows + Browse shop CTA closes the panel', async ({ page }) => {
 		await page.goto('/shop');
 		// Wait for the shop to hydrate so the Open-cart click reaches the
 		// reactive handler (the button renders in the static shell, but
@@ -142,6 +142,12 @@ test.describe('cart + checkout', () => {
 		await expect(page.getByText('Test Screen Small')).toBeVisible();
 		await page.getByRole('button', { name: 'Open cart' }).click();
 		await expect(page.getByText(/your cart is empty/i)).toBeVisible();
+		// Browse-shop CTA inside the empty state navigates to /shop and
+		// closes the panel via handleBrowseShop → onclose(). If onclose
+		// stops being called the empty-state text would stay visible
+		// after click, which is the regression this pins.
+		await page.getByRole('link', { name: /browse shop/i }).click();
+		await expect(page.getByText(/your cart is empty/i)).not.toBeVisible();
 	});
 
 	test('terms checkbox gates submit', async ({ page }) => {
@@ -154,5 +160,49 @@ test.describe('cart + checkout', () => {
 		// Don't tick the terms checkbox
 		const payBtn = page.getByRole('button', { name: /pay/i });
 		await expect(payBtn).toBeDisabled();
+	});
+
+	test('validation error auto-clears once the form becomes valid', async ({ page }) => {
+		await page.goto('/shop');
+		await page.getByRole('button', { name: /add to order/i }).first().click();
+		await page.getByRole('button', { name: /open cart/i }).click();
+		// Tick terms first so the Pay button is enabled and clicking it can
+		// reach the inner field-validation branch in handleCheckout. Without
+		// this the Pay button is disabled and the click is a no-op.
+		await page.check('#cart-terms');
+		await page.getByRole('button', { name: /pay/i }).click();
+		// The "please fill in" error renders in .form-error and is tagged
+		// as a validation error (errorIsValidation = true).
+		await expect(page.locator('.form-error')).toContainText(/please fill in/i);
+		// Filling the missing fields should make requiredFieldsValid true,
+		// which the reactive $: block uses to drop the validation error
+		// without requiring a second click on Pay.
+		await page.fill('#cart-name', 'E2E Customer');
+		await page.fill('#cart-email', 'customer@e2e.local');
+		await page.fill('#cart-address', '1 Test Lane');
+		await expect(page.locator('.form-error')).toHaveCount(0);
+	});
+
+	test('emptying the cart resets terms acceptance and clears stale errors', async ({ page }) => {
+		await page.goto('/shop');
+		await page.getByRole('button', { name: /add to order/i }).first().click();
+		await page.getByRole('button', { name: /open cart/i }).click();
+		// Build up state that ought to be reset: ticked terms + a stale
+		// validation error from a failed submit.
+		await page.check('#cart-terms');
+		await expect(page.locator('#cart-terms')).toBeChecked();
+		await page.getByRole('button', { name: /pay/i }).click();
+		await expect(page.locator('.form-error')).toContainText(/please fill in/i);
+		// Empty the cart by removing the only item.
+		await page.getByRole('button', { name: /remove test screen small/i }).click();
+		await expect(page.getByText(/your cart is empty/i)).toBeVisible();
+		// Close the panel, add a new item, reopen the cart.
+		await page.getByRole('button', { name: /close cart/i }).click();
+		await page.getByRole('button', { name: /add to order/i }).first().click();
+		await page.getByRole('button', { name: /open cart/i }).click();
+		// CPA s49 hygiene: the new "transaction" starts with no accepted
+		// terms and no leftover error from the previous one.
+		await expect(page.locator('#cart-terms')).not.toBeChecked();
+		await expect(page.locator('.form-error')).toHaveCount(0);
 	});
 });
