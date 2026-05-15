@@ -109,9 +109,10 @@
 				</dd>
 			</div>
 
-			<!-- Phone row removed — Meryl has not provided a public number.
-			     Tracked in docs/roadmap.md. Add the row back here once a
-			     number is available. -->
+			<div class="contact-row">
+				<dt>Phone</dt>
+				<dd><a href="tel:+27823264555">082 326 4555</a></dd>
+			</div>
 
 			<div class="contact-row">
 				<dt>Studio</dt>

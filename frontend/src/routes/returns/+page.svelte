@@ -20,9 +20,10 @@
 	  - Shipping-cost allocation (who pays for what when)
 	  - Escalation cap when a replacement also fails
 	  - Consumer Goods and Services Ombud (CGSO) dispute-resolution path
-	  - ECT Act s43 business-identification section (currently shows
-	    only the email — the rest needs to be added once Meryl
-	    provides her business details; see docs/roadmap.md)
+	  - ECT Act s43 business-identification block under
+	    "About Meryl Green Designs" (registered name, legal status,
+	    physical address, telephone, email; no CIPC number — Meryl
+	    trades as a sole proprietor)
 	  - Tighter "no refunds" wording that doesn't read as overriding
 	    statutory rights
 
@@ -51,12 +52,13 @@
 	    is preserved explicitly; do not let any later edit revert to
 	    "we will not accept more than two attempts" (which inverts the
 	    statutory right).
-	  - ECT Act s43 disclosure is INCOMPLETE — registered business name,
-	    legal status (sole trader / CC / Pty Ltd), physical address,
-	    telephone number, and any registration number must be added
-	    before launch. The page currently shows only the email contact
-	    so it doesn't read as "still developing", but the missing
-	    items are a launch blocker tracked in docs/roadmap.md.
+	  - ECT Act s43 disclosure block is now in place under
+	    "About Meryl Green Designs". Meryl supplied the values
+	    (sole proprietor, no CIPC number; address + cell as shown).
+	    Reviewer to confirm the values look correct as printed and
+	    that "Not applicable — sole proprietorships are not required
+	    to register with CIPC" is an acceptable phrasing of the s43(e)
+	    no-registration-number disclosure.
 
 	Update the "Last updated" date whenever the policy text changes.
 -->
@@ -258,24 +260,42 @@
 		<h2>About Meryl Green Designs</h2>
 		<p>
 			Meryl Green Designs is a South African studio handcrafting
-			screens and nature-inspired designs. For questions about this
-			policy, an order, or any other matter, please email
-			<a href="mailto:zagreenwoman@gmail.com">zagreenwoman@gmail.com</a>.
+			screens and nature-inspired designs. The details below are
+			published in compliance with section 43 of the Electronic
+			Communications and Transactions Act, 2002.
 		</p>
-		<!--
-			ECT Act s43 also requires online retailers to disclose:
-			  - Registered business name + legal status (sole trader / CC
-			    / Pty Ltd)
-			  - Physical address (or PO Box if appropriate for a
-			    home-studio operation)
-			  - Telephone number
-			  - Any registration number (e.g. CIPC)
-			These details are not yet on the page because Meryl hasn't
-			provided them — tracked in docs/roadmap.md under "Content
-			(needs Meryl)". They must be added before launch for ECT s43
-			compliance. Cross-check the /contact page when filling in so
-			the two pages don't drift.
-		-->
+		<dl class="business-identity">
+			<dt>Registered business name</dt>
+			<dd>Meryl Green Designs</dd>
+
+			<dt>Legal status</dt>
+			<dd>Sole proprietor</dd>
+
+			<dt>Business registration number</dt>
+			<dd>
+				Not applicable &mdash; sole proprietorships are not
+				required to register with the Companies and Intellectual
+				Property Commission (CIPC) under South African law.
+			</dd>
+
+			<dt>Physical address</dt>
+			<dd>
+				Unit 2 Nordyk Park<br />
+				Commercial Street<br />
+				Malmesbury, 7300<br />
+				South Africa
+			</dd>
+
+			<dt>Telephone</dt>
+			<dd><a href="tel:+27823264555">082 326 4555</a></dd>
+
+			<dt>Email</dt>
+			<dd><a href="mailto:zagreenwoman@gmail.com">zagreenwoman@gmail.com</a></dd>
+		</dl>
+		<p>
+			For questions about this policy, an order, or any other matter,
+			email or call using the details above.
+		</p>
 	</div>
 </section>
 
@@ -323,5 +343,33 @@
 	code {
 		font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 		font-size: 0.92em;
+	}
+
+	.business-identity {
+		display: grid;
+		gap: var(--space-2);
+		margin: 0 0 var(--space-3);
+		padding: var(--space-3) 0;
+		border-top: 1px solid var(--color-rule);
+		border-bottom: 1px solid var(--color-rule);
+	}
+
+	.business-identity dt {
+		font-size: 0.75rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.1em;
+		color: var(--color-bark);
+		margin-top: var(--space-1);
+	}
+
+	.business-identity dt:first-child {
+		margin-top: 0;
+	}
+
+	.business-identity dd {
+		margin: 0;
+		line-height: 1.6;
+		color: var(--color-ink);
 	}
 </style>

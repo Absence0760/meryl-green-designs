@@ -72,4 +72,16 @@ test.describe('public pages render', () => {
 			await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 		}
 	});
+
+	// /returns hosts the ECT Act s43 business-identification disclosure;
+	// silent removal would break SA online-retail compliance, so pin the
+	// stable structural markers here as a regression net.
+	test('returns page exposes the ECT s43 disclosure block', async ({ page }) => {
+		await page.goto('/returns');
+		await expect(page.getByText('Registered business name')).toBeVisible();
+		await expect(page.getByText('Legal status')).toBeVisible();
+		await expect(page.getByText('Physical address')).toBeVisible();
+		await expect(page.getByText('Malmesbury')).toBeVisible();
+		await expect(page.getByText('082 326 4555')).toBeVisible();
+	});
 });

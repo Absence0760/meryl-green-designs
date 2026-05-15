@@ -159,28 +159,27 @@ traffic. Most are external, and each is documented with exact steps in
       (intentional — see `docs/security.md § Risk 1` for the impersonation
       threat model). She needs a saved email snippet with the real values
       so the reply takes 30 seconds per order, not 3 minutes.
-- [ ] Real contact details on `frontend/src/routes/contact/+page.svelte`:
+- [x] Real contact details on `frontend/src/routes/contact/+page.svelte`:
       - [x] real email — `zagreenwoman@gmail.com` (confirmed by Meryl 2026-04-16)
-      - [ ] phone number — row removed for now because Meryl hasn't
-            provided a number. Once she does, add a new `<div
-            class="contact-row">` with `<dt>Phone</dt><dd>…</dd>` back
-            into the markup at the location flagged by the HTML
-            comment.
+      - [x] phone number — `082 326 4555` (confirmed by Meryl 2026-05-15,
+            supplied as the business contact number alongside the ECT s43
+            details; mirrored on `/returns` for the s43 disclosure).
       - [x] studio location — "Based in the Western Cape, South Africa.
             Shipped nationwide." (confirmed by Meryl 2026-05-13). A
             specific town would be friendlier but is not blocking.
 - [ ] Meryl populates the shop with real products via Sanity Studio
 - [ ] Meryl populates the gallery with real photos via Sanity Studio
-- [ ] **ECT Act s43 business identification** for the Returns page
+- [x] **ECT Act s43 business identification** for the Returns page
       (the section that satisfies ECT Act s43's disclosure
-      requirements for online retailers). Meryl needs to supply:
-      registered business name, legal status (sole trader / CC / Pty
-      Ltd), physical address (or PO Box if she prefers, for a
-      home-studio operation), telephone number, and any registration
-      number (e.g. CIPC). The page currently shows only her email so
-      it reads cleanly, but ECT s43 requires the full set before
-      launch. Insert into the "About Meryl Green Designs" section of
-      `frontend/src/routes/returns/+page.svelte`.
+      requirements for online retailers). Meryl confirmed on
+      2026-05-15: registered name `Meryl Green Designs`, sole
+      proprietor, physical address `Unit 2 Nordyk Park, Commercial
+      Street, Malmesbury, 7300`, telephone `082 326 4555`, no
+      CIPC registration number (not required for sole proprietors).
+      Disclosure block now lives in the "About Meryl Green Designs"
+      section of `frontend/src/routes/returns/+page.svelte`. Still
+      needs the legal-reviewer pass below — values to be sanity-checked
+      against any registration documents Meryl holds.
 - [ ] South African legal professional reviews the three policy pages
       before they go live: `frontend/src/routes/privacy/+page.svelte`
       (POPIA wording, cross-border transfer language, retention periods),
