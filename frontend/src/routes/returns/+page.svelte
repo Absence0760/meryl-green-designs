@@ -294,6 +294,11 @@
 			<dt>Telephone</dt>
 			<dd><a href="tel:+27823264555">082 326 4555</a></dd>
 
+			<dt>Website</dt>
+			<dd>
+				<a href="https://merylgreendesigns.com">merylgreendesigns.com</a>
+			</dd>
+
 			<dt>Email</dt>
 			<dd><a href="mailto:zagreenwoman@gmail.com">zagreenwoman@gmail.com</a></dd>
 		</dl>

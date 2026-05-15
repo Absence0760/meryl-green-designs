@@ -83,5 +83,6 @@ test.describe('public pages render', () => {
 		await expect(page.getByText('Physical address')).toBeVisible();
 		await expect(page.getByText('Malmesbury')).toBeVisible();
 		await expect(page.getByText('082 326 4555')).toBeVisible();
+		await expect(page.getByText('merylgreendesigns.com')).toBeVisible();
 	});
 });
