@@ -77,6 +77,10 @@
 				<dt>Canvas</dt>
 				<dd>100% cotton, digitally printed with a protective colour-fast coating</dd>
 			</div>
+			<div class="specs__row">
+				<dt>Lead time</dt>
+				<dd>Made to order — typically 6 weeks from payment to dispatch</dd>
+			</div>
 		</dl>
 	</div>
 </section>
@@ -149,7 +153,7 @@
 								variant="outlined"
 								size="sm"
 								on:click={() => addToCart(product)}
-								disabled={product.priceZar == null}
+								disabled={!product.priceZar}
 							>
 								Add to order
 							</Button>

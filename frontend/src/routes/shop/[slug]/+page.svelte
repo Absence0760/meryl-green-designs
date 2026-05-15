@@ -134,11 +134,14 @@
 					{/if}
 
 					<div class="info__cta">
-						<Button variant="primary" on:click={addToCart} disabled={product.priceZar == null}>
+						<Button variant="primary" on:click={addToCart} disabled={!product.priceZar}>
 							Add to order
 						</Button>
 						<a class="info__back" href="/shop">← Back to shop</a>
 					</div>
+					<p class="info__lead-time">
+						Made to order — typically 6 weeks from payment to dispatch.
+					</p>
 
 					{#if product.description?.trim()}
 						<div class="info__description">
@@ -309,8 +312,15 @@
 		display: flex;
 		align-items: center;
 		gap: var(--space-2);
-		margin-bottom: var(--space-3);
+		margin-bottom: var(--space-1);
 		flex-wrap: wrap;
+	}
+
+	.info__lead-time {
+		margin: 0 0 var(--space-3);
+		font-size: 0.85rem;
+		font-style: italic;
+		color: var(--color-ink-soft);
 	}
 
 	.info__back {
