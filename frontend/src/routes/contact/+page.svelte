@@ -279,8 +279,17 @@
 </section>
 
 <style>
+	/* Page-local palette tokens for the form alerts. Same co-location
+	   pattern as Cart.svelte and the other transactional pages —
+	   keeps these reds and greens out of app.css. */
 	.narrow {
 		max-width: 680px;
+		--color-warn: #a2432f;
+		--color-warn-soft: #f5e3e0;
+		--color-warn-ink: #6b2a1b;
+		--color-success: #4a6b3a;
+		--color-success-soft: #e7efde;
+		--color-success-ink: #2f4a25;
 	}
 
 	.lede {
@@ -378,7 +387,7 @@
 		padding: 0.55rem 0.7rem;
 		border: 1px solid var(--color-rule);
 		background: var(--color-surface);
-		border-radius: 3px;
+		border-radius: 2px;
 		color: var(--color-ink);
 	}
 
@@ -428,14 +437,14 @@
 	}
 
 	.alert--success {
-		background: #e7efde;
-		border: 1px solid #a8c19a;
-		color: #2f4a25;
+		background: var(--color-success-soft);
+		border-left: 4px solid var(--color-success);
+		color: var(--color-success-ink);
 	}
 
 	.alert--error {
-		background: #fbeaea;
-		border: 1px solid #e0a4a4;
-		color: #842525;
+		background: var(--color-warn-soft);
+		border-left: 4px solid var(--color-warn);
+		color: var(--color-warn-ink);
 	}
 </style>

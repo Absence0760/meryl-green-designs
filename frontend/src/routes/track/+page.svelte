@@ -283,9 +283,9 @@
 								PayFast.
 							</p>
 							<form on:submit={handleRetry}>
-								<button class="retry-btn" type="submit" disabled={retrying}>
-									{#if retrying}Retrying…{:else}Retry payment{/if}
-								</button>
+								<Button variant="primary" type="submit" disabled={retrying}>
+									{retrying ? 'Retrying…' : 'Retry payment'}
+								</Button>
 							</form>
 							{#if retryError}
 								<div class="alert alert--error">{retryError}</div>
@@ -328,8 +328,16 @@
 </section>
 
 <style>
+	/* Page-local palette tokens. Same co-location pattern as Cart.svelte
+	   and /payment/cancelled — keeps these reds and ambers out of
+	   app.css since they only surface on transactional pages. */
 	.narrow {
 		max-width: 680px;
+		--color-warn: #a2432f;
+		--color-warn-soft: #f5e3e0;
+		--color-warn-ink: #6b2a1b;
+		--color-amber: #c6952c;
+		--color-amber-soft: #fdf4e8;
 	}
 
 	.lede {
@@ -353,18 +361,18 @@
 	}
 
 	.track-form label span {
-		font-size: 0.8rem;
+		font-size: 0.75rem;
 		font-weight: 600;
 		text-transform: uppercase;
-		letter-spacing: 0.05em;
+		letter-spacing: 0.08em;
 		color: var(--color-ink-soft);
 	}
 
 	.track-form input {
 		font: inherit;
-		padding: 0.55rem 0.65rem;
+		padding: 0.55rem 0.7rem;
 		border: 1px solid var(--color-rule);
-		background: var(--color-bg);
+		background: var(--color-surface);
 		color: var(--color-ink);
 		border-radius: 2px;
 	}
@@ -391,9 +399,9 @@
 	}
 
 	.alert--error {
-		background: #f5e3e0;
-		border-left: 4px solid #a2432f;
-		color: #6b2a1b;
+		background: var(--color-warn-soft);
+		border-left: 4px solid var(--color-warn);
+		color: var(--color-warn-ink);
 	}
 
 	.order-card {
@@ -506,8 +514,8 @@
 	.retry-section {
 		padding: var(--space-2);
 		margin: var(--space-2) 0;
-		background: #fdf4e8;
-		border-left: 4px solid #c6952c;
+		background: var(--color-amber-soft);
+		border-left: 4px solid var(--color-amber);
 		border-radius: 2px;
 	}
 
@@ -520,28 +528,6 @@
 		margin: 0 0 var(--space-2);
 		font-size: 0.9rem;
 		line-height: 1.5;
-	}
-
-	.retry-btn {
-		background: var(--color-leaf-dark);
-		color: #f6f4ee;
-		border: none;
-		padding: 0.55rem var(--space-2);
-		font: inherit;
-		font-size: 0.85rem;
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
-		cursor: pointer;
-		border-radius: 2px;
-	}
-
-	.retry-btn:hover {
-		background: #244019;
-	}
-
-	.retry-btn:disabled {
-		background: #a8afa0;
-		cursor: not-allowed;
 	}
 
 	.order-section {

@@ -174,13 +174,15 @@
 		<div class="footer-copyright">
 			<p>&copy; {new Date().getFullYear()} Meryl Green Designs. All rights reserved.</p>
 			<p class="footer-links">
+				<a href="/track">Track order</a>
+				<span aria-hidden="true">·</span>
+				<a href="/contact">Contact</a>
+				<span aria-hidden="true">·</span>
 				<a href="/privacy">Privacy policy</a>
 				<span aria-hidden="true">·</span>
 				<a href="/returns">Returns</a>
 				<span aria-hidden="true">·</span>
 				<a href="/terms">Terms</a>
-				<span aria-hidden="true">·</span>
-				<a href="/contact">Contact</a>
 			</p>
 			<p class="muted">Meryl Green Designs — inspired by nature.</p>
 		</div>
@@ -403,14 +405,20 @@
 		font-size: 0.85rem;
 	}
 
+	/* Footer links live on a dark-leaf background and previously had
+	   no underline by default, which made them read like body text.
+	   Persistent semi-transparent underline gives the link-affordance
+	   without competing with the body copy; hover bumps to fully
+	   opaque. /track and /contact specifically were reported as
+	   "hard to see" before this change. */
 	.footer-links a {
 		color: #e8ece1;
-		border-bottom-color: transparent;
+		border-bottom-color: rgba(246, 244, 238, 0.4);
 	}
 
 	.footer-links a:hover {
 		color: #fff;
-		border-bottom-color: rgba(246, 244, 238, 0.6);
+		border-bottom-color: rgba(246, 244, 238, 0.9);
 	}
 
 	.footer-links span {
