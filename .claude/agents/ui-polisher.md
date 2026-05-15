@@ -36,18 +36,26 @@ Type: `--font-display` (Fraunces — serif, self-hosted), `--font-body` (system 
 
 ### Page chrome
 
+**Shared primitives in `app.css`** (the *only* selectors there besides typography + reset):
 - `.section` wrapper (`padding: var(--space-6) 0`) for full-width vertical bands. Alternate them with `.section--alt` to introduce cream tint + horizontal rules between bands.
-- `.container` (`max-width: 1100px`) inside each `.section`. Use `.container.narrow` (page-level `max-width: 680–720px`) for long-form prose (legal docs, forms).
+- `.container` (`max-width: 1100px`) inside each `.section`.
 - `.eyebrow` — small uppercase bark-colored kicker above a page-level h1.
-- `.lede` — slightly larger body copy paragraph immediately under h1 to orient the reader.
+
+**Page-local conventions** (not in `app.css` — each page declares its own ruleset in its `<style>` block, but the class names and approximate values are kept consistent so polish reads as one design):
+- `.narrow` — applied as `<div class="container narrow">` for long-form prose (legal docs, narrow forms). Each page declares `.narrow { max-width: 680–720px }` locally.
+- `.lede` — slightly larger body copy paragraph (`font-size: 1.05–1.1rem`) immediately under h1.
 - `.muted` — italic ink-soft. Use for "Last updated" and similar metadata.
+- `.alert`, `.alert--success`, `.alert--error` — flash messages above forms. Same colour pairs across pages: success on `#e7efde / #a8c19a / #2f4a25`, error on `#fbeaea / #e0a4a4 / #842525`.
+- Skeleton loading state — `.skeleton-shimmer` class + `@keyframes skeleton-shimmer` defined locally on pages that show skeleton placeholders (`/shop`, `/gallery`). If you add a third page that needs skeletons, copy the existing keyframes block rather than inventing a new shimmer.
+
+When polishing, prefer co-locating new ruleset in the page's own `<style>` block (matching the per-page-convention pattern) rather than extending `app.css`. Adding a primitive to `app.css` is an archetype-level change — every page reads from it — and needs broader review than a polish.
 
 ### Forms
 
 - Labels in 0.85rem uppercase (or 0.85–0.9rem mixed-case for legal-acceptance / consent blocks — see the cart clickwrap precedent).
 - Inputs/textareas: `background: var(--color-surface); border: 1px solid var(--color-rule); border-radius: 2–4px; padding: 0.55rem 0.7rem; font: inherit`. Focus state: `outline: 2px solid var(--color-leaf)` or `--color-bark`.
-- Required indicator: `<span class="required" aria-hidden="true">*</span>` in bark/red. Optional indicator: italic `(optional)` after the label.
-- Honeypot pattern: a visually-hidden text input named `website` (visited only by bots). Keep it on any new public-facing form.
+- Required indicator: `<span class="required" aria-hidden="true">*</span>` (or `class="req"` in the cart — both colored bark/red). Optional indicator: italic `(optional)` after the label.
+- Honeypot pattern: a visually-hidden text input named `website` (visited only by bots). Two implementations live in the repo: `Cart.svelte` puts the input directly in the form with `class="hp"`, `/contact` wraps it in a `<label class="honeypot">`. Either is fine — keep one when polishing, don't introduce a third style.
 - Submit button: use `<Button variant="primary">` from `lib/Button.svelte`; don't inline a styled `<button>`.
 - Success / error alerts: `.alert.alert--success` (green) / `.alert.alert--error` (red), shown above the form when state flips.
 
@@ -58,6 +66,17 @@ Type: `--font-display` (Fraunces — serif, self-hosted), `--font-body` (system 
 - No card chrome — no border, no shadow, no background. The image **is** the tile. Body padding `var(--space-2) 0 0`, text centered, name uppercase 1rem 500-weight, price display-font 1.05rem.
 - "Add to order" Button below the linked tile, NOT inside the link (avoids nested-interactive a11y).
 - Guard the Add-to-order button with `disabled={!product.priceZar}` (not `== null` — the bang-coerce form catches `0` and `undefined` too).
+- CTA variant + size signals intent: index uses `Button variant="outlined" size="sm"` (scan-and-add), detail uses `Button variant="primary"` (commit). Preserve the distinction when polishing either page.
+
+### Buttons
+
+- `lib/Button.svelte` exposes four variants and two sizes:
+  - `primary` — filled dark-leaf on cream (default CTA, used on most pages).
+  - `outlined` — transparent with dark-leaf outline (secondary action; "Add to order" on /shop index).
+  - `ghost` — transparent with cream outline. Use *only* on dark backdrops (hero photo overlay).
+  - `ghost-primary` — filled cream on dark backdrop (hero primary CTA).
+  - Sizes: `md` (default) and `sm`. Use `sm` for in-line actions in dense grids.
+- Don't reinvent a button style inline — add a variant to `Button.svelte` if the existing set genuinely doesn't fit. Disabled state is `opacity: 0.4; cursor: not-allowed` automatically.
 
 ### Long-form legal docs
 
@@ -81,9 +100,42 @@ Type: `--font-display` (Fraunces — serif, self-hosted), `--font-body` (system 
 
 There is **no** `relativeDate()` helper in this repo today. Pages that show dates render them as full long-form strings ("15 May 2026") in body prose. Don't introduce a custom helper for a one-off — if you find a raw ISO string leaking into rendered output, just format it with `new Intl.DateTimeFormat('en-ZA', { dateStyle: 'long' }).format(...)`. If two pages start needing the same formatting, *then* extract a helper into `frontend/src/lib/`.
 
+### Static-friendly routing flavors
+
+Two patterns exist; pick the one that matches the data:
+
+- **Static shell + client hydration** — `export const prerender = true; export const ssr = false;` Used by `/track` (the form is the shell; the lookup response hydrates client-side). New routes whose layout is the same for every visitor and just need client-side data follow this pattern.
+- **SPA dynamic route** — `export const prerender = false; export const ssr = false;` Used by `/shop/[slug]` (slugs come from Sanity and can't be enumerated at build time). Relies on the SPA-fallback (`fallback: '404.html'`) wired in `svelte.config.js` plus the CloudFront 404→200 rewrite in `infra/s3_cloudfront.tf` to resolve direct deep-link visits without leaking a 4xx status.
+
+### Backend interaction pattern
+
+Pages that need backend data use this shape consistently:
+
+```svelte
+<script lang="ts">
+  import { onMount } from 'svelte';
+  import { PUBLIC_API_URL } from '$env/static/public';
+  const apiUrl = PUBLIC_API_URL;
+  let data: Foo[] = [];
+  let loading = true;
+  let error: string | null = null;
+
+  onMount(async () => {
+    try {
+      const res = await fetch(`${apiUrl}/foo`);
+      if (!res.ok) { error = '...'; return; }
+      data = (await res.json()).foo ?? [];
+    } catch { error = '...'; }
+    finally { loading = false; }
+  });
+</script>
+```
+
+Two best-effort fetches in parallel (e.g. the home page's gallery + testimonials) use `Promise.allSettled` with silent degradation — a failed fetch should not break the page if the data is non-essential.
+
 ### What NOT to do
 
-- **Don't introduce SSR** or `+page.server.ts` load functions. This frontend is `adapter-static`; the S3 + CloudFront deploy depends on it. New dynamic routes follow `/shop/[slug]`'s pattern: `prerender = false; ssr = false;` plus the SPA-fallback already wired in `svelte.config.js`.
+- **Don't introduce SSR** or `+page.server.ts` load functions. This frontend is `adapter-static`; the S3 + CloudFront deploy depends on it. Use the prerender/ssr flag patterns above.
 - **Don't add a backend call from the frontend that bypasses the existing Hono routes.** The backend brokers all secret-bearing flows (Sanity reads, Resend, PayFast). The frontend talks only to `PUBLIC_API_URL`.
 - **Don't add external CSS / JS / font CDNs.** Fraunces is self-hosted for a POPIA reason; same logic applies to anything else (Google Analytics, Stripe.js, Tailwind CDN, etc.). If you think the site needs a new third-party asset, stop and ask — it's a privacy-policy edit too.
 - **Don't run `pnpm dev`** in a subprocess. Per the repo CLAUDE.md, visual verification is the operator's job; the agent verifies with type-check + tests only.

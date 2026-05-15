@@ -56,8 +56,8 @@ If the argument is empty or "audit", list the candidate pages with a one-line "w
 4. **Wait for the user's call on the commit.** Do not pre-stage or pre-commit. When the user says yes:
 
    - Stage the changed files explicitly (don't `git add -A` — risks pulling in scratch test output or screenshots an experimental run may have left behind).
-   - Commit message follows the repo's `content(<scope>):` / `ui(<scope>):` convention seen in `git log --oneline`. **No `Co-Authored-By` / "Generated with Claude Code" / robot-emoji footers** — the user-level rule in `~/.claude/CLAUDE.md` wins.
-   - Example: `git commit -m "ui(<scope>): <one-liner>" -m "<3–5 line body explaining what archetype + which patterns applied + why>"`.
+   - Commit message follows the repo's `content(<scope>):` convention seen in `git log --oneline` (the most recent UI polish to the cart was `content(cart): visual treatment for the CPA s49 clickwrap`). **No `Co-Authored-By` / "Generated with Claude Code" / robot-emoji footers** — the user-level rule in `~/.claude/CLAUDE.md` wins.
+   - Example: `git commit -m "content(<scope>): <one-liner>" -m "<3–5 line body explaining what archetype + which patterns applied + why>"`.
 
 ## Cost reality
 
