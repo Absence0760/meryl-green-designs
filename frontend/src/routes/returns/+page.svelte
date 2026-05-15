@@ -317,6 +317,12 @@
 				Property Commission (CIPC) under South African law.
 			</dd>
 
+			<dt>Industry membership</dt>
+			<dd>
+				Meryl Green Designs is not a member of any industry
+				self-regulatory or accreditation body.
+			</dd>
+
 			<dt>Physical address</dt>
 			<dd>
 				Unit 2 Nordyk Park<br />
@@ -335,6 +341,17 @@
 
 			<dt>Email</dt>
 			<dd><a href="mailto:zagreenwoman@gmail.com">zagreenwoman@gmail.com</a></dd>
+
+			<dt>Dispute resolution</dt>
+			<dd>
+				The
+				<a href="https://www.cgso.org.za" target="_blank" rel="noopener noreferrer"
+					>Consumer Goods and Services Ombud (CGSO)</a>
+				is our applicable dispute-resolution forum. See
+				"Your statutory rights and dispute resolution" below
+				for the consumer's right to elect between CGSO, the
+				National Consumer Commission, and the courts.
+			</dd>
 		</dl>
 		<p>
 			For questions about this policy, an order, or any other matter,
