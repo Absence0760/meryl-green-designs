@@ -85,4 +85,13 @@ test.describe('public pages render', () => {
 		await expect(page.getByText('082 326 4555')).toBeVisible();
 		await expect(page.getByText('merylgreendesigns.com')).toBeVisible();
 	});
+
+	// POPIA s22 obliges the responsible party to notify the Information
+	// Regulator and affected data subjects of a security compromise. The
+	// privacy page commits to doing so; if the paragraph gets edited away
+	// the commitment becomes an unrebuttable expectation gap, so pin it.
+	test('privacy page commits to POPIA s22 breach notification', async ({ page }) => {
+		await page.goto('/privacy');
+		await expect(page.getByText('section 22 of POPIA')).toBeVisible();
+	});
 });
