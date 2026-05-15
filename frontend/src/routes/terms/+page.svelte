@@ -68,7 +68,7 @@
 	Update the "Last updated" date whenever the terms text changes.
 -->
 <script lang="ts">
-	const lastUpdated = 'May 2026';
+	const lastUpdated = '15 May 2026';
 </script>
 
 <svelte:head>
