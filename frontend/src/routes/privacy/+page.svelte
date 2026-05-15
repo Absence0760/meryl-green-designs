@@ -39,16 +39,20 @@
 	    order submission). The "Lawful basis for processing" section
 	    earlier on the same page disclaims consent for order
 	    processing, which creates a tension. Reviewer to confirm
-	    whether s72(1)(b) alone is sufficient once DPAs are executed,
-	    or whether belt-and-braces consent is advisable.
+	    whether s72(1)(b) alone is sufficient given the DPAs are
+	    incorporated by reference into each provider's ToS, or
+	    whether belt-and-braces consent is advisable.
 	  - s55 IO designation — for a sole proprietor the IO is the
 	    responsible party. The page currently names Meryl directly.
 	    Reviewer to confirm no separate deputy-IO filing is needed
 	    on the Information Regulator's portal.
-	  - s21 operator agreements — Sanity Free and Resend Free
-	    surface DPAs only as click-to-accept on first login.
-	    Reviewer to confirm a click-through DPA constitutes a
-	    binding "written" operator agreement under POPIA.
+	  - s21 operator agreements — Sanity, Resend, and AWS each
+	    publish a DPA that is incorporated by reference into the
+	    ToS accepted at signup. The policy treats this as the
+	    "written" agreement POPIA s21 requires. Reviewer to confirm
+	    incorporation-by-reference is sufficient, or whether the
+	    affirmative dashboard click-through DPA on each provider
+	    is preferable for audit posture.
 	  - s18(1)(c) PayFast-ITN source — disclosure added on
 	    15 May 2026 in the "When you pay for an order" section.
 	    Reviewer to confirm the in-policy disclosure is sufficient,
@@ -258,9 +262,11 @@
 			We only share your information with the service providers we
 			need to run the site and fulfil orders. Each provider listed
 			below acts as an <strong>operator</strong> under POPIA section
-			1 and has signed a written data-processing agreement with us
-			under POPIA section 21, committing to security safeguards
-			substantially similar to those POPIA itself requires.
+			1 and is bound by a written data-processing agreement with us
+			under POPIA section 21 — incorporated by reference into the
+			terms of service we accepted on signup — committing them to
+			security safeguards substantially similar to those POPIA itself
+			requires.
 		</p>
 		<ul>
 			<li>

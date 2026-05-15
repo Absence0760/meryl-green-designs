@@ -153,12 +153,12 @@ traffic. Most are external, and each is documented with exact steps in
 [`deployment.md`](./deployment.md).
 
 ### Content (needs Meryl)
-- [ ] Meryl's reusable banking-details email reply block. The automated
-      pending-payment confirmation no longer contains banking details at
-      all; they're sent manually by Meryl in reply to each order
-      (intentional — see `docs/security.md § Risk 1` for the impersonation
-      threat model). She needs a saved email snippet with the real values
-      so the reply takes 30 seconds per order, not 3 minutes.
+<!-- Removed 2026-05-15: EFT/manual-payment path no longer exists on
+     the site — PayFast is the only checkout route, so there is no
+     reply-with-banking-details flow to support. If a manual-payment
+     path is ever reintroduced, restore this item along with the
+     security.md § Risk 1 impersonation mitigation. -->
+
 - [x] Real contact details on `frontend/src/routes/contact/+page.svelte`:
       - [x] real email — `zagreenwoman@gmail.com` (confirmed by Meryl 2026-04-16)
       - [x] phone number — `082 326 4555` (confirmed by Meryl 2026-05-15,
@@ -207,17 +207,21 @@ traffic. Most are external, and each is documented with exact steps in
       Required fields: full business name (`Meryl Green Designs`),
       legal status (Sole Proprietor), physical address (`Unit 2
       Nordyk Park, Commercial Street, Malmesbury, 7300`), telephone
-      (`082 326 4555`), and IO contact email (use the domain mailbox
-      below once provisioned — do not register the personal Gmail).
+      (`082 326 4555`), and IO contact email (currently
+      `zagreenwoman@gmail.com`; if the domain mailbox below is
+      provisioned first, register that instead).
       (3) Save the IR confirmation reference; the Information Officer
       registration number can be added to the Privacy Policy header
       once issued.
-- [ ] **Verify executed DPAs (data-processing agreements) with each
-      operator** named in the Privacy Policy: Sanity DPA, Resend DPA,
-      AWS GDPR Data Processing Addendum. The policy claims each is
-      executed under POPIA s21; until the DPAs are accepted on the
-      relevant dashboards, the policy currently makes a claim that
-      is not yet true. Concrete steps:
+- [ ] **Optional — affirmatively execute the click-through DPAs on
+      each operator's dashboard.** Sanity, Resend, and AWS each
+      publish a DPA that is incorporated by reference into the
+      standard ToS we accepted at signup, so the POPIA s21 "written
+      agreement" requirement is already met (and the Privacy Policy
+      now describes it that way). The dashboard click-through is a
+      belt-and-suspenders move for audit posture — useful if an IR
+      enquiry ever asks for executed PDFs, but not a launch
+      blocker. Concrete steps if pursued:
       (1) **Sanity** — log in at https://www.sanity.io/manage,
       open the project, Settings → Compliance → Data Processing
       Agreement, accept on the current plan tier. Free-tier
@@ -232,12 +236,15 @@ traffic. Most are external, and each is documented with exact steps in
       the signed PDF for the records folder.
       Keep all three PDFs in a private SOPS-encrypted folder
       alongside the existing tfvars; do not commit plaintext.
-- [ ] **Domain mailbox to replace the personal Gmail.** The Privacy
-      Policy currently uses `zagreenwoman@gmail.com` for Information
-      Officer requests, claims handling, and general contact. A
-      business-domain mailbox reduces the chance that data-subject
-      requests get lost in a personal inbox and looks more
-      professional to the Regulator and CGSO. Options that fit a
+- [ ] **Optional — domain mailbox to replace the personal Gmail.**
+      The Privacy Policy uses `zagreenwoman@gmail.com` for Information
+      Officer requests, claims handling, and general contact. POPIA
+      doesn't prescribe an email format for the IO contact, so this
+      is not a compliance gate — but a business-domain mailbox
+      reduces the chance that data-subject requests get lost in a
+      personal inbox (or are dropped if the Gmail account is ever
+      suspended) and looks more professional to the Regulator and
+      CGSO. Options that fit a
       single-user sole-proprietor budget (mailbox-only, no other
       productivity tooling needed since Meryl uses Gmail personally):
         - **Zoho Mail Mail Lite** (~R30/user/month) — 10 GB
