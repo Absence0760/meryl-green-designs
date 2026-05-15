@@ -31,6 +31,7 @@
 		description:
 			'Handcrafted screens and nature-inspired designs from a South African studio.',
 		email: 'zagreenwoman@gmail.com',
+		telephone: '+27823264555',
 		areaServed: { '@type': 'Country', name: 'South Africa' }
 	}).replace(/</g, '\\u003c');
 
