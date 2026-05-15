@@ -154,7 +154,12 @@
 			If we send you something other than what you ordered, please
 			email us within 7 days of delivery. We will arrange a free
 			courier collection of the wrong item and ship the correct
-			item once the original is back with us.
+			item once the original is back with us. The 7-day window
+			helps us turn the order around quickly while shipping
+			information is fresh; your statutory rights under section 56
+			of the Consumer Protection Act run for <strong>six months
+			from delivery</strong> and are not affected if you notice the
+			mismatch later within that window.
 		</p>
 
 		<h2>If your order does not arrive</h2>
