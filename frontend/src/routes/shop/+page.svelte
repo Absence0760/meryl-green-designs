@@ -182,6 +182,14 @@
 </section>
 
 <style>
+	/* Page-local warn token. Same co-location pattern the rest of the
+	   site uses (cart / track / contact / gallery / payment-cancelled). */
+	.section--products {
+		--color-warn: #a2432f;
+		--color-warn-soft: #f5e3e0;
+		--color-warn-ink: #6b2a1b;
+	}
+
 	.lede {
 		max-width: 60ch;
 		color: var(--color-ink-soft);
@@ -442,9 +450,9 @@
 	}
 
 	.alert--error {
-		background: #f5e3e0;
-		border-left: 4px solid #a2432f;
-		color: #6b2a1b;
+		background: var(--color-warn-soft);
+		border-left: 4px solid var(--color-warn);
+		color: var(--color-warn-ink);
 		padding: var(--space-2) var(--space-3);
 		border-radius: 2px;
 	}

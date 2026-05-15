@@ -203,7 +203,7 @@
 		background-position: center;
 		display: flex;
 		align-items: flex-end;
-		color: #f6f4ee;
+		color: var(--color-bg);
 		position: relative;
 	}
 
@@ -230,7 +230,7 @@
 	}
 
 	.hero :global(h1) {
-		color: #f6f4ee;
+		color: var(--color-bg);
 	}
 
 	.tagline {
@@ -249,11 +249,6 @@
 
 	.narrow {
 		max-width: 680px;
-	}
-
-	.placeholder {
-		color: var(--color-ink-soft);
-		font-style: italic;
 	}
 
 	.story-paragraph {
