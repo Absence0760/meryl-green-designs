@@ -208,7 +208,7 @@
 							bind:checked={acceptedTerms}
 						/>
 						<span>
-							I have read and accept the
+							<strong>I have read and accept</strong> the
 							<a href="/terms" target="_blank" rel="noopener">Terms</a>,
 							<a href="/returns" target="_blank" rel="noopener">Refund &amp; Returns Policy</a>,
 							and <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a>.
@@ -229,7 +229,11 @@
 					{/if}
 				</button>
 				<p class="hint">
-					You'll be redirected to PayFast to complete payment securely.
+					{#if acceptedTerms}
+						You'll be redirected to PayFast to complete payment securely.
+					{:else}
+						Tick the box above to confirm the Terms before paying.
+					{/if}
 				</p>
 			{/if}
 		</aside>
@@ -475,25 +479,40 @@
 		border-radius: 2px;
 	}
 
+	/* CPA s49 wants this clause "conspicuous" — not just present and
+	   ticked-to-proceed. Calls it out as a bordered cream block above
+	   the Pay button rather than letting it sit as another field-style
+	   row. Logic guards (button-disable + handleCheckout early-return)
+	   live above in the script; don't weaken them when tweaking visuals. */
 	.terms-accept {
 		display: flex;
 		align-items: flex-start;
-		gap: 8px;
-		margin-top: 12px;
-		font-size: 0.8rem;
+		gap: 10px;
+		margin-top: 16px;
+		padding: 12px 14px;
+		background: var(--color-surface);
+		border: 1px solid var(--color-rule);
+		border-radius: 4px;
+		font-size: 0.9rem;
 		font-weight: 400;
 		text-transform: none;
 		letter-spacing: normal;
 		color: var(--color-ink);
-		line-height: 1.4;
+		line-height: 1.5;
 		cursor: pointer;
 	}
 
 	.terms-accept input[type='checkbox'] {
 		flex-shrink: 0;
-		margin-top: 2px;
-		width: auto;
+		margin-top: 1px;
+		width: 16px;
+		height: 16px;
 		accent-color: var(--color-leaf-dark);
+	}
+
+	.terms-accept strong {
+		font-weight: 600;
+		color: var(--color-leaf-dark);
 	}
 
 	.terms-accept a {
