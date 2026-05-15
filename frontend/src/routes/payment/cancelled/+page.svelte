@@ -3,6 +3,7 @@
 	import { base } from '$app/paths';
 	import { PUBLIC_API_URL } from '$env/static/public';
 	import PayFastRedirecting from '$lib/PayFastRedirecting.svelte';
+	import Button from '$lib/Button.svelte';
 
 	const apiUrl = PUBLIC_API_URL;
 
@@ -97,11 +98,12 @@
 
 <section class="section">
 	<div class="container narrow">
-		<div class="status-card">
-			<h1>Payment cancelled</h1>
+		<p class="eyebrow">Payment</p>
+		<h1>Payment cancelled</h1>
 
+		<div class="status-panel">
 			{#if ref}
-				<p>
+				<p class="lede">
 					Your order <strong>{ref}</strong> has not been charged.
 				</p>
 			{/if}
@@ -117,19 +119,20 @@
 					</p>
 
 					<form class="retry-form" on:submit={handleRetry}>
-						<label>
-							<span>Email</span>
-							<input
-								type="email"
-								autocomplete="email"
-								inputmode="email"
-								required
-								bind:value={email}
-							/>
-						</label>
-						<button class="btn" type="submit" disabled={submitting}>
-							{#if submitting}Retrying…{:else}Retry payment{/if}
-						</button>
+						<label for="cancelled-email">Email</label>
+						<input
+							id="cancelled-email"
+							type="email"
+							autocomplete="email"
+							inputmode="email"
+							required
+							bind:value={email}
+						/>
+						<div class="retry-form__submit">
+							<Button variant="primary" type="submit" disabled={submitting}>
+								{#if submitting}Retrying…{:else}Retry payment{/if}
+							</Button>
+						</div>
 					</form>
 
 					{#if error}
@@ -143,13 +146,13 @@
 			{:else}
 				<p>If you'd still like to complete your order, return to the shop and try again.</p>
 			{/if}
-
-			{#if !redirecting}
-				<div class="actions">
-					<a class="btn btn--secondary" href="{base}/shop#order">Return to the shop</a>
-				</div>
-			{/if}
 		</div>
+
+		{#if !redirecting}
+			<div class="actions">
+				<Button href="{base}/shop#order" variant="outlined">Return to the shop</Button>
+			</div>
+		{/if}
 	</div>
 </section>
 
@@ -158,54 +161,61 @@
 		max-width: 600px;
 	}
 
-	.status-card {
-		background: #fdf4e8;
-		border-left: 4px solid #c6952c;
-		padding: var(--space-3) var(--space-4);
-		margin: var(--space-4) 0;
+	/* Page-local amber + warn tokens. Co-located rather than added to
+	   app.css — these colours show up only on transitional payment
+	   surfaces. Amber pair signals "needs attention" (matches /track's
+	   retry section, same hex values, kept page-local until a third
+	   surface needs them). Warn pair mirrors Cart.svelte's
+	   --color-warn-* block byte-for-byte — same red, same purpose. */
+	.status-panel {
+		--color-amber: #c6952c;
+		--color-amber-soft: #fdf4e8;
+		--color-warn: #a2432f;
+		--color-warn-soft: #f5e3e0;
+		--color-warn-ink: #6b2a1b;
+
+		background: var(--color-amber-soft);
+		border-left: 4px solid var(--color-amber);
+		padding: var(--space-3) var(--space-3);
+		margin: var(--space-2) 0 var(--space-3);
 		color: var(--color-ink);
 	}
 
-	.status-card h1 {
-		font-size: 1.3rem;
+	.status-panel .lede {
+		font-size: 1.05rem;
 		margin: 0 0 var(--space-2);
 	}
 
-	.status-card p {
-		margin: 0 0 var(--space-1);
+	.status-panel p {
+		margin: 0 0 var(--space-2);
 		line-height: 1.6;
 	}
 
 	.retry-form {
-		display: grid;
-		gap: 0.5rem;
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
 		margin: var(--space-2) 0;
-		background: var(--color-bg);
-		border: 1px solid var(--color-rule);
-		padding: var(--space-2);
-		border-radius: 2px;
 	}
 
 	.retry-form label {
-		display: grid;
-		gap: 0.25rem;
-	}
-
-	.retry-form label span {
 		font-size: 0.75rem;
 		font-weight: 600;
 		text-transform: uppercase;
-		letter-spacing: 0.05em;
+		letter-spacing: 0.08em;
 		color: var(--color-ink-soft);
 	}
 
 	.retry-form input {
 		font: inherit;
-		padding: 0.55rem 0.65rem;
+		font-size: 0.9rem;
+		padding: 0.55rem 0.7rem;
 		border: 1px solid var(--color-rule);
-		background: var(--color-bg);
+		background: var(--color-surface);
 		color: var(--color-ink);
 		border-radius: 2px;
+		width: 100%;
+		box-sizing: border-box;
 	}
 
 	.retry-form input:focus {
@@ -213,64 +223,32 @@
 		outline-offset: 1px;
 	}
 
+	.retry-form__submit {
+		margin-top: var(--space-1);
+	}
+
 	.alert {
 		padding: var(--space-1) var(--space-2);
 		border-radius: 2px;
-		margin: var(--space-2) 0;
+		margin: var(--space-2) 0 0;
 		font-size: 0.9rem;
 	}
 
 	.alert--error {
-		background: #f5e3e0;
-		border-left: 4px solid #a2432f;
-		color: #6b2a1b;
+		background: var(--color-warn-soft);
+		border-left: 4px solid var(--color-warn);
+		color: var(--color-warn-ink);
 	}
 
 	.hint {
 		font-size: 0.85rem;
 		color: var(--color-ink-soft);
-		margin-top: var(--space-2);
+		margin: var(--space-2) 0 0;
 	}
 
 	.actions {
 		display: flex;
 		gap: var(--space-2);
 		margin-top: var(--space-3);
-	}
-
-	.btn {
-		display: inline-block;
-		background: var(--color-leaf-dark);
-		color: #f6f4ee;
-		border: none;
-		padding: 0.65rem var(--space-2);
-		font: inherit;
-		font-size: 0.85rem;
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
-		text-align: center;
-		cursor: pointer;
-		text-decoration: none;
-		border-bottom: none;
-	}
-
-	.btn:hover {
-		background: #244019;
-	}
-
-	.btn:disabled {
-		background: #a8afa0;
-		cursor: not-allowed;
-	}
-
-	.btn--secondary {
-		background: var(--color-bg);
-		color: var(--color-leaf-dark);
-		border: 1px solid var(--color-leaf-dark);
-	}
-
-	.btn--secondary:hover {
-		background: var(--color-leaf-dark);
-		color: #f6f4ee;
 	}
 </style>
