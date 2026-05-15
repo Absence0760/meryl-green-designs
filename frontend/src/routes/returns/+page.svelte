@@ -60,6 +60,40 @@
 	    to register with CIPC" is an acceptable phrasing of the s43(e)
 	    no-registration-number disclosure.
 
+	Open questions surfaced by the rsa-legal-doc-reviewer sweep on
+	2026-05-15 (see commit 4cb053c for the agent definition):
+	  - ECT s43(1)(n) — does the existing /track page (order-ref +
+	    email lookup → full order detail) satisfy the consumer's
+	    right to "access and maintain a full record of the
+	    transaction", or does the statute contemplate a more formal
+	    export / download mechanism?
+	  - ECT s43(1)(k) — lead times currently appear only in the
+	    Terms (read at clickwrap) and not on shop-product pages.
+	    Is clickwrap-time disclosure adequate pre-transaction
+	    disclosure under s43(1)(k), or must the lead-time figure
+	    appear on the shop page itself before "Add to cart"?
+	  - ECT s43(1)(d)/(e)/(r) — Meryl is not a member of any
+	    self-regulatory body and the only DR code in play is the
+	    CGSO. Is silence acceptable for a non-member, or should
+	    the s43 block affirmatively state non-membership and name
+	    CGSO as the applicable DR forum?
+	  - Wrong-item-shipped flow — the section now mirrors the
+	    defective-goods s56 carve-out (15 May 2026 edit). Reviewer
+	    to confirm a wrong-item delivery actually falls under s56
+	    implied-warranty-of-quality, vs. a different statutory
+	    pocket (contract performance / ECT s46).
+	  - Refund timeline — the 14-business-day clock anchors to
+	    "our agreement that a refund is due". A consumer with a
+	    clear s56(2) election could argue the clock should start
+	    from their election, not the merchant's agreement.
+	    Reviewer to confirm CGSO guidance.
+	  - Distributed-vs-consolidated s43 disclosure — items are
+	    spread across /returns (identification block) and /terms
+	    (lead times, payment manner, service description). Some
+	    regulators prefer a single consolidated block; the Act
+	    only requires accessibility. Reviewer to confirm the
+	    distributed approach is acceptable in practice.
+
 	Update the "Last updated" date whenever the policy text changes.
 -->
 <script lang="ts">

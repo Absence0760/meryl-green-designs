@@ -32,6 +32,45 @@
 	    records) against current SARS guidance and the CGSO's
 	    reasonable-retention expectations.
 
+	Open questions surfaced by the rsa-legal-doc-reviewer sweep on
+	2026-05-15 (see commit 4cb053c for the agent definition):
+	  - s72 dual-basis tension — "Cross-border transfers" lists
+	    s72(1)(b) (binding agreements) AND s72(1)(a) (consent via
+	    order submission). The "Lawful basis for processing" section
+	    earlier on the same page disclaims consent for order
+	    processing, which creates a tension. Reviewer to confirm
+	    whether s72(1)(b) alone is sufficient once DPAs are executed,
+	    or whether belt-and-braces consent is advisable.
+	  - s55 IO designation — for a sole proprietor the IO is the
+	    responsible party. The page currently names Meryl directly.
+	    Reviewer to confirm no separate deputy-IO filing is needed
+	    on the Information Regulator's portal.
+	  - s21 operator agreements — Sanity Free and Resend Free
+	    surface DPAs only as click-to-accept on first login.
+	    Reviewer to confirm a click-through DPA constitutes a
+	    binding "written" operator agreement under POPIA.
+	  - s18(1)(c) PayFast-ITN source — disclosure added on
+	    15 May 2026 in the "When you pay for an order" section.
+	    Reviewer to confirm the in-policy disclosure is sufficient,
+	    vs. also surfacing it pre-purchase at the cart step.
+	  - Resend retention — currently deferred to Resend's own
+	    retention policy ("How long we keep it"). Reviewer to
+	    confirm what bound the Regulator considers reasonable for
+	    transactional order-status emails (contents include name,
+	    order ref, shipping address).
+	  - Enquiry-form retention — the new "When you send a commission
+	    enquiry" section (15 May 2026) frames the enquiry as a
+	    transient Resend relay with no separate database write.
+	    Reviewer to confirm a transient email relay is genuinely
+	    outside POPIA's retention regime, or whether some bound
+	    must be set.
+	  - s49 clickwrap conspicuousness — Cart.svelte renders the
+	    acceptance checkbox at 0.8rem font size below the cart
+	    items, with the Pay button disabled until ticked. Reviewer
+	    to opine whether the placement + styling + button-disabled-
+	    as-only-visible-feedback satisfies CPA s49's "conspicuous"
+	    requirement.
+
 	Update the "Last updated" date whenever the data flows or policy
 	text change.
 -->

@@ -65,6 +65,27 @@
 	    required tickbox linking to Terms/Returns/Privacy before
 	    launch; tracked in docs/roadmap.md.
 
+	Open questions surfaced by the rsa-legal-doc-reviewer sweep on
+	2026-05-15 (see commit 4cb053c for the agent definition):
+	  - CPA s48 versioning — the "Changes to these terms" clause
+	    correctly freezes the version applicable to each order, and
+	    the page now carries a specific day in the lastUpdated date
+	    (commit c5c392b). Reviewer to confirm a dated string is
+	    sufficient version-locking, or whether a version number /
+	    revision history is advisable to make the "version live at
+	    the time you placed the order" reliably retrievable.
+	  - ECT s43(1)(k) lead-time pre-transaction disclosure —
+	    cross-referenced to the same question on /returns.
+	    Currently the 6-week bound lives only here in the Terms,
+	    read at clickwrap. Reviewer to confirm clickwrap timing is
+	    adequate "before the transaction is concluded" for s43.
+	  - CPA s56(3) escalation — the limitation-of-liability and
+	    refund clauses preserve the consumer's right to a full
+	    refund after one failed remedy. Reviewer to re-confirm
+	    nothing in this Terms doc inverts the statutory election
+	    (Returns has the explicit consumer-chooses framing; this
+	    page should not contradict it).
+
 	Update the "Last updated" date whenever the terms text changes.
 -->
 <script lang="ts">
