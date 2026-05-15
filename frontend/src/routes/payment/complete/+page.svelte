@@ -22,13 +22,18 @@
 
 			{#if ref}
 				<p>
-					Your order reference is <strong>{ref}</strong>.
+					Your order reference is <strong>{ref}</strong>. Save this
+					for your records — you'll need it (with the email you used
+					when ordering) to look up your order later.
 				</p>
 			{/if}
 
 			<p>
-				PayFast is confirming your payment. You'll receive an email once
-				it's been confirmed and your order is ready to ship.
+				PayFast is confirming your payment. You'll receive an email
+				once it's been confirmed and your order is ready to ship. If
+				you don't see it within an hour (check your spam folder
+				first), <a href="{base}/contact">get in touch</a> and we'll
+				re-send it.
 			</p>
 
 			<p>You can track your order at any time:</p>

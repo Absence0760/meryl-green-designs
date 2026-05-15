@@ -235,6 +235,12 @@
 			</div>
 		</form>
 
+		<p class="lookup-help">
+			Lost your order reference? <a href="/contact">Get in touch</a>
+			and include the email you used when placing the order — we'll
+			look it up for you.
+		</p>
+
 		{#if error}
 			<div class="alert alert--error">{error}</div>
 		{/if}
@@ -370,6 +376,12 @@
 
 	.track-form__submit {
 		margin-top: var(--space-1);
+	}
+
+	.lookup-help {
+		margin: var(--space-2) 0 var(--space-3);
+		font-size: 0.9rem;
+		color: var(--color-ink-soft);
 	}
 
 	.alert {

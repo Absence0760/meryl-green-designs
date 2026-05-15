@@ -354,6 +354,46 @@ None are blocking; pick the ones that match observed pain.
       `{productId, quantity}[]` to the backend; backend validates
       against Sanity and computes price server-side (no free-form
       items textarea). Shipped with the Cart panel rewrite.
+- [ ] **Self-service order-reference recovery / resend-confirmation
+      email.** Today `/track` requires both the order reference and
+      the email-on-file. A customer who lost their order email (bounce,
+      spam, mistyped address at checkout) and closed the tab before
+      `/payment/complete` rendered has no self-service path — only
+      the `/contact` page, which has just been wired up as a cheap
+      manual fallback. Build a `POST /orders/resend-confirmation`
+      endpoint that takes only an email address, looks up that email
+      in DynamoDB, and re-fires the existing `pendingPaymentTemplate`
+      or `paymentReceivedTemplate` (whichever matches the current
+      order status) back to the address on file. **Threat-model
+      constraints — same shape as the existing
+      `POST /orders/:ref/retry-payment` work in
+      `docs/payment-retry-plan.md`**:
+        - Must not be an email-enumeration oracle: respond identically
+          whether the email matches an order or not (HTTP 200 with a
+          generic "if we have an order matching that email, we've
+          sent a copy"). Never differentiate via status code, response
+          body, or timing.
+        - Rate-limited per-IP with the existing
+          `backend/src/rate-limit.ts` helper. 5 per minute is the
+          ballpark used by other public POSTs.
+        - Lifetime cap of N resends per email (DynamoDB atomic
+          increment, mirrors the retry-payment cap pattern) to
+          prevent inbox spam if an attacker drives the endpoint.
+        - Refuse for orders older than X days (matching the 365-day
+          TTL or shorter) so an attacker can't trawl stale records.
+      Frontend surfaces would be a "Lost your order email? Re-send it"
+      form on `/track` (replacing the manual `/contact` fallback this
+      commit landed) and possibly a link in the post-payment surfaces.
+      **Ship with e2e coverage** in
+      `playwright/tests/orders/`: cases for (a) valid email → owner
+      receives one resent email (and the captured-emails file
+      reflects it), (b) unknown email → identical response with no
+      email sent, (c) rate-limit triggers on the Nth call within the
+      window, (d) lifetime cap refuses past N successful resends.
+      Mirror the assertion shape from the existing
+      `payment-retry.spec.ts`. Counts as a payment-adjacent surface
+      so the implementation deserves a `/safe-edit` cycle, not a
+      normal edit.
 - [ ] "About Meryl" page
 - [ ] Archive of past / sold products
 - [ ] Newsletter signup (only if Meryl wants it)
