@@ -285,8 +285,13 @@
 			</li>
 			<li>
 				<strong>Resend</strong> — our transactional email provider.
-				Receives your email address and the contents of order
-				confirmation and order-status emails sent to you.
+				Two distinct flows pass through Resend: outbound emails
+				to you (order confirmation, order-status updates) and
+				inbound relay of commission enquiries you submit via the
+				<a href="/contact">contact page</a> (your name, email,
+				any phone number you added, and the enquiry text are
+				delivered to us as an email). Card details and shipping
+				addresses are not sent to Resend in either direction.
 				<a href="https://resend.com/legal/privacy-policy"
 					target="_blank"
 					rel="noopener noreferrer">Resend privacy policy</a>
