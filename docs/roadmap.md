@@ -194,23 +194,68 @@ traffic. Most are external, and each is documented with exact steps in
       to be registered with the Information Regulator via the online
       portal at inforegulator.org.za. The page-level designation alone
       is not enough; the portal registration is a separate compliance
-      step Meryl needs to complete before launch.
+      step Meryl needs to complete before launch. Concrete steps:
+      (1) Create a portal account at
+      https://inforegulator.org.za/orms (Online Registration and
+      Management System), business email + South African ID number.
+      (2) Submit the IO registration form for Meryl Green Designs as
+      a sole proprietor with Meryl as both responsible party and IO.
+      Required fields: full business name (`Meryl Green Designs`),
+      legal status (Sole Proprietor), physical address (`Unit 2
+      Nordyk Park, Commercial Street, Malmesbury, 7300`), telephone
+      (`082 326 4555`), and IO contact email (use the domain mailbox
+      below once provisioned — do not register the personal Gmail).
+      (3) Save the IR confirmation reference; the Information Officer
+      registration number can be added to the Privacy Policy header
+      once issued.
 - [ ] **Verify executed DPAs (data-processing agreements) with each
       operator** named in the Privacy Policy: Sanity DPA, Resend DPA,
       AWS GDPR Data Processing Addendum. The policy claims each is
-      executed under POPIA s21; sign in to each provider's dashboard
-      and accept/download the DPA on the current plan tier. The
-      Sanity Free and Resend Free tiers may surface the DPA only as
-      a click-to-accept on first login.
+      executed under POPIA s21; until the DPAs are accepted on the
+      relevant dashboards, the policy currently makes a claim that
+      is not yet true. Concrete steps:
+      (1) **Sanity** — log in at https://www.sanity.io/manage,
+      open the project, Settings → Compliance → Data Processing
+      Agreement, accept on the current plan tier. Free-tier
+      accounts surface this as a click-to-accept; download the
+      executed PDF for the records folder.
+      (2) **Resend** — log in at https://resend.com/settings,
+      Compliance → Data Processing Agreement, accept and download.
+      (3) **AWS** — sign in to the AWS account that hosts the
+      af-south-1 stack, Account Settings → AWS Artifact (or
+      https://console.aws.amazon.com/artifact/), search for "GDPR
+      Data Processing Addendum", click Accept Agreement. Download
+      the signed PDF for the records folder.
+      Keep all three PDFs in a private SOPS-encrypted folder
+      alongside the existing tfvars; do not commit plaintext.
 - [ ] **Domain mailbox to replace the personal Gmail.** The Privacy
       Policy currently uses `zagreenwoman@gmail.com` for Information
-      Officer requests, claims handling, and general contact. Splitting
-      these into `privacy@<domain>` / `support@<domain>` / `legal@<domain>`
-      (or at minimum a single business mailbox under Meryl's domain)
-      reduces the chance that data-subject requests get lost in a
-      personal inbox and looks more professional to the Regulator and
-      CGSO. Resend or Zoho Mail can host this against the same
-      verified sending domain.
+      Officer requests, claims handling, and general contact. A
+      business-domain mailbox reduces the chance that data-subject
+      requests get lost in a personal inbox and looks more
+      professional to the Regulator and CGSO. Options that fit a
+      single-user sole-proprietor budget (mailbox-only, no other
+      productivity tooling needed since Meryl uses Gmail personally):
+        - **Zoho Mail Mail Lite** (~R30/user/month) — 10 GB
+          storage, custom domain, web + IMAP. Cheapest credible
+          option for SA.
+        - **Google Workspace Business Starter** (~R150/user/month)
+          — full Workspace; overkill for a single mailbox but
+          familiar UX if Meryl already lives in Gmail.
+        - **Resend Inbound** (free up to 1k messages/month at the
+          time of writing) — re-uses the already-verified
+          `merylgreendesigns.com` DNS for SPF/DKIM, but Resend
+          Inbound is primarily for transactional / webhook use,
+          not for browsing email day-to-day. Probably *not* the
+          right fit for a human inbox.
+      Recommended: Zoho Mail Lite. Naming scheme: `meryl@<domain>`
+      as the primary mailbox, with `privacy@`, `support@`, and
+      `legal@` set up as aliases that forward to the primary so
+      data-subject requests, claims, and general queries land in
+      one inbox without three separate logins. Update the Privacy
+      Policy (`Who we are` + `Contact us` sections), Returns page
+      s43 disclosure block, Terms `Who you are contracting with`,
+      and Contact page once the mailbox is live.
 - [x] **Clickwrap acceptance checkbox at checkout.** Required
       checkbox added to the cart submit step (`frontend/src/lib/Cart.svelte`)
       linking to /terms, /returns, /privacy. The Pay button is
