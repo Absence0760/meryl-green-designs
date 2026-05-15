@@ -32,8 +32,9 @@ If the actual repo differs from those assumptions (e.g. subscription billing, ch
    - `pages/{terms,privacy,returns}.tsx` / `app/{terms,privacy,returns}/page.tsx` (Next.js)
    - `public/{terms,privacy,returns}.html` (plain static)
 3. Read all three (or however many exist). Note: each finding must cite a specific file and section so the user can navigate to it.
-4. Identify the **registered business name**, **legal status** (sole proprietor / CC / Pty Ltd), **physical address**, **telephone**, **contact email**, **CIPC registration number** (if applicable), and **effective / last-updated date** referenced in each doc. These cross-cut every category below — inconsistency across docs is itself a finding.
-5. If the repo includes a `CLAUDE.md` or `docs/` directory that describes the architecture, data flow, payment integration, or third-party sub-processors, skim it. The doc set may already capture facts (e.g. "Sanity dataset is private; backend brokers all reads") that are load-bearing for the Privacy Policy's claims.
+4. **Read the layout / shell file too.** Site-wide elements — header nav, footer links, cookie banners, the clickwrap mechanism — often live in a shared shell, not in the legal page itself. Common locations: `frontend/src/routes/+layout.svelte` (SvelteKit), `app/layout.tsx` / `pages/_app.tsx` (Next.js), `templates/base.html` (Jinja / Django), `themes/<theme>/layouts/_default/baseof.html` (Hugo). Before flagging "the Privacy page does not link to Contact" or "the cart has no clickwrap checkbox", confirm the link or checkbox isn't already provided by the shell that wraps every page.
+5. Identify the **registered business name**, **legal status** (sole proprietor / CC / Pty Ltd), **physical address**, **telephone**, **contact email**, **CIPC registration number** (if applicable), and **effective / last-updated date** referenced in each doc. These cross-cut every category below — inconsistency across docs is itself a finding.
+6. If the repo includes a `CLAUDE.md` or `docs/` directory that describes the architecture, data flow, payment integration, or third-party sub-processors, skim it. The doc set may already capture facts (e.g. "Sanity dataset is private; backend brokers all reads") that are load-bearing for the Privacy Policy's claims.
 
 If a doc is missing entirely (e.g. no refund/returns policy), that's a Critical finding. Stop and report it before scanning the rest — there is no point checking wording in a file that does not exist.
 
@@ -138,6 +139,8 @@ PayFast's merchant terms obligate every merchant to:
 - Display **contact information** (email at minimum, telephone strongly preferred).
 - Provide a **description of the goods or services** that matches PayFast's submitted merchant description.
 - Comply with **applicable South African law** — which is the entire content of sections A-D above.
+
+For each of the four "displayed and linked" items above, the link typically lives in the site-wide footer rendered by the layout / shell file (see orient step 4 above). Before flagging any of them as missing, grep the shell file — a footer link reaches every page implicitly and doesn't need to be repeated on each legal page.
 
 PayFast's risk team additionally flags:
 
