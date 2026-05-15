@@ -46,16 +46,19 @@
 		errorIsValidation = false;
 	}
 
-	// When the cart empties, drop any error from the previous attempt
-	// and re-require fresh terms acceptance for the next cart — both
-	// to avoid stale state bleeding across transactions, and to honour
-	// CPA s49's "fresh affirmative consent per transaction" reading.
-	$: if (cart.items.length === 0) {
-		if (error) {
+	// `cart` comes from cartStore.svelte.ts (Svelte 5 runes); this
+	// component is in legacy mode (uses `export let`). Svelte 4 `$:`
+	// blocks track local `let` reassignments at compile time and do
+	// NOT auto-wire to imported rune-store reads, so a `$: if
+	// (cart.items.length === 0)` watcher would only fire once at
+	// mount, not when the cart actually empties. Reset state inline
+	// at the action point instead (remove-button click) — fires
+	// reliably and the dependency is obvious.
+	function handleRemove(productId: string) {
+		cart.remove(productId);
+		if (cart.items.length === 0) {
 			error = null;
 			errorIsValidation = false;
-		}
-		if (acceptedTerms) {
 			acceptedTerms = false;
 		}
 	}
@@ -209,7 +212,7 @@
 								<button class="qty-btn" on:click={() => cart.increment(item.productId)} aria-label="Increase quantity">+</button>
 							</div>
 							<span class="item-price">{formatPrice(item.price * item.quantity)}</span>
-							<button class="remove-btn" on:click={() => cart.remove(item.productId)} aria-label="Remove {item.name}">
+							<button class="remove-btn" on:click={() => handleRemove(item.productId)} aria-label="Remove {item.name}">
 								<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
 									<line x1="18" y1="6" x2="6" y2="18"></line>
 									<line x1="6" y1="6" x2="18" y2="18"></line>

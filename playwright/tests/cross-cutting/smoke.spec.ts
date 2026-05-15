@@ -90,7 +90,16 @@ test.describe('public pages render', () => {
 	test('payment-complete shows ref + save hint + contact fallback', async ({ page }) => {
 		await page.goto('/payment/complete?ref=MG-TEST-RECOVERY');
 		await expect(page.getByText('MG-TEST-RECOVERY')).toBeVisible();
-		await expect(page.getByText(/save this for your records/i)).toBeVisible();
+		// `getByText(/regex/i)` returns zero matches for substring text
+		// inside a <p> whose start is interrupted by an inline element
+		// (`<strong>{ref}</strong>. Save this for your records …`) — even
+		// though it works fine for /track's lookup-help where the regex
+		// matches the leading text-node. `locator(...).filter({hasText})`
+		// uses a different matcher that handles the interrupted case
+		// reliably.
+		await expect(
+			page.locator('p').filter({ hasText: 'Save this for your records' }),
+		).toBeVisible();
 		// Two links live on the page: "Track your order" (existing) and
 		// "get in touch" (the new email-not-arriving fallback). Pin both
 		// — the recovery flow breaks if either disappears.
@@ -119,7 +128,11 @@ test.describe('public pages render', () => {
 		await expect(page.getByText('082 326 4555')).toBeVisible();
 		await expect(page.getByText('merylgreendesigns.com')).toBeVisible();
 		await expect(page.getByText('Industry membership')).toBeVisible();
-		await expect(page.getByText('Dispute resolution')).toBeVisible();
+		// `Dispute resolution` (without { exact }) matches three elements
+		// on this page — the `Your statutory rights and dispute resolution`
+		// h2, the dt, and the dd that says "applicable dispute-resolution
+		// forum". Pin the dt unambiguously.
+		await expect(page.getByText('Dispute resolution', { exact: true })).toBeVisible();
 		await expect(page.getByText('Access to your order record')).toBeVisible();
 	});
 
