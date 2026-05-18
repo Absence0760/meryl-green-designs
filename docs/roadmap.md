@@ -19,132 +19,37 @@ What's actually pending is divided into two buckets:
 
 Nothing structural is missing and no work is blocked.
 
-## What's been built (the whole "done" list)
+## What's been built
 
-This is here so the rest of the roadmap has context and so you can see how
-much of the brief is already shipped.
+Every feature in the original brief ships in v1: home (hero + story + poem),
+gallery, Sanity-backed shop with PayFast checkout, `/track` lookups,
+automated status emails, and the Sanity Studio with four schemas
+(`product`, `galleryPhoto`, `testimonial`, `order`).
 
-### Core site
-- [x] Home page with hero photograph, story, and poem
-- [x] Gallery page (Sanity-backed, client-side loading with skeletons)
-- [x] Shop page with Sanity-backed product catalogue
-- [x] Contact page
-- [x] Order form → Sanity order document → owner + customer emails
-- [x] Customer order tracking page at `/track`
-- [x] Automated customer status emails on order status changes
-- [x] Under-construction banner removed
-
-### Content management
-- [x] Sanity Studio with four schemas: `product`, `galleryPhoto`, `testimonial`, `order`
-- [x] Product reads routed through the backend (so the dataset can stay private)
-- [x] Gallery reads routed through the backend (same pattern)
-- [x] Order creation writes to DynamoDB (PII) + Sanity (non-PII skeleton);
-      see [Split order PII](#longer-term--speculative) (now landed) and
-      [`docs/orders-pii-split-plan.md`](./orders-pii-split-plan.md)
-
-### Polish
-- [x] Favicon (brand-colored SVG)
-- [x] `robots.txt` with `/track` disallowed
-- [x] Per-route `<title>`, meta description, Open Graph, Twitter Card tags
-- [x] Hero image compressed (3.6 MB → 643 KB via `sips`)
-- [x] Client-side loading with skeleton states on shop + gallery (page shell
-      appears instantly; data loads and images lazy-load progressively)
-- [x] `loading="lazy"` on all shop and gallery images
-- [x] Product cards aligned so buttons stay on the same baseline regardless
-      of blurb/description length
-- [x] `prefers-reduced-motion` guard on the skeleton shimmer animation
-- [x] Hero `rel="preload"` hint
-- [x] `theme-color` meta for mobile address-bar tinting
-
-### Infrastructure
-- [x] Monorepo restructured into `frontend/`, `backend/`, `studio/`, `infra/`
-- [x] Terraform module for S3, CloudFront, OAC, ACM cert, Route 53,
-      Lambda, IAM, GitHub OIDC
-- [x] Three GitHub Actions deploy workflows (frontend, backend, studio)
-      with OIDC federation — no long-lived AWS keys in secrets
-- [x] Release-gated deploys: each deploy workflow fires only when a
-      GitHub release is published (not on every push to `main`), with a
-      skip-if-unchanged check job that compares the current release tag
-      against the previous one and skips deploys for workspaces whose
-      files didn't change. `workflow_dispatch` is retained as an escape
-      hatch for manual re-runs, and the frontend also listens for
-      `repository_dispatch: sanity-publish` so content edits rebuild
-      without a code release.
-- [x] Secrets management via SOPS + AWS KMS. `infra/terraform.tfvars.sops`
-      and `backend/.env.sops` are committed encrypted, decryptable by
-      anyone with `kms:Decrypt` on the project's dedicated KMS key
-      (`alias/meryl-green-designs-sops` in `af-south-1`). `bin/sops-init.sh`
-      bootstraps the KMS key idempotently; `bin/setup.sh` decrypts tfvars
-      into a scratch file at start and shreds it on exit. See
-      `docs/deployment.md § Secrets management`.
-- [x] `bin/setup.sh` one-command bootstrap (state bucket, `terraform apply`,
-      GitHub Actions variables, Sanity dataset privacy, backend webhook)
-- [x] `bin/sops-init.sh` one-command SOPS bootstrap (KMS key creation,
-      `.sops.yaml` placeholder substitution, encrypted-file seeding)
-- [x] Dependabot configured with grouped weekly updates for all three
-      workspace packages + GitHub Actions
-- [x] Backend Lambda bundling via esbuild
-- [x] Backend env loading via `dotenv` for local dev (stripped from the
-      Lambda bundle via entry-point isolation — `lambda.ts` deliberately
-      does not import `server.ts`)
-
-### Testing
-- [x] **End-to-end Playwright suite** (`playwright/` workspace) — drives
-      Chromium against the live backend + frontend + LocalStack
-      DynamoDB + a dedicated `test-e2e` Sanity dataset. Covers
-      smoke renders of every public page, the cart + checkout dual-write
-      (DynamoDB PII row + Sanity skeleton + owner email + signed PayFast
-      form), `/track` lookups (happy + no-enumeration paths), PayFast
-      ITN simulation (COMPLETE / FAILED / invalid sig / amount mismatch),
-      and the Sanity status webhook. Runs on every PR + push to `main`
-      via `.github/workflows/e2e.yml`. **Cannot touch production** — the
-      env-guard in `playwright/global-setup.ts` aborts if any env var
-      would target a real resource (Sanity production dataset, non-loopback
-      DynamoDB endpoint, EMAIL_BACKEND≠file, PAYFAST_SANDBOX≠true).
-- [x] Vitest test suite across backend and frontend (388 tests total: 348
-      backend across 18 files + 40 frontend across 4 files, ~4s combined).
-      Backend covers email templates + HTML escaping, `sendEmail` with
-      mocked Resend fetch, Sanity webhook HMAC verification, PayFast
-      ITN signature verification + amount checks + failed-ITN dedup,
-      `POST /orders` + dual-write rollback semantics + `GET /orders/:ref`
-      + retry-payment, `/enquiries`, `/admin/*` PII routes + admin-auth
-      middleware, `/products` + `/gallery` + `/testimonials`, CORS
-      (including `ALLOWED_ORIGINS` fallback behaviour), rate-limit
-      middleware, `/health`, 404 handling, orders-store join layer,
-      auto-cancel sweep, and a regression guard that fails if banking
-      details ever reappear in the automated pending-payment email.
-      Frontend covers `formatPrice`, `imageUrl`, and the cart logic
-      helpers. All tests mock Sanity, Resend, and DynamoDB so they run
-      offline. Root `pnpm test` runs both workspaces.
-- [x] CI workflow (`.github/workflows/ci.yml`) runs `pnpm check` + `pnpm
-      test` on every PR and every push to `main`/`dev`, with
-      cancel-in-progress concurrency so rapid pushes don't stack up.
-
-### Developer experience
-- [x] All dependencies upgraded to latest major versions (Svelte 5,
-      SvelteKit 2.59, Vite 8, TypeScript 6, Sanity 5, React 19, Hono 4.12,
-      @sanity/client 7, etc.)
-- [x] Dead boilerplate dependencies removed (Storybook, `unplugin-icons`,
-      `mdsvex`, `normalize.css`, `isomorphic-dompurify`)
-- [x] `$app/stores` → `$app/state` migration so the layout compiles cleanly
-      under Svelte 5's strict rune rules
-- [x] `pnpm dev` runs frontend + backend in parallel with HMR
-- [x] Clean typecheck + build across all three packages
-
-### Documentation
-- [x] `docs/architecture.md` — full system overview with flow diagrams
-- [x] `docs/features.md` — per-page feature list
-- [x] `docs/run-locally.md` — local dev setup walkthrough
-- [x] `docs/deployment.md` — deployment guide with release-gated workflow,
-      SOPS + KMS secrets management, env var reference, rollback,
-      troubleshooting, and "adding a new content type" playbook
-- [x] `docs/orders-and-tracking.md` — detailed order flow
-- [x] `docs/security.md` — cross-cutting risk register, mitigations,
-      incident playbook, hardening gaps (rate limiting, `pnpm audit`,
-      order-ref entropy, DMARC/SPF)
-- [x] `infra/README.md` — Terraform module reference
-- [x] `CLAUDE.md` — repo guidance loaded into every Claude Code session
-- [x] Root `README.md`
+- **Per-page feature inventory** — [`features.md`](./features.md).
+- **System layout, deploy targets, content + order flows** —
+  [`architecture.md`](./architecture.md).
+- **Order PII split** (DynamoDB for PII, Sanity for the non-PII skeleton) —
+  [`orders-pii-split-plan.md`](./orders-pii-split-plan.md). Phase 1
+  live since 2026-05-13.
+- **Test posture** — 388 vitest (348 backend / 40 frontend) plus the
+  Playwright e2e workspace (LocalStack DynamoDB + dedicated `test-e2e`
+  Sanity dataset + PayFast sandbox; env-guard in
+  `playwright/global-setup.ts` refuses to run if anything would point at
+  production). Coverage notes in `backend/CLAUDE.md` and
+  `frontend/CLAUDE.md`.
+- **Deploy posture** — release-gated frontend/backend/studio workflows
+  via GitHub OIDC, skip-if-unchanged check jobs, `workflow_dispatch`
+  escape hatch, `repository_dispatch` rebuild on Sanity content edits.
+  Full inventory in [`architecture.md`](./architecture.md#deployment-targets);
+  ops walkthrough in [`deployment.md`](./deployment.md).
+- **Secrets** — SOPS + AWS KMS (`alias/meryl-green-designs-sops` in
+  `af-south-1`); `bin/setup.sh` + `bin/sops-init.sh` are idempotent
+  one-command bootstraps. Workflow lives under
+  [`deployment.md § Secrets management`](./deployment.md#secrets-management).
+- **Supply-chain hygiene** — Dependabot grouped weekly updates,
+  pnpm-lock auto-sync, conservative auto-merge for minor/patch bumps,
+  CodeQL + gitleaks + OpenSSF Scorecard on schedule.
 
 ## Remaining before launch
 
