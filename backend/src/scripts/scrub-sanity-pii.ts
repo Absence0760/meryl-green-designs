@@ -3,7 +3,7 @@
 // (a) new orders write only non-PII to Sanity from the deploy onward,
 // and (b) the Studio's new schema no longer renders the native PII
 // fields, so a brief window of "Sanity has PII, Studio doesn't show
-// it" is harmless. See docs/orders-pii-split-plan.md § Phase 1.
+// it" is harmless. See docs/orders-pii-split.md § Phase 1.
 //
 // Run from backend/ with
 //   pnpm scrub:sanity-pii [--dry-run] [--prod --yes]
@@ -201,7 +201,7 @@ async function main(): Promise<void> {
 			'observation window) or wait the full 30 days for natural rollover.'
 		);
 		console.log(
-			'See docs/orders-pii-split-plan.md § Phase 1 step 4 for the'
+			'See docs/orders-pii-split.md § Phase 1 step 4 for the'
 		);
 		console.log(
 			'history-purge runbook.'

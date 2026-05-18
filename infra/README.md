@@ -32,7 +32,7 @@ Terraform configuration for the Meryl Green Designs AWS resources.
   joined to the Sanity order document by `orderRef`. Point-in-time recovery
   on, TTL on (drives POPIA retention — each row is deleted 365 days after
   creation), SSE with the AWS-managed `aws/dynamodb` key, `prevent_destroy`
-  on. See `dynamodb.tf` and `docs/orders-pii-split-plan.md`.
+  on. See `dynamodb.tf` and `docs/orders-pii-split.md`.
 - **Daily auto-cancel Lambda + EventBridge schedule rule**
   (`meryl-green-designs-auto-cancel`, 06:00 UTC daily) that flips
   `pending_payment` Sanity orders older than 30 days to `cancelled`.

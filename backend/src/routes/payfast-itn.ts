@@ -52,7 +52,7 @@ export function payfastItnRouter() {
 		}
 
 		// Order load moves before the non-COMPLETE branch so a failed-payment
-		// email can fire to the customer (docs/payment-retry-plan.md Option A).
+		// email can fire to the customer (docs/payment-retry.md Option A).
 		// The COMPLETE-path checks below remain intact.
 		let order;
 		try {

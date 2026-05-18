@@ -148,7 +148,7 @@ Edit `frontend/.env`:
 ### Setting up local DynamoDB
 
 The backend writes customer order PII to a private DynamoDB table (see
-[`orders-pii-split-plan.md`](./orders-pii-split-plan.md) for the
+[`orders-pii-split.md`](./orders-pii-split.md) for the
 architecture). Local dev runs against a `docker compose` LocalStack
 container that emulates the DynamoDB API on `:4566` —
 production hits the AWS-hosted table, and the two are isolated:

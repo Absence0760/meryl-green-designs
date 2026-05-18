@@ -80,8 +80,8 @@ and what still needs manual attention.
 - [`docs/deployment.md`](./docs/deployment.md) — first-time AWS deploy walkthrough
 - [`docs/roadmap.md`](./docs/roadmap.md) — what's planned, what's not
 - [`docs/orders-and-tracking.md`](./docs/orders-and-tracking.md) — order schema, status webhook, public track page
-- [`docs/orders-pii-split-plan.md`](./docs/orders-pii-split-plan.md) — Phase 1 PII split (DynamoDB + Sanity), live since 2026-05-13
-- [`docs/payment-retry-plan.md`](./docs/payment-retry-plan.md) — payment-retry flow for failed/cancelled orders
+- [`docs/orders-pii-split.md`](./docs/orders-pii-split.md) — Phase 1 PII split (DynamoDB + Sanity), live since 2026-05-13
+- [`docs/payment-retry.md`](./docs/payment-retry.md) — payment-retry flow for failed/cancelled orders
 - [`docs/security.md`](./docs/security.md) — risk register, mitigations, incident playbook
 - [`playwright/README.md`](./playwright/README.md) — end-to-end test suite
 - [`infra/README.md`](./infra/README.md) — Terraform module specifics

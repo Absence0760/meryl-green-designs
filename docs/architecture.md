@@ -275,7 +275,7 @@ difference is how requests reach the app.
   for orders stuck in `pending_payment` or `payment_failed`. Same
   no-enumeration policy. Per-orderRef lifetime cap of 5 (atomic
   DynamoDB `ConditionExpression`), 7-day window. See
-  `docs/payment-retry-plan.md`.
+  `docs/payment-retry.md`.
 - `GET /admin/orders/:ref`, `PATCH /admin/orders/:ref/tracking`,
   `PATCH /admin/orders/:ref/internal-notes` — Studio-only PII routes.
   Gated by `Authorization: Bearer <ADMIN_API_TOKEN>` (constant-time
@@ -378,7 +378,7 @@ carries only `orderRef`, `status`, `paymentMethod`, `amountZar`, and
 components (`CustomerDetailsPanel`, `TrackingFields`,
 `InternalNotesField` in `studio/components/orderPii.tsx`). The panels
 read/write the backend's `/admin/orders/:ref/*` routes directly,
-bypassing Sanity. See `docs/orders-pii-split-plan.md`.
+bypassing Sanity. See `docs/orders-pii-split.md`.
 
 The studio reads `SANITY_STUDIO_PROJECT_ID` and `SANITY_STUDIO_DATASET` from its
 own `.env`. The frontend reads the *same* project via `PUBLIC_SANITY_PROJECT_ID`

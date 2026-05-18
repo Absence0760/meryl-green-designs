@@ -13,7 +13,7 @@ import {
 // customerPhone, shippingAddress, items, customerNotes, internalNotes,
 // trackingNumber, trackingUrl, shippingCarrier) were removed at the
 // Phase 1 cutover; existing docs were stripped of those values by
-// `pnpm scrub:sanity-pii --prod --yes`. See docs/orders-pii-split-plan.md.
+// `pnpm scrub:sanity-pii --prod --yes`. See docs/orders-pii-split.md.
 export const order = defineType({
 	name: 'order',
 	title: 'Order',

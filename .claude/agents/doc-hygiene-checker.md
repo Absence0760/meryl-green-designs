@@ -51,7 +51,7 @@ For each classification, list the docs that the rule says to touch:
 | Feature / behaviour | `docs/features.md`, `docs/architecture.md`, the relevant per-workspace `CLAUDE.md`, `docs/roadmap.md` (if planned) |
 | Schema | `studio/schemas/<name>.ts`, `backend/src/sanity.ts` (type + query helper), `docs/orders-and-tracking.md` if it's the order schema, the relevant per-workspace `CLAUDE.md` |
 | Convention | The relevant `CLAUDE.md` (workspace or root) |
-| Decision / trade-off | `docs/architecture.md` for cross-cutting decisions; `docs/orders-pii-split-plan.md` only if it's an extension of that specific proposal |
+| Decision / trade-off | `docs/architecture.md` for cross-cutting decisions; `docs/orders-pii-split.md` only if it's an extension of that specific proposal |
 | Process / tooling | `docs/run-locally.md`, `docs/deployment.md`, root `CLAUDE.md` if it's a session-level gotcha |
 | Roadmap progress | `docs/roadmap.md` (tick the box) |
 | Infra | `infra/README.md`, `docs/deployment.md`, possibly `docs/security.md` |

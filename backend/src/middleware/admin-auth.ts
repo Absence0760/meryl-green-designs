@@ -2,7 +2,7 @@ import { createMiddleware } from 'hono/factory';
 import { timingSafeEqual } from 'node:crypto';
 
 // Bearer-token gate for /admin/* routes. Currently the only secret-grade
-// auth on this stack — see docs/orders-pii-split-plan.md § Admin auth for
+// auth on this stack — see docs/orders-pii-split.md § Admin auth for
 // the v2 hardening list (Sanity JWT, Cognito).
 //
 // 401 is intentionally generic so an attacker can't distinguish "wrong

@@ -18,7 +18,7 @@
 // Reads `backend/.env` for SANITY_* and ORDERS_TABLE_NAME / DYNAMODB_
 // ENDPOINT (the same env that drives the live backend), so by default a
 // local run writes to the docker-compose container, not prod AWS — see
-// docs/orders-pii-split-plan.md § Implementation sequencing.
+// docs/orders-pii-split.md § Implementation sequencing.
 //
 // Safety gates:
 //   --dry-run    No writes, just reports what would happen.

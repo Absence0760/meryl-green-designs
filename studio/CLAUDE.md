@@ -50,11 +50,11 @@ Required env vars (in `studio/.env`):
 - `SANITY_STUDIO_API_URL` — backend base URL the components fetch from
 - `SANITY_STUDIO_ADMIN_TOKEN` — bearer token, must match the backend's `ADMIN_API_TOKEN`
 
-The token is baked into the Studio JS bundle at build time, so it's visible to anyone who can load the Studio. CORS narrows admin access to the Studio's hosted origin, but the real auth gate is the bearer check on the backend. See `docs/orders-pii-split-plan.md § Admin auth` for the v2 hardening ideas (Sanity JWT verification, Cognito).
+The token is baked into the Studio JS bundle at build time, so it's visible to anyone who can load the Studio. CORS narrows admin access to the Studio's hosted origin, but the real auth gate is the bearer check on the backend. See `docs/orders-pii-split.md § Admin auth` for the v2 hardening ideas (Sanity JWT verification, Cognito).
 
 `resolveApiUrl()` in `orderPii.tsx` throws at module load if a production build has no `SANITY_STUDIO_API_URL` set, or if the value resolves to a loopback host (`localhost` / `127.0.0.1` / `0.0.0.0`). The check runs in the deployed JS bundle (Vite/esbuild has already substituted `process.env.NODE_ENV` to `'production'` by then). Belt-and-braces: `.github/workflows/deploy-studio.yml` also asserts `vars.PUBLIC_API_URL`, `secrets.ADMIN_API_TOKEN`, and `vars.PUBLIC_SANITY_PROJECT_ID` are all set before invoking `sanity deploy`. Development builds with no env set fall back to `http://localhost:3001`.
 
-Phase 1 cutover landed 2026-05-13: the native PII fields are gone from `order.ts`. The schema now carries only the non-PII skeleton (`orderRef`, `status`, `paymentMethod`, `amountZar`, `paymentId`) plus three placeholder slots (`customerDetailsPanel`, `trackingPanel`, `internalNotesPanel`) backed by the components above. The Phase 0 parity-validation step is historical — see `docs/orders-pii-split-plan.md`.
+Phase 1 cutover landed 2026-05-13: the native PII fields are gone from `order.ts`. The schema now carries only the non-PII skeleton (`orderRef`, `status`, `paymentMethod`, `amountZar`, `paymentId`) plus three placeholder slots (`customerDetailsPanel`, `trackingPanel`, `internalNotesPanel`) backed by the components above. The Phase 0 parity-validation step is historical — see `docs/orders-pii-split.md`.
 
 ## Pointers
 

@@ -18,7 +18,7 @@ Polish the UI/UX of `$ARGUMENTS` using the `ui-polisher` agent.
 **Wrong fit — tell the user and stop:**
 
 - A purely-functional admin / settings / dev page with no real-estate or scanability problem.
-- A payment surface (`/payment/cancelled`, the retry CTA in `/track`, the `Cart.svelte` PayFast form construction). These are inside the payment-retry threat model in `docs/payment-retry-plan.md` — they need `/safe-edit`, not polish.
+- A payment surface (`/payment/cancelled`, the retry CTA in `/track`, the `Cart.svelte` PayFast form construction). These are inside the payment-retry threat model in `docs/payment-retry.md` — they need `/safe-edit`, not polish.
 - A request that's really a feature, not a polish — "add an FAQ section to the home page" needs a content plan, not the polish agent.
 - An asks-for-everything sweep ("polish all the pages"). Pick one and tell the user to invoke this command again for the next.
 
@@ -66,7 +66,7 @@ This command costs more than a normal edit — a full type-check, possibly an e2
 ## What this command does NOT replace
 
 - `/check` for a pre-commit gate (code-review + test-gap + doc-hygiene).
-- `/safe-edit` for security- or payment-sensitive changes (cart submit, ITN handling, PayFast form construction, anything inside `docs/payment-retry-plan.md`'s threat model).
+- `/safe-edit` for security- or payment-sensitive changes (cart submit, ITN handling, PayFast form construction, anything inside `docs/payment-retry.md`'s threat model).
 - `/audit/*` for periodic broad sweeps (secrets, XSS, deps, infra, cost-controls).
 - Visual verification. The operator runs `pnpm frontend dev` and reviews the page themselves — that's the repo convention.
 

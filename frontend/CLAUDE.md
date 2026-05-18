@@ -85,7 +85,7 @@ flag flips. The e2e coverage lives in
 `HTMLFormElement.prototype.submit` to freeze the page in the
 post-redirect-decision state for assertion.
 
-Full design + threat model: `docs/payment-retry-plan.md`.
+Full design + threat model: `docs/payment-retry.md`.
 
 ## SPA fallback for dynamic routes
 

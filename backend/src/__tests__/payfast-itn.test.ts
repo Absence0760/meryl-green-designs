@@ -152,7 +152,7 @@ describe('POST /webhooks/payfast-itn', () => {
 		expect(res.status).toBe(200);
 		expect(ordersStore.updateOrderStatus).not.toHaveBeenCalled();
 		// FAILED + still-pending: customer gets a "didn't go through"
-		// email with retry guidance (docs/payment-retry-plan.md Option A).
+		// email with retry guidance (docs/payment-retry.md Option A).
 		expect(email.sendEmail).toHaveBeenCalledOnce();
 		const arg = vi.mocked(email.sendEmail).mock.calls[0]![0];
 		expect(arg.to).toBe('itn-test-placeholder@invalid');

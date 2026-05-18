@@ -30,7 +30,7 @@ automated status emails, and the Sanity Studio with four schemas
 - **System layout, deploy targets, content + order flows** —
   [`architecture.md`](./architecture.md).
 - **Order PII split** (DynamoDB for PII, Sanity for the non-PII skeleton) —
-  [`orders-pii-split-plan.md`](./orders-pii-split-plan.md). Phase 1
+  [`orders-pii-split.md`](./orders-pii-split.md). Phase 1
   live since 2026-05-13.
 - **Test posture** — 388 vitest (348 backend / 40 frontend) plus the
   Playwright e2e workspace (LocalStack DynamoDB + dedicated `test-e2e`
@@ -261,7 +261,7 @@ None are blocking; pick the ones that match observed pain.
       forwarding. Frontend surfaces: `/payment/cancelled` retry form
       and a retry CTA on `/track` for in-window pending orders.
       **Full implementation notes:**
-      [`docs/payment-retry-plan.md`](./payment-retry-plan.md).
+      [`docs/payment-retry.md`](./payment-retry.md).
 - [x] Structured product picker on the order form — cart submits
       `{productId, quantity}[]` to the backend; backend validates
       against Sanity and computes price server-side (no free-form
@@ -279,7 +279,7 @@ None are blocking; pick the ones that match observed pain.
       order status) back to the address on file. **Threat-model
       constraints — same shape as the existing
       `POST /orders/:ref/retry-payment` work in
-      `docs/payment-retry-plan.md`**:
+      `docs/payment-retry.md`**:
         - Must not be an email-enumeration oracle: respond identically
           whether the email matches an order or not (HTTP 200 with a
           generic "if we have an order matching that email, we've
@@ -344,7 +344,7 @@ step up in complexity and shouldn't be taken lightly.
       `/admin/orders/:ref/*` backend routes. Saves ~R285/month by
       dropping the Sanity Growth subscription and reduces the set of
       third-party PII processors. **Implementation history:**
-      [`docs/orders-pii-split-plan.md`](./orders-pii-split-plan.md).
+      [`docs/orders-pii-split.md`](./orders-pii-split.md).
 
 ## Explicit non-goals
 

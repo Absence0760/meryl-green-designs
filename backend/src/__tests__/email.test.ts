@@ -383,7 +383,7 @@ describe('paymentFailedTemplate', () => {
 	});
 
 	it('includes the victim-spam disregard footer', async () => {
-		// docs/payment-retry-plan.md flags victim spam (attacker
+		// docs/payment-retry.md flags victim spam (attacker
 		// places orders with a third party's email) as a known abuse
 		// vector. The footer gives the third party context to
 		// disregard the email instead of being alarmed.

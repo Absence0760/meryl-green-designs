@@ -244,7 +244,7 @@ Page copy and the closing CTA reflect that — visitors are guided to
   Per-orderRef lifetime cap of 5 retries (atomic DynamoDB write).
   Failed-payment emails carry a generic `/track?ref=X` link (no email
   in URL) so a forwarded email doesn't leak credentials. Design and
-  threat model in `docs/payment-retry-plan.md`.
+  threat model in `docs/payment-retry.md`.
 - **"Secure checkout" panel** — single reassurance sentence noting
   PayFast handles payment and the site never sees card details, plus
   a row of accepted-method chips (cards, Apple Pay, SnapScan, Instant
@@ -372,7 +372,7 @@ Page copy and the closing CTA reflect that — visitors are guided to
   `InternalNotesField`) that read/write the backend's `/admin/orders/:ref/*`
   routes. Meryl edits status in Studio; the backend creates the
   skeleton and DynamoDB row on order submission. See
-  [`orders-pii-split-plan.md`](./orders-pii-split-plan.md).
+  [`orders-pii-split.md`](./orders-pii-split.md).
 - **Gallery photo schema** with fields: image (with alt text and hotspot
   cropping), caption, visible toggle, and display order. Meryl uploads
   photos here to populate the `/gallery` page.
@@ -426,7 +426,7 @@ Page copy and the closing CTA reflect that — visitors are guided to
     customer-facing `/track` page (joins DynamoDB PII + Sanity status)
   - `POST /orders/:ref/retry-payment?email=…` — self-service retry for
     failed/cancelled payments. Per-orderRef lifetime cap of 5, 7-day
-    window. See [`payment-retry-plan.md`](./payment-retry-plan.md).
+    window. See [`payment-retry.md`](./payment-retry.md).
   - `GET /admin/orders/:ref`, `PATCH /admin/orders/:ref/tracking`,
     `PATCH /admin/orders/:ref/internal-notes` — Studio-only PII routes
     consumed by the Studio's custom field components. Gated by

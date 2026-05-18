@@ -1,7 +1,7 @@
 // Split-store for order data. Phase 1: DynamoDB holds PII; Sanity holds
 // only the order skeleton (orderRef, status, paymentMethod, amountZar,
 // paymentId). Callers see a unified `Order` shape — the join is hidden
-// in this module. See docs/orders-pii-split-plan.md.
+// in this module. See docs/orders-pii-split.md.
 //
 // Write order on create is DynamoDB first, then Sanity. If Sanity fails
 // after DynamoDB succeeds, the DynamoDB row is removed by a compensating
@@ -285,7 +285,7 @@ export async function updateOrderTracking(orderRef: string, tracking: TrackingUp
 //
 // `getOrderForRetry` is the *only* read path the retry handler should use.
 // It returns the minimal set of fields needed for the 12-step fail-closed
-// flow in docs/payment-retry-plan.md and ensures the field names match
+// flow in docs/payment-retry.md and ensures the field names match
 // across Phase 0 (Sanity-only) and Phase 1 (Sanity skeleton + DynamoDB PII).
 //
 // In Phase 1, Sanity exposes `_createdAt` (with underscore — the Sanity
@@ -345,7 +345,7 @@ export async function getOrderForRetry(orderRef: string): Promise<RetryReadModel
  * Atomic per-orderRef retry counter. Increments `retryAttempts` by one
  * on the DynamoDB order row, gated by a `ConditionExpression` that
  * caps lifetime attempts at `max` (default 5 — see
- * docs/payment-retry-plan.md § Per-orderRef rate limit for the
+ * docs/payment-retry.md § Per-orderRef rate limit for the
  * lifetime-vs-sliding-window rationale).
  *
  * Throws when the cap is exceeded (the DynamoDB SDK throws

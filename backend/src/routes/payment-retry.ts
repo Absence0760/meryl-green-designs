@@ -8,7 +8,7 @@ import {
 	RetryLimitExceededError
 } from '../orders-store.js';
 
-// Full design + threat model: docs/payment-retry-plan.md.
+// Full design + threat model: docs/payment-retry.md.
 //
 // Self-service payment retry lets a customer re-submit the SAME orderRef
 // to PayFast so the eventual successful ITN updates the original Sanity
@@ -26,7 +26,7 @@ import {
 //     atomically on DynamoDB via the ConditionExpression in
 //     `incrementRetryAttempt`. Closes the concurrency window.
 //
-// Deviation from docs/payment-retry-plan.md's step 4 placement:
+// Deviation from docs/payment-retry.md's step 4 placement:
 // the design originally ordered "per-orderRef rate limit" BEFORE
 // auth+status+window checks. Implementing that strictly would let a
 // distributed-IP attacker who knows a valid orderRef burn the
@@ -34,7 +34,7 @@ import {
 // failed attempt would still increment the counter). The counter is
 // therefore placed AFTER the email/status/window guards here, so only
 // genuinely-authenticated retries count against the cap. Documented
-// in docs/payment-retry-plan.md § Per-orderRef rate limit.
+// in docs/payment-retry.md § Per-orderRef rate limit.
 
 const MAX_RETRIES_PER_ORDER = 5;
 const RETRY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;

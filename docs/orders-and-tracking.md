@@ -10,7 +10,7 @@ Customers track their order at `/track` as before — the backend joins
 both stores and returns a unified shape. Status updates in the Studio
 trigger automatic emails via the Sanity webhook (now joining DynamoDB to
 recover the customer's email). See
-[`orders-pii-split-plan.md`](./orders-pii-split-plan.md) for the
+[`orders-pii-split.md`](./orders-pii-split.md) for the
 migration history.
 
 The detail below was written for the original Sanity-only design and
@@ -91,7 +91,7 @@ Frontend displays status, shipping info, tracking number (if present)
 > `shippingCarrier`, `internalNotes`) from the Sanity schema. For the
 > current Sanity schema, read `studio/schemas/order.ts`; for the
 > matching DynamoDB PII shape, see
-> [`orders-pii-split-plan.md`](./orders-pii-split-plan.md).
+> [`orders-pii-split.md`](./orders-pii-split.md).
 
 ```typescript
 // studio/schemas/order.ts — PRE-CUTOVER design, retained for context
@@ -228,7 +228,7 @@ re-signs a fresh PayFast form using the **same** `orderRef`, so the
 eventual successful ITN updates the original Sanity document
 (no duplicate `pending_payment` rows). Implementation in
 `backend/src/routes/payment-retry.ts`. Threat model + 12-step
-fail-closed flow in [`payment-retry-plan.md`](./payment-retry-plan.md).
+fail-closed flow in [`payment-retry.md`](./payment-retry.md).
 
 Per-orderRef lifetime cap of 5 retry attempts is enforced atomically
 on the DynamoDB row via a `ConditionExpression`. The cap is placed

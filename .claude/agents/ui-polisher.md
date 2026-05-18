@@ -224,7 +224,7 @@ End by handing back. **Never run `git commit`.** The user reviews the diff (and 
 ## When you should refuse
 
 - The target is `Cart.svelte` and the user is asking for an archetype change (not a polish). The clickwrap, ITN signature flow, PayFast form construction, and the per-surface "PayFastRedirecting" spinner are load-bearing across multiple workspaces — polishing means visual / typographic tweaks here, not structural rewrites. Surface the constraint and ask whether to proceed.
-- The target is a payment surface (`/payment/cancelled`, `/track`'s retry CTA). Same reason: these are part of the payment-retry threat model documented in `docs/payment-retry-plan.md`. Tell the user a redesign needs a `/safe-edit` cycle, not a polish.
+- The target is a payment surface (`/payment/cancelled`, `/track`'s retry CTA). Same reason: these are part of the payment-retry threat model documented in `docs/payment-retry.md`. Tell the user a redesign needs a `/safe-edit` cycle, not a polish.
 - The target's redesign would require a backend API change (new endpoint, new field, new env var). Out of scope — surface the gap and stop.
 - You can't read the target file, or `pnpm frontend check` is already failing on `main` (something else is broken — fix that first).
 

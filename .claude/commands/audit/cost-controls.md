@@ -76,7 +76,7 @@ Verify:
 
 ### 7. Sanity dataset growth
 
-Sanity charges per-dataset row count and asset storage on paid plans. At current scale we're on Growth ($15/month, comfortable). The migration to Free (per `docs/orders-pii-split-plan.md`) caps things differently — Free is 2 datasets, 20 user seats. Neither is hit at current scale.
+Sanity charges per-dataset row count and asset storage on paid plans. At current scale we're on Growth ($15/month, comfortable). The migration to Free (per `docs/orders-pii-split.md`) caps things differently — Free is 2 datasets, 20 user seats. Neither is hit at current scale.
 
 Verify:
 - No automated process is hammering Sanity writes. (Phase 1+ note: there is no scheduled job touching Sanity at all — PII retention is now DynamoDB-side TTL. Any EventBridge rule still targeting the backend Lambda is unexpected; flag.)
@@ -107,7 +107,7 @@ This audit's value depends on the docs being honest:
 
 - `docs/security.md § Risk 8` (cost / spend) and `§ Risk 10` (PayFast integrity) match the current code.
 - `docs/architecture.md` cost table reflects the actual baseline (~R380/month or whatever the current configuration produces).
-- The proposed `docs/orders-pii-split-plan.md` cost table (R77/month post-migration) is internally consistent.
+- The proposed `docs/orders-pii-split.md` cost table (R77/month post-migration) is internally consistent.
 
 ## Report
 

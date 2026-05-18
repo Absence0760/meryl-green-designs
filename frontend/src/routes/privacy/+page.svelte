@@ -12,7 +12,7 @@
 	email, phone, address, items, notes, tracking). Sanity stores only
 	the non-PII order skeleton (orderRef, status, paymentMethod,
 	amountZar, paymentId). The two bullets under "Who we share it with"
-	reflect that split. See docs/orders-pii-split-plan.md for the
+	reflect that split. See docs/orders-pii-split.md for the
 	migration history.
 
 	Even so, a privacy policy is a legal document. Before going live with

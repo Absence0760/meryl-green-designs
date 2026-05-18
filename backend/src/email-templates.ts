@@ -155,7 +155,7 @@ function deliveredTemplate(order: Order): { subject: string; html: string } {
 // Not status-driven (a failed PayFast attempt doesn't move the order
 // out of pending_payment — the customer can still retry). Fired
 // imperatively from payfast-itn.ts on the non-COMPLETE branch when
-// the order is found AND still pending. See docs/payment-retry-plan.md
+// the order is found AND still pending. See docs/payment-retry.md
 // § Payment-failed email for the Option A rationale + the
 // victim-spam mitigation footer required at the bottom.
 //

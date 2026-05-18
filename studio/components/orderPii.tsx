@@ -11,7 +11,7 @@
 // Token + API URL are baked into the Studio JS bundle at build time via
 // SANITY_STUDIO_* env vars. The token is therefore visible to anyone who
 // inspects the bundle — the backend bearer-token gate is the real
-// security control. See docs/orders-pii-split-plan.md § Admin auth.
+// security control. See docs/orders-pii-split.md § Admin auth.
 
 import { useCallback, useEffect, useState, type ChangeEvent } from 'react';
 import { useFormValue } from 'sanity';

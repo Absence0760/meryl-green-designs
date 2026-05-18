@@ -11,7 +11,7 @@ export type PaymentMethod = 'eft' | 'payfast';
 
 // Phase 1: Sanity stores only the non-PII order skeleton. PII lives in
 // DynamoDB and is joined back by orders-store.ts before reaching any
-// caller — see docs/orders-pii-split-plan.md. The `Order` shape that
+// caller — see docs/orders-pii-split.md. The `Order` shape that
 // callers actually work with is exported from orders-store.ts.
 export type SanityOrder = {
 	_id: string;
@@ -275,4 +275,4 @@ export async function getTestimonials(): Promise<SanityTestimonial[]> {
 // createdAt, set in orders-store.ts:buildPiiItem). The Sanity-side
 // findOrdersWithExpiredPii / clearOrderPii pair that lived here before
 // Phase 1 cutover was removed alongside backend/src/pii-cleanup.ts —
-// see docs/orders-pii-split-plan.md.
+// see docs/orders-pii-split.md.

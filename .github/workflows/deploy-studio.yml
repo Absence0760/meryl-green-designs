@@ -127,7 +127,7 @@ jobs:
           # ADMIN_API_TOKEN); the API URL is where the custom PII panels
           # send their requests. Both are visible in the deployed bundle —
           # the backend bearer check is the actual security gate.
-          # See docs/orders-pii-split-plan.md § Admin auth.
+          # See docs/orders-pii-split.md § Admin auth.
           SANITY_STUDIO_ADMIN_TOKEN: ${{ secrets.ADMIN_API_TOKEN }}
           SANITY_STUDIO_API_URL: ${{ vars.PUBLIC_API_URL }}
         run: pnpm exec sanity deploy
