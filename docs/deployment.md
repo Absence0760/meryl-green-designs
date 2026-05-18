@@ -46,11 +46,11 @@ manually re-run any deploy from the Actions tab (useful for hotfixes, flaky
 AWS API retries, or re-shipping the current `main` without cutting a new
 release).
 
-Infrastructure (S3 bucket, CloudFront, Lambda, IAM, Route 53, ACM certificate,
-GitHub OIDC provider + CI role) is managed by Terraform in `infra/`. GitHub
-Actions workflows in `.github/workflows/` deploy code on top of that
-infrastructure. The two are decoupled: Terraform creates the resources,
-workflows update them.
+Infrastructure (the AWS resources, GitHub OIDC + CI role, DynamoDB orders
+table, auto-cancel Lambda) is Terraform in `infra/`; workflows in
+`.github/workflows/` deploy code on top of it. The two are decoupled —
+Terraform creates, workflows update. Resource breakdown:
+[`architecture.md § Deployment targets`](./architecture.md#deployment-targets).
 
 ### SPA fallback for dynamic routes
 
