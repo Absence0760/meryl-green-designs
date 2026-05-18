@@ -420,7 +420,7 @@ from a content-rebuild webhook, which is useful for content baked at build
 time. With products and gallery fetched at runtime, this webhook isn't
 strictly required today, but it's ready to wire up if home page story/poem
 ever move into Sanity (they're currently hardcoded). Setup instructions are
-in [`deployment.md`](./deployment.md) section 9.
+in [`deployment.md`](./deployment.md) Step 7.
 
 ## Order creation flow
 

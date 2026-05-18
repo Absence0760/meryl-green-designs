@@ -601,13 +601,13 @@ same AWS identity gets you back in. The KMS key costs ~$1/month.
 
 | File | Encrypted? | Why |
 |---|---|---|
-| `infra/terraform.tfvars.sops` | ✅ yes | Committed. Contains the AWS + Resend + Sanity secrets Terraform needs. |
+| `infra/terraform.tfvars.sops` | yes | Committed. Contains the AWS + Resend + Sanity secrets Terraform needs. |
 | `infra/terraform.tfvars` | — | Plaintext, gitignored. Created by `bin/setup.sh` as a scratch file, shredded on exit. |
-| `infra/terraform.tfvars.example` | ❌ no | Template with empty placeholder values — safe to commit. |
-| `backend/.env.sops` | ✅ yes | Committed. Local-dev secrets for `tsx` / `pnpm dev`. |
+| `infra/terraform.tfvars.example` | no | Template with empty placeholder values — safe to commit. |
+| `backend/.env.sops` | yes | Committed. Local-dev secrets for `tsx` / `pnpm dev`. |
 | `backend/.env` | — | Plaintext, gitignored. Created by the operator via `sops -d backend/.env.sops > backend/.env`. |
-| `backend/.env.example` | ❌ no | Template — safe to commit. |
-| `frontend/.env`, `studio/.env` | ❌ no | Only contain `PUBLIC_*` vars / project IDs — non-secret by SvelteKit convention. |
+| `backend/.env.example` | no | Template — safe to commit. |
+| `frontend/.env`, `studio/.env` | no | Only contain `PUBLIC_*` vars / project IDs — non-secret by SvelteKit convention. |
 
 ### First-time setup
 
@@ -1231,7 +1231,7 @@ orders per week, in South African Rand:
 | ACM certificate | R0 | Free for public certs |
 | CloudWatch Logs | R0–5 | Depends on log volume; 30-day retention in the config |
 | DynamoDB lock table | R0 | Pay-per-request, negligible at this usage |
-| Sanity | R0 | Free "Growth" tier is plenty for this scale |
+| Sanity | R0 | Free tier is plenty for this scale (post-Phase-2 downgrade; see `docs/orders-pii-split.md`) |
 | Resend | R0 | Free tier: 3000 emails/month |
 
 **Total: ~R15–30/month**, most of which is the Route 53 hosted zone. If you

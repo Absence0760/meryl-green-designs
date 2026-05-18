@@ -941,6 +941,8 @@ breaks post-cutover within the 2-week buffer window:
 
 ### Reconciler cron
 
+> **Not yet built.** This section is the Day 10–11 design. Neither `backend/src/reconciler.ts` nor `infra/reconciler.tf` exist in the repo today.
+
 **Implementation**: a separate Lambda function (the API Lambda is
 now HTTP-only; the dispatcher branch that pre-Phase-1 routed
 EventBridge events to the deleted pii-cleanup was removed at the
