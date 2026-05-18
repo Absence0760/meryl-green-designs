@@ -165,7 +165,7 @@ PayFast's risk team additionally flags:
 Open the report with the **mandatory disclaimer block**:
 
 ```
-> ⚠️ This is a pre-counsel gap analysis, not legal advice. I am not an admitted
+> This is a pre-counsel gap analysis, not legal advice. I am not an admitted
 > attorney in South Africa. Findings are research prompts to take to a licensed
 > SA attorney. Treat every "Critical" and "Important" finding as a question for
 > counsel, not as a definitive answer.

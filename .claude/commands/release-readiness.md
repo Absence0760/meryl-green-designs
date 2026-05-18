@@ -98,7 +98,9 @@ If `Commits since` is `0` for every workspace, flag as red — there's nothing t
 
 ### 4. Sanity checks
 
-#### 4a. Security postureSurface anything from the last `audit.yml` run that's still open:
+#### 4a. Security posture
+
+Surface anything from the last `audit.yml` run that's still open:
 
 ```
 gh issue list --label dependency-audit --state open
@@ -130,10 +132,10 @@ Either present → amber ("plaintext SOPS sibling exists locally — confirm it'
 
 | Gate | Status | Detail |
 |---|---|---|
-| On main | ✓ / ✗ | ... |
-| Working tree clean | ✓ / ✗ | ... |
-| main pushed + in sync with origin | ✓ / ✗ | ... |
-| CI green on HEAD | ✓ / ✗ | ... |
+| On main | pass / fail | ... |
+| Working tree clean | pass / fail | ... |
+| main pushed + in sync with origin | pass / fail | ... |
+| CI green on HEAD | pass / fail | ... |
 
 ## Per-workspace deltas since `v<last>`
 
@@ -180,6 +182,6 @@ End with:
 
 ## Notes
 
-- The whole thing should take under a minute. If a gate hangs (e.g. `gh run list` on a slow connection), skip it with a `⚠ skipped — <reason>` row rather than blocking the report.
+- The whole thing should take under a minute. If a gate hangs (e.g. `gh run list` on a slow connection), skip it with a `skipped — <reason>` row rather than blocking the report.
 - `gh` is required for the CI-status check and the open-alert sweep. If unavailable, fall back to a one-line note: "install `gh` to auto-check CI; manual: open the Actions tab and confirm green on the head commit."
 - This command does NOT replace `docs/deployment.md`. It's a pre-flight, not the release procedure itself.
