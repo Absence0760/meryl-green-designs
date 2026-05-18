@@ -140,7 +140,7 @@
 						<a class="info__back" href="/shop">← Back to shop</a>
 					</div>
 					<p class="info__lead-time">
-						Made to order — typically 6 weeks from payment to dispatch.
+						Made to order — typically 3 weeks from payment to dispatch.
 					</p>
 
 					{#if product.description?.trim()}

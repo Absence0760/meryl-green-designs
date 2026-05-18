@@ -36,9 +36,12 @@
 	    respects CPA s48 and Magistrates' Courts Act s28; reviewer to
 	    confirm.
 	  - Lead times are stated as a hard upper bound ("each piece is
-	    produced within 6 weeks of payment unless we contact you to
-	    agree a longer time"). Reviewer to confirm 6 weeks matches
-	    Meryl's actual production window.
+	    produced within 3 weeks of payment unless we contact you to
+	    agree a longer time"). 3 weeks is Meryl's actual production
+	    window (frame + canvas print + assembly), confirmed 2026-05-18.
+	    If a buffer is wanted for the legal upper bound (e.g. 4 weeks)
+	    distinct from the typical figure shown on the shop pages,
+	    raise that in the Terms only — don't widen the shop copy.
 	  - The 14-day window for accepting price-error corrections is
 	    paired explicitly with CPA s23(9)'s "reasonable consumer would
 	    have realised it was an error" test; reviewer to confirm
@@ -220,11 +223,11 @@
 		<p>
 			Production on each screen begins after full payment has been
 			received and the order confirmation has been sent. <strong>Each
-			piece is produced within 6 weeks of payment</strong> unless
-			we contact you to agree a longer time. Most pieces ship
-			sooner; the 6-week figure is the upper bound, not the typical
-			case. We'll keep you updated by email at the major status
-			changes (payment received, in production, shipped).
+			piece is produced within 3 weeks of payment</strong> unless
+			we contact you to agree a longer time. The 3-week window covers
+			making the Meranti frame, printing the canvas, and assembling the
+			finished screen; we'll keep you updated by email at the major
+			status changes (payment received, in production, shipped).
 		</p>
 		<p>
 			Because each piece is specially produced for you after you

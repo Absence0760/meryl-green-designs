@@ -79,7 +79,7 @@
 			</div>
 			<div class="specs__row">
 				<dt>Lead time</dt>
-				<dd>Made to order — typically 6 weeks from payment to dispatch</dd>
+				<dd>Made to order — typically 3 weeks from payment to dispatch</dd>
 			</div>
 		</dl>
 	</div>
