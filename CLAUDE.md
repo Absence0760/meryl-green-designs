@@ -32,7 +32,7 @@ pnpm dev:emails              # open the most recent captured email (EMAIL_BACKEN
 
 pnpm build                   # build all workspaces
 pnpm check                   # typecheck all
-pnpm test                    # vitest run across workspaces (frontend + backend)
+pnpm test                    # `pnpm -r run test` — vitest in frontend + backend AND Playwright (needs LocalStack up). For unit-only locally, run `pnpm --filter '!@meryl-green-designs/playwright' --filter '!meryl-green-designs' -r run test`. CI splits the two — see ci.yml + e2e.yml.
 pnpm frontend|backend|studio <script>   # filter to one workspace
 
 # End-to-end (Playwright) — needs LocalStack + a test-e2e Sanity dataset.
