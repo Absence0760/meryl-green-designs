@@ -21,13 +21,14 @@ and GitHub Actions workflows for CI/CD:
   Lambda, API Gateway HTTP API, DynamoDB for order PII, auto-cancel Lambda +
   EventBridge schedule, SNS ops alerts + SQS DLQ, CloudWatch budget, IAM,
   Route 53, ACM, GitHub OIDC). Not a workspace package.
-- `.github/workflows/` — twelve workflows total: three release-gated deploy
+- `.github/workflows/` — fifteen workflows: three release-gated deploy
   workflows (frontend, backend, studio) that authenticate to AWS via OIDC,
-  plus CI (typecheck + test), CodeQL SAST, weekly dependency audit, Gitleaks
-  secret-scan, OpenSSF Scorecard, Terraform fmt/validate/Trivy, two Dependabot
-  helpers, and the Claude Code automation. The deploy workflows run on
-  `release: published` with skip-if-unchanged checks per workspace. Full
-  inventory at the bottom of this file.
+  plus CI (typecheck + vitest), E2E (Playwright against LocalStack), CodeQL
+  SAST, weekly dependency audit, Gitleaks secret-scan, OpenSSF Scorecard,
+  Terraform fmt/validate/Trivy, two Dependabot helpers, the Claude Code
+  automation, a PR labeler, and a conventional-commit PR-title linter. The
+  deploy workflows run on `release: published` with skip-if-unchanged checks
+  per workspace. Full inventory at the bottom of this file.
 
 The three app packages are decoupled. The frontend knows the backend only by its
 URL (`PUBLIC_API_URL`), and knows Sanity only by a project ID
@@ -146,6 +147,7 @@ meryl-green-designs/
         ├── deploy-backend.yml           esbuild bundle + zip + update Lambda
         ├── deploy-studio.yml            `sanity deploy` with auth token
         ├── ci.yml                       Typecheck + vitest on every PR + push
+        ├── e2e.yml                      Playwright e2e on PR + push to main (LocalStack + test-e2e Sanity dataset)
         ├── codeql.yml                   CodeQL SAST on JS/TS + GitHub Actions YAML
         ├── audit.yml                    Weekly pnpm audit (auto-files issue)
         ├── gitleaks.yml                 Secret-scan on PR + push + weekly full-history sweep
@@ -153,6 +155,8 @@ meryl-green-designs/
         ├── terraform.yml                fmt -check + validate + Trivy IaC on infra/** changes
         ├── dependabot-lockfile.yml      Syncs root pnpm-lock.yaml on Dependabot PRs
         ├── dependabot-auto-merge.yml    Auto-merges minor/patch Dependabot PRs
+        ├── labeler.yml                  Path-based PR labels (config in .github/labeler.yml)
+        ├── pr-title-lint.yml            Enforces conventional-commit PR titles
         └── claude.yml                   Claude Code issue/PR automation
 ```
 
@@ -576,6 +580,12 @@ CI/CD lives in `.github/workflows/`:
 - `dependabot-auto-merge.yml` — squash-merges minor + patch Dependabot
   PRs once CI is green. Major bumps stay manual (audit history shows
   they need code changes). Repo setting required: "Allow auto-merge".
+- `labeler.yml` — applies path-based labels to PRs on open/sync/reopen so
+  reviewers see at a glance which workspaces a PR touches. Configuration in
+  `.github/labeler.yml`; advisory only (doesn't block merging).
+- `pr-title-lint.yml` — enforces conventional-commit-style PR titles
+  (`feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `perf`, `ci`,
+  `build`, `revert`) so the merged history stays scannable.
 
 All three deploy workflows authenticate to AWS via **GitHub OIDC federation** — no
 long-lived access keys are stored in the repo. The IAM role's trust policy

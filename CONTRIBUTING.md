@@ -6,7 +6,7 @@ Thanks for considering a contribution. This file describes how to work in this r
 
 - Open an issue (or comment on an existing one) describing what you want to change. For non-trivial changes, get rough agreement on the approach before opening a PR — it's easier to redirect a sentence than a 500-line diff.
 - Look at recent commits in the area you're touching for style cues.
-- Stack-specific dev setup is in `docs/STACK.md`.
+- Stack-specific dev setup is in `docs/run-locally.md`; for the system layout (workspaces, service boundaries, order flow) see `docs/architecture.md`.
 
 ## Branching
 
