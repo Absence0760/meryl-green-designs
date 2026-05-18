@@ -101,8 +101,8 @@ much of the brief is already shipped.
       env-guard in `playwright/global-setup.ts` aborts if any env var
       would target a real resource (Sanity production dataset, non-loopback
       DynamoDB endpoint, EMAIL_BACKEND≠file, PAYFAST_SANDBOX≠true).
-- [x] Vitest test suite across backend and frontend (334 tests total: 310
-      backend across 18 files + 24 frontend across 3 files, ~4s combined).
+- [x] Vitest test suite across backend and frontend (388 tests total: 348
+      backend across 18 files + 40 frontend across 4 files, ~4s combined).
       Backend covers email templates + HTML escaping, `sendEmail` with
       mocked Resend fetch, Sanity webhook HMAC verification, PayFast
       ITN signature verification + amount checks + failed-ITN dedup,
