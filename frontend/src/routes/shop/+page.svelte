@@ -170,7 +170,8 @@
 		<p class="eyebrow">Secure checkout</p>
 		<p class="payment-lede">
 			Checkout is handled by <strong>PayFast</strong> — we never see your
-			card details. Once payment clears, we ship your order.
+			card details. Once payment clears, your piece is made to order and
+			typically dispatched within 3 weeks.
 		</p>
 		<ul class="payment-methods" aria-label="Accepted payment methods">
 			<li>Credit &amp; debit cards</li>
