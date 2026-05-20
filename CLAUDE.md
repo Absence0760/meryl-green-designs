@@ -10,7 +10,7 @@ Meryl Green Designs — website for a small South African studio selling handcra
 
 | Path | What | Dev port | Per-workspace guide |
 |---|---|---|---|
-| `frontend/` | SvelteKit 5 static site | 7777 | `frontend/CLAUDE.md` |
+| `frontend/` | SvelteKit 2 (Svelte 5) static site | 7777 | `frontend/CLAUDE.md` |
 | `backend/` | Hono on Lambda + local Node | 3001 | `backend/CLAUDE.md` |
 | `studio/` | Sanity Studio (React 19) | 3333 | `studio/CLAUDE.md` |
 | `infra/` | Terraform (AWS + GitHub OIDC) | — | `infra/CLAUDE.md` |

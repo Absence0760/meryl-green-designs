@@ -1,6 +1,6 @@
 # frontend/
 
-SvelteKit 5 static site for Meryl Green Designs. Dev port `7777`.
+SvelteKit 2 (Svelte 5 runes) static site for Meryl Green Designs. Dev port `7777`.
 
 ## Stack
 
