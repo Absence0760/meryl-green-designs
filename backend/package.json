@@ -21,20 +21,20 @@
 		"scrub:sanity-pii:dry": "tsx src/scripts/scrub-sanity-pii.ts --dry-run"
 	},
 	"dependencies": {
-		"@aws-sdk/client-dynamodb": "^3.1048.0",
-		"@aws-sdk/lib-dynamodb": "^3.1048.0",
+		"@aws-sdk/client-dynamodb": "^3.1053.0",
+		"@aws-sdk/lib-dynamodb": "^3.1053.0",
 		"@sanity/client": "^7.22.0",
 		"dotenv": "^17.4.2",
 		"hono": "4.12.19"
 	},
 	"devDependencies": {
-		"@hono/node-server": "2.0.3",
+		"@hono/node-server": "2.0.4",
 		"@types/aws-lambda": "8.10.161",
-		"@types/node": "25.9.0",
+		"@types/node": "25.9.1",
 		"aws-sdk-client-mock": "^4.1.0",
 		"esbuild": "0.28.0",
-		"tsx": "4.22.1",
+		"tsx": "4.22.3",
 		"typescript": "6.0.3",
-		"vitest": "4.1.6"
+		"vitest": "4.1.7"
 	}
 }
