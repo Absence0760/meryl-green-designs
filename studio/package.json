@@ -11,11 +11,11 @@
 	},
 	"dependencies": {
 		"@sanity/ui": "^3.2.0",
-		"@sanity/vision": "^5.25.1",
+		"@sanity/vision": "^5.26.0",
 		"react": "^19.2.5",
 		"react-dom": "^19.2.5",
 		"sanity": "^5.25.1",
-		"styled-components": "^6.4.1"
+		"styled-components": "^6.4.2"
 	},
 	"devDependencies": {
 		"@types/react": "^19.2.14",
