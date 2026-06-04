@@ -29,12 +29,12 @@ importers:
         specifier: ^17.4.2
         version: 17.4.2
       hono:
-        specifier: 4.12.19
-        version: 4.12.19
+        specifier: 4.12.21
+        version: 4.12.21
     devDependencies:
       '@hono/node-server':
         specifier: 2.0.3
-        version: 2.0.3(hono@4.12.19)
+        version: 2.0.3(hono@4.12.21)
       '@types/aws-lambda':
         specifier: 8.10.161
         version: 8.10.161
@@ -251,6 +251,7 @@ packages:
   '@aws-sdk/core@3.974.11':
     resolution: {integrity: sha512-QpnINq5FZH6EOaDEkmHdT7eUunbvD27pDNQypaWjFyYz7Zl1q3UCMQErBZxpmfGfI7MvI2TlK8KTkgNpv8b1ug==}
     engines: {node: '>=20.0.0'}
+    deprecated: Deprecated due to an error deserialization bug in JSON 1.0 protocol services, see https://github.com/aws/aws-sdk-js-v3/pull/8031. Newer version available.
 
   '@aws-sdk/credential-provider-env@3.972.37':
     resolution: {integrity: sha512-/jpPvEh6f7ntmIzf7dNxoNX6Q8vt8UpesCjbW6mFfk4V1NW6bIy9qxcQ6WbA8As5yQhsZOe+xeNd4xHX8kdY2Q==}
@@ -916,6 +917,9 @@ packages:
   '@codemirror/autocomplete@6.20.2':
     resolution: {integrity: sha512-G5FPkgIiLjOgZMjqVjvuKQ1rGPtHogLldJr33eFJdVLtmwY+giGrlv/ewljLz6b9BSQLkjxuwBc6g6omDM+YxQ==}
 
+  '@codemirror/autocomplete@6.20.3':
+    resolution: {integrity: sha512-tlosUqb+3BbxCxZdu4tKeRghPFC+QM7q4X5YhKV2eCmPG+1r2F3f4AaSz5sCrFqUtX4Jh20VFTKecl16MgiV9g==}
+
   '@codemirror/commands@6.10.3':
     resolution: {integrity: sha512-JFRiqhKu+bvSkDLI+rUhJwSxQxYb759W5GBezE8Uc8mHLqC9aV/9aTC7yJSqCtB3F00pylrLCwnyS91Ap5ej4Q==}
 
@@ -939,6 +943,9 @@ packages:
 
   '@codemirror/view@6.42.1':
     resolution: {integrity: sha512-ToN3oFc0nsxNUYVF5P0ztLgbC4UPPjPtA9aKYhkOKQaZASpOUo6ISXyQLP66ctVwlDc+j6Jv0uK5IFALkiXztg==}
+
+  '@codemirror/view@6.43.0':
+    resolution: {integrity: sha512-V7ZCLQO3Jus9hzh2jVCCPW3mO4IBMr43O37PqSUYautJSnnJF41YlgLw21x0fLJTYvJ+Vkm6Gp+qKGH9pltgXA==}
 
   '@csstools/color-helpers@5.1.0':
     resolution: {integrity: sha512-S11EXWJyy0Mz5SYvRmY8nJYTFFd1LCNV+7cXyAgQtOOuzb4EsgfqDufL+9esx72/eLhsRdGZwaldu/h+E4t4BA==}
@@ -3597,8 +3604,8 @@ packages:
   hoist-non-react-statics@3.3.2:
     resolution: {integrity: sha512-/gGivxi8JPKWNm/W0jSmzcMPpfpPLc3dY/6GxhX2hQ9iGj3aDfklV4ET7NjKpSinLpJ5vafa9iiGIEZg10SfBw==}
 
-  hono@4.12.19:
-    resolution: {integrity: sha512-xa3eYXYXx68XTT4hZ7dRzsXBhaq85ToSrlUJNoR0gwz/1Ap/CNwX47wfvV7pc/xWhjKVVkLT7zBJy8chhNguqQ==}
+  hono@4.12.21:
+    resolution: {integrity: sha512-uV63apnb0kyPtAUwoWgaGh9HyIFcv8lgmzPZSiTBQAFOFGIzka5EZ1dZocmGnn0XdX0+XTqJ6Tqv7selMuGLRQ==}
     engines: {node: '>=16.9.0'}
 
   hosted-git-info@9.0.3:
@@ -3866,6 +3873,7 @@ packages:
   json-2-csv@5.5.10:
     resolution: {integrity: sha512-Dep8wO3Fr5wNjQevO2Z8Y7yeee/nYSGRsi7q6zJDKEVHxXkXT+v21vxHmDX923UzmCXXkSo62HaTz6eTWzFLaw==}
     engines: {node: '>= 16'}
+    deprecated: A security vulnerability has been reported with the preventCsvInjection option which has been fixed in version 5.5.11. Please upgrade as soon as possible.
 
   json-lexer@1.2.0:
     resolution: {integrity: sha512-7otpx5UPFeSELoF8nkZPHCfywg86wOsJV0WNOaysuO7mfWj1QFp2vlqESRRCeJKBXr+tqDgHh4HgqUFKTLcifQ==}
@@ -6555,6 +6563,13 @@ snapshots:
       '@codemirror/view': 6.42.1
       '@lezer/common': 1.5.2
 
+  '@codemirror/autocomplete@6.20.3':
+    dependencies:
+      '@codemirror/language': 6.12.3
+      '@codemirror/state': 6.6.0
+      '@codemirror/view': 6.43.0
+      '@lezer/common': 1.5.2
+
   '@codemirror/commands@6.10.3':
     dependencies:
       '@codemirror/language': 6.12.3
@@ -6601,10 +6616,17 @@ snapshots:
     dependencies:
       '@codemirror/language': 6.12.3
       '@codemirror/state': 6.6.0
-      '@codemirror/view': 6.42.1
+      '@codemirror/view': 6.43.0
       '@lezer/highlight': 1.2.3
 
   '@codemirror/view@6.42.1':
+    dependencies:
+      '@codemirror/state': 6.6.0
+      crelt: 1.0.6
+      style-mod: 4.1.3
+      w3c-keyname: 2.2.8
+
+  '@codemirror/view@6.43.0':
     dependencies:
       '@codemirror/state': 6.6.0
       crelt: 1.0.6
@@ -6890,9 +6912,9 @@ snapshots:
 
   '@floating-ui/utils@0.2.11': {}
 
-  '@hono/node-server@2.0.3(hono@4.12.19)':
+  '@hono/node-server@2.0.3(hono@4.12.21)':
     dependencies:
-      hono: 4.12.19
+      hono: 4.12.21
 
   '@iarna/toml@2.2.3': {}
 
@@ -8791,13 +8813,13 @@ snapshots:
 
   codemirror@6.0.2:
     dependencies:
-      '@codemirror/autocomplete': 6.20.2
+      '@codemirror/autocomplete': 6.20.3
       '@codemirror/commands': 6.10.3
       '@codemirror/language': 6.12.3
       '@codemirror/lint': 6.9.6
       '@codemirror/search': 6.7.0
       '@codemirror/state': 6.6.0
-      '@codemirror/view': 6.42.1
+      '@codemirror/view': 6.43.0
 
   color-convert@2.0.1:
     dependencies:
@@ -9372,7 +9394,7 @@ snapshots:
     dependencies:
       react-is: 16.13.1
 
-  hono@4.12.19: {}
+  hono@4.12.21: {}
 
   hosted-git-info@9.0.3:
     dependencies:
