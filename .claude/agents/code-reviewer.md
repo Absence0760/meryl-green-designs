@@ -50,7 +50,7 @@ Walk these in order. Stop when you have ~5 findings — quality over quantity.
 - **Don't replace pnpm with npm/yarn** — workspace filters assume pnpm.
 - **Don't add a test framework other than vitest.**
 - **Don't introduce AWS access keys** — CI uses GitHub OIDC.
-- **Don't `git add -f` a plaintext secrets file.** SOPS-encrypted siblings (`backend/.env.sops`, `infra/terraform.tfvars.sops`) are the source of truth; plaintext is transient.
+- **Don't `git add -f` a plaintext secrets file, and never commit a `*.sops` blob here.** The encrypted secrets live in the sibling private repo `Absence0760/infra-secrets` (`meryl-green-designs/terraform.tfvars.sops`, `.env.sops`), not in this public repo; the plaintext siblings (`backend/.env`, `infra/terraform.tfvars`) are transient gitignored scratch. `.gitignore` blocks `*.sops` to stop ciphertext re-entering this repo.
 - **Every code change updates tests + docs in the same change.** If genuinely untestable (config, infra, pure styling), the diff should say so explicitly.
 
 ### House style (root + global `CLAUDE.md`)

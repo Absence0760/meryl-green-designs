@@ -19,7 +19,8 @@ For deploying to AWS, see [`deployment.md`](./deployment.md) instead.
   Optional for running the site locally (the shop will show an empty state
   without it), but required for managing products.
 - **AWS CLI auth** — only required if you decrypt local secrets from
-  `backend/.env.sops` rather than typing them into `backend/.env` by hand.
+  `../infra-secrets/meryl-green-designs/.env.sops` rather than typing them into
+  `backend/.env` by hand.
   If you do, configure a profile per
   [`deployment.md § AWS profiles`](./deployment.md#aws-profiles-multi-project-setup)
   so credentials don't bleed across projects.
@@ -42,14 +43,15 @@ This installs dependencies for all three workspace packages (`frontend/`,
 
 ### Option A: SOPS-encrypted secrets (recommended)
 
-The repo ships a SOPS workflow (KMS-encrypted `*.sops` files) so the
-backend's real secrets don't live in plaintext on your disk. One-time
-bootstrap:
+The backend's real secrets live KMS-encrypted in the sibling **private** repo
+`Absence0760/infra-secrets` (under `meryl-green-designs/`), not in this repo, so
+they never sit in plaintext on your disk. Clone that repo next to this one and
+decrypt (needs `kms:Decrypt` on the project key):
 
 ```bash
-./bin/sops-init.sh                       # creates the KMS key + .sops.yaml + seeds *.sops files
-sops backend/.env.sops                   # edit secrets in $EDITOR; re-encrypts on save
-sops -d backend/.env.sops > backend/.env # decrypt to plaintext for pnpm dev
+git clone git@github.com:Absence0760/infra-secrets.git ../infra-secrets   # one-time
+sops ../infra-secrets/meryl-green-designs/.env.sops      # edit secrets in $EDITOR; re-encrypts on save
+sops -d ../infra-secrets/meryl-green-designs/.env.sops > backend/.env      # decrypt to plaintext for pnpm dev
 ```
 
 `backend/.env` is gitignored. Frontend and studio carry no secrets, so

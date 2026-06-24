@@ -17,9 +17,11 @@
 /.github/CODEOWNERS                     @<owner>
 
 # Security-sensitive scaffolding
+# (encrypted secrets now live in the sibling private repo
+# Absence0760/infra-secrets, not here)
 /SECURITY.md                            @<owner>
 /.pre-commit-config.yaml                @<owner>
-/.sops.yaml                             @<owner>
+/bin/setup.sh                           @<owner>
 
 # Claude tooling
 /.claude/                               @<owner>

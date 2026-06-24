@@ -31,7 +31,7 @@ terraform plan   # always; review the diff
 terraform apply
 ```
 
-The Lambda's environment variables are populated from `terraform.tfvars` — rotating a secret is `sops infra/terraform.tfvars.sops`, edit, save, then `terraform apply`. No code redeploy required.
+The Lambda's environment variables are populated from `terraform.tfvars` — rotating a secret is `sops ../infra-secrets/meryl-green-designs/terraform.tfvars.sops` (the encrypted source lives in the sibling private repo), edit, save, then `terraform apply`. No code redeploy required.
 
 ## State
 

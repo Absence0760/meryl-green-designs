@@ -26,7 +26,7 @@ meryl-green-designs/
 ├── backend/        Hono API (local Node server + AWS Lambda entry)
 ├── studio/         Sanity Studio (content management UI)
 ├── infra/          Terraform — all AWS resources
-├── bin/            Setup + ops scripts (sops-init.sh, setup.sh, dev helpers)
+├── bin/            Setup + ops scripts (setup.sh, dev helpers)
 ├── .github/
 │   └── workflows/  Deploy pipelines + Claude Code automation
 └── docs/           Architecture, features, roadmap, run-locally, deployment
@@ -37,13 +37,13 @@ meryl-green-designs/
 ```bash
 pnpm install
 
-# First-time only: provision a dedicated KMS key for this project's secrets
-# and seed the SOPS-encrypted files from examples. Requires AWS CLI auth.
+# Secrets live in the sibling PRIVATE repo Absence0760/infra-secrets. Clone it
+# next to this repo (first time only). Needs kms:Decrypt on the project key.
 # See docs/deployment.md § Secrets management for the full workflow.
-./bin/sops-init.sh
+git clone git@github.com:Absence0760/infra-secrets.git ../infra-secrets
 
 # Decrypt the backend secrets into a local .env for pnpm dev:
-sops -d backend/.env.sops > backend/.env
+sops -d ../infra-secrets/meryl-green-designs/.env.sops > backend/.env
 
 # Frontend and studio have public, non-secret env vars — plain copy is fine:
 cp frontend/.env.example frontend/.env

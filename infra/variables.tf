@@ -110,7 +110,8 @@ variable "payfast_sandbox" {
     "true" routes the backend at PayFast's sandbox endpoint; "false"
     goes live to the configured merchant. Default is "true" — to
     accept real payments you must explicitly set this to "false" in
-    terraform.tfvars.sops. The conservative default prevents a stale
+    the encrypted tfvars (../infra-secrets/meryl-green-designs/terraform.tfvars.sops).
+    The conservative default prevents a stale
     or partial tfvars file from silently flipping the Lambda into
     live-payments mode after a `terraform apply`.
   EOT

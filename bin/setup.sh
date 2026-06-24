@@ -44,9 +44,15 @@ set -euo pipefail
 STATE_BUCKET="meryl-green-designs-tfstate"
 LOCK_TABLE="meryl-green-designs-tfstate-lock"
 STATE_KEY="prod/terraform.tfstate"
-INFRA_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/infra"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+INFRA_DIR="$REPO_ROOT/infra"
 TFVARS_FILE="$INFRA_DIR/terraform.tfvars"
-TFVARS_SOPS_FILE="$INFRA_DIR/terraform.tfvars.sops"
+# Encrypted prod secrets live in the sibling PRIVATE infra-secrets repo
+# (Absence0760/infra-secrets), relocated there 2026-06-24 so this public repo no
+# longer ships ciphertext. Override INFRA_SECRETS_DIR if your clone lives
+# elsewhere than ~/github/infra-secrets.
+INFRA_SECRETS_DIR="${INFRA_SECRETS_DIR:-$(cd "$REPO_ROOT/.." && pwd)/infra-secrets}"
+TFVARS_SOPS_FILE="$INFRA_SECRETS_DIR/meryl-green-designs/terraform.tfvars.sops"
 
 DRY_RUN=0
 if [[ "${1:-}" == "--dry" || "${1:-}" == "--dry-run" ]]; then
@@ -161,10 +167,10 @@ check_prereqs() {
 #   1. If a plaintext terraform.tfvars already exists, use it as-is (legacy
 #      flow, no SOPS involved — operator will see a warning nudging them to
 #      migrate).
-#   2. If terraform.tfvars.sops exists, decrypt it into terraform.tfvars for
-#      the duration of this script. The cleanup trap shreds the plaintext
-#      on exit.
-#   3. Otherwise, fail and tell the operator to run bin/sops-init.sh.
+#   2. If the encrypted tfvars exists in the sibling infra-secrets repo,
+#      decrypt it into terraform.tfvars for the duration of this script. The
+#      cleanup trap shreds the plaintext on exit.
+#   3. Otherwise, fail and tell the operator to clone infra-secrets.
 ensure_plaintext_tfvars() {
 	if [[ -f "$TFVARS_FILE" && -f "$TFVARS_SOPS_FILE" ]]; then
 		warn "Both $TFVARS_FILE (plaintext) and $TFVARS_SOPS_FILE exist."
@@ -176,9 +182,9 @@ ensure_plaintext_tfvars() {
 
 	if [[ -f "$TFVARS_FILE" ]]; then
 		ok "$TFVARS_FILE exists (plaintext, pre-SOPS flow)"
-		log "Consider migrating: bin/sops-init.sh then"
-		log "  sops infra/terraform.tfvars.sops  # paste current values, save"
-		log "  rm infra/terraform.tfvars         # remove the plaintext file"
+		log "Consider migrating to the encrypted source of truth:"
+		log "  sops $TFVARS_SOPS_FILE  # paste current values, save"
+		log "  rm infra/terraform.tfvars              # remove the plaintext file"
 		return
 	fi
 
@@ -200,8 +206,9 @@ ensure_plaintext_tfvars() {
 	fi
 
 	err "Neither $TFVARS_FILE nor $TFVARS_SOPS_FILE exists."
-	log "Run bin/sops-init.sh first — it generates an age key, seeds an"
-	log "encrypted tfvars from the example, and wires up .sops.yaml."
+	log "Prod secrets live in the sibling private infra-secrets repo. Clone it"
+	log "next to this one (git@github.com:Absence0760/infra-secrets.git), or set"
+	log "INFRA_SECRETS_DIR to its path. See its README for the meryl section."
 	exit 1
 }
 

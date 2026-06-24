@@ -77,7 +77,7 @@ prod table.
 
 `payfast_sandbox` now defaults to `"true"` in `infra/variables.tf` —
 to take real payments the operator must explicitly set it to `"false"`
-in `terraform.tfvars.sops`. The Terraform variable has a `validation`
+in `../infra-secrets/meryl-green-designs/terraform.tfvars.sops`. The Terraform variable has a `validation`
 block requiring one of those two literal strings.
 
 Dry-runs always bypass the script gates so previewing is cheap.
@@ -99,7 +99,7 @@ The Terraform code, tfvars example, and deployment docs are now updated:
 Operator hand-off steps for Day 7 (now historical — all done before the
 Day 8 cutover):
 
-1. `sops infra/terraform.tfvars.sops` — add real values for
+1. `sops ../infra-secrets/meryl-green-designs/terraform.tfvars.sops` — add real values for
    `admin_api_token` (generate with `openssl rand -hex 32`) and
    `studio_origins` (the deployed Sanity Studio URL, e.g.
    `https://meryl-green-designs.sanity.studio`).
@@ -361,7 +361,7 @@ goes through Sanity, never DynamoDB.
 
 **Encryption**: enable SSE-KMS with the AWS-managed key `aws/dynamodb`.
 
-Why not the project SOPS CMK? `bin/sops-init.sh`'s key policy only grants
+Why not the project SOPS CMK? `infra-secrets/bin/sops-init.sh`'s key policy only grants
 access to the SOPS workflow's IAM principals — the DynamoDB service
 principal isn't on it. Pointing the table at the SOPS CMK would create
 the table fine but every write would fail with `KMSKeyAccessDeniedException`.
@@ -604,11 +604,11 @@ Single static token, baked into the Studio bundle at build time:
 - New env var: `SANITY_STUDIO_ADMIN_TOKEN` in `studio/.env` (not secret —
   Studio is published to a known subdomain, CORS-locked).
 - Backend admin routes check `Authorization: Bearer <token>` against
-  `ADMIN_API_TOKEN` in `backend/.env.sops`.
+  `ADMIN_API_TOKEN` in `../infra-secrets/meryl-green-designs/.env.sops`.
 - CORS restricted to the Studio's hosted origin
   (`<project>.sanity.studio`).
 - Rotation: update both env vars, redeploy Studio + Lambda.
-- **Trust boundary**: `ADMIN_API_TOKEN` lives in `backend/.env.sops`,
+- **Trust boundary**: `ADMIN_API_TOKEN` lives in `../infra-secrets/meryl-green-designs/.env.sops`,
   which means anyone with `kms:Decrypt` on the SOPS key can read it —
   exactly the same boundary as for `SANITY_API_TOKEN`, `RESEND_API_KEY`,
   and `PAYFAST_PASSPHRASE`. Not a new exposure, but worth flagging

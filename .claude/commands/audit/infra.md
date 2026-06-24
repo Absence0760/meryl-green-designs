@@ -22,8 +22,7 @@ All ten `.tf` files plus the encrypted tfvars + template:
 - `security_headers.tf` — CloudFront response-headers policy (CSP, HSTS, frame-options, etc.)
 - `github_oidc.tf` — GitHub OIDC federation + deploy role
 - `budget.tf` — AWS Budgets monthly cap + notifications
-- `terraform.tfvars.sops` — encrypted variable values
-- `terraform.tfvars.example` — committed template
+- `terraform.tfvars.example` — committed template (real encrypted values live in the sibling private repo `../infra-secrets/meryl-green-designs/terraform.tfvars.sops`, not here)
 
 ## What to check
 
@@ -83,10 +82,10 @@ All ten `.tf` files plus the encrypted tfvars + template:
    - CORS: `allow_origins` matches `frontend/.env.example`'s `PUBLIC_API_URL` host (the production frontend domain). No `*` wildcard. No localhost in prod.
    - No `route_settings` with unbounded throttling — at least set `throttling_burst_limit` and `throttling_rate_limit` on `$default` to a sane value (per-second 100ish; per-IP rate limits already exist in `backend/src/rate-limit.ts`, but API Gateway is the global cap).
 
-8. **KMS keys.** The SOPS key (`alias/meryl-green-designs-sops` in `af-south-1`) is provisioned out-of-band by `bin/sops-init.sh`, not by this Terraform module. Confirm no `.tf` file tries to manage it (would conflict). DynamoDB SSE-KMS, if added, uses the AWS-managed `aws/dynamodb` key, not the SOPS CMK (per `docs/orders-pii-split.md`).
+8. **KMS keys.** The SOPS key (`alias/meryl-green-designs-sops` in `af-south-1`) is provisioned out-of-band by `infra-secrets/bin/sops-init.sh` (in the sibling private secrets repo), not by this Terraform module. Confirm no `.tf` file tries to manage it (would conflict). DynamoDB SSE-KMS, if added, uses the AWS-managed `aws/dynamodb` key, not the SOPS CMK (per `docs/orders-pii-split.md`).
 
 9. **Secrets handling.**
-   - `infra/terraform.tfvars.sops`: encrypted (verify `sops:` block at the end + ENC[...] values). Plaintext sibling `infra/terraform.tfvars` is gitignored.
+   - No encrypted `*.sops` blob should be committed in THIS repo — the prod secrets live in `../infra-secrets/meryl-green-designs/terraform.tfvars.sops`. Plaintext sibling `infra/terraform.tfvars` (a transient decrypt of that file) is gitignored, and `.gitignore` blocks `*.sops`. Flag any `*.sops` file found under this repo.
    - Variables holding secrets marked `sensitive = true`.
    - No `output` exposes a sensitive value without `sensitive = true`.
 

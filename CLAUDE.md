@@ -47,8 +47,8 @@ pnpm --filter @meryl-green-designs/playwright test:ui         # Playwright UI
 ## First-time setup
 
 1. `pnpm install`
-2. `./bin/sops-init.sh` — provisions the project's KMS key (`alias/meryl-green-designs-sops` in `af-south-1`), wires it into `.sops.yaml`, seeds encrypted `infra/terraform.tfvars.sops` + `backend/.env.sops` from the examples. Idempotent.
-3. `sops backend/.env.sops` to fill in real secrets, then `sops -d backend/.env.sops > backend/.env` for local dev.
+2. Clone the sibling private secrets repo next to this one: `git clone git@github.com:Absence0760/infra-secrets.git ../infra-secrets`. The project's encrypted secrets live in `infra-secrets/meryl-green-designs/` (the KMS key `alias/meryl-green-designs-sops` in `af-south-1` already exists). Need `kms:Decrypt` on that key (`aws sso login --profile mgd-jaredhoward`).
+3. `sops -d ../infra-secrets/meryl-green-designs/.env.sops > backend/.env` for local dev (edit the source with `sops ../infra-secrets/meryl-green-designs/.env.sops`).
 4. `cp frontend/.env.example frontend/.env` and same for `studio/` (no secrets — `PUBLIC_*` only).
 5. `pnpm dev:db:up` — starts the LocalStack container (DynamoDB emulator on `:4566`) and creates the orders table. Required for the order dual-write and the Studio's PII panels; without it the order create still succeeds but logs a shadow-write error and the Studio panels are inert.
 6. `pnpm dev` (or `pnpm dev:all`).

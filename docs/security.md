@@ -303,12 +303,15 @@ secret) leaks via git history, CI logs, a compromised dev machine, or
 ends up encrypted with the wrong key.
 
 **Current mitigations:**
-- **SOPS + AWS KMS encryption.** `infra/terraform.tfvars.sops` and
-  `backend/.env.sops` are committed to the repo as encrypted blobs. The
-  encryption root is a project-dedicated KMS key (`alias/meryl-green-designs-sops`
-  in `af-south-1`) with `kms:Decrypt` gated by IAM. See
-  `docs/deployment.md § Secrets management` for the full workflow and
-  recovery procedures.
+- **SOPS + AWS KMS encryption, in a separate PRIVATE repo.** The encrypted
+  `terraform.tfvars.sops` and `.env.sops` live in the sibling private repo
+  `Absence0760/infra-secrets` (under `meryl-green-designs/`), **not in this
+  public repo** — relocated 2026-06-24. This adds GitHub access control as a
+  second layer on top of KMS (defense-in-depth): a public repo would expose the
+  ciphertext as an offline brute-force target forever. The encryption root is a
+  project-dedicated KMS key (`alias/meryl-green-designs-sops` in `af-south-1`)
+  with `kms:Decrypt` gated by IAM. See `docs/deployment.md § Secrets management`
+  for the full workflow and recovery procedures.
 - **Access is IAM-bound, not file-bound.** There is no private key file on
   any laptop. Whoever has `kms:Decrypt` on the project's KMS key — via
   their IAM identity's policies — can decrypt. Revocation is an IAM
@@ -319,9 +322,10 @@ ends up encrypted with the wrong key.
 - **Automatic key-material rotation is enabled** on the KMS key. AWS
   rotates the underlying cryptographic material annually while keeping
   the same alias — encrypted files keep working without re-encryption.
-- **Plaintext secrets are gitignored.** `.gitignore` covers `.env`,
-  `.env.*` (with an exception only for `.env.example` and `.env.sops`),
-  and `*.tfvars` (except `.tfvars.example` and `.tfvars.sops`). A stray
+- **Plaintext secrets are gitignored, and so is ciphertext.** `.gitignore`
+  covers `.env`, `.env.*` (exception only for `.env.example`), and `*.tfvars`
+  (except `.tfvars.example`). It also blocks `*.sops` outright so an encrypted
+  blob can't be re-introduced into this public repo by accident. A stray
   `git add infra/terraform.tfvars` is blocked before it can stage.
 - **`bin/setup.sh` decrypts to a scratch file and shreds it on exit.**
   The plaintext `terraform.tfvars` exists only for the duration of a
@@ -375,6 +379,18 @@ ends up encrypted with the wrong key.
   commit is different. Git history of rotated secrets is therefore only
   useful to an attacker who also has KMS access, which is the same
   trust boundary as the latest commit. Not a separate risk.
+- **⚠ Pre-migration ciphertext is in this PUBLIC repo's history — rotation
+  pending.** Before 2026-06-24 the encrypted `infra/terraform.tfvars.sops` and
+  `backend/.env.sops` were committed into this **public** repo. The relocation
+  removes them from `HEAD` but **cannot** remove them from history — the old
+  ciphertext is public forever. KMS still protects it, but a secret that has sat
+  as ciphertext in a public repo should be treated as exposed. **Mandatory
+  follow-up: rotate the Resend API key, Sanity tokens (`SANITY_AUTH_TOKEN`),
+  `admin_api_token` / `ADMIN_API_TOKEN`, and `sanity_webhook_secret`** at their
+  providers, write the new values into `infra-secrets/meryl-green-designs/`,
+  `terraform apply`, and update the matching GitHub Actions secrets. (AWS access
+  is OIDC — no static key to rotate.) Until then, treat those four as
+  compromised. See `docs/deployment.md § Secrets management`.
 
 ---
 
@@ -453,7 +469,7 @@ amount, or forges an ITN callback to mark an unpaid order as paid.
 **Residual risk:**
 - If `PAYFAST_PASSPHRASE` leaks, an attacker can forge ITN callbacks.
   Rotate by updating the passphrase in both PayFast's dashboard and
-  `infra/terraform.tfvars.sops`, then `terraform apply`.
+  `../infra-secrets/meryl-green-designs/terraform.tfvars.sops`, then `terraform apply`.
 - PayFast's MD5 signature scheme is weaker than HMAC-SHA256 (used for
   Sanity webhooks). This is PayFast's standard protocol — not something
   we can change.
@@ -547,7 +563,7 @@ the backend's `/admin/orders/:ref` / `PATCH .../tracking` / `PATCH
   result`, never the customer's name/email/etc. — regression-guarded
   in `email.test.ts`.
 - **Symmetric token in two places**: the same `ADMIN_API_TOKEN` lives
-  in `infra/terraform.tfvars.sops:admin_api_token` (the Lambda env)
+  in `../infra-secrets/meryl-green-designs/terraform.tfvars.sops:admin_api_token` (the Lambda env)
   and the `production` GHA secret of the same name (which
   `deploy-studio.yml` re-exports as `SANITY_STUDIO_ADMIN_TOKEN` at
   build time so the Studio bundle can call the backend). Rotate both
@@ -596,14 +612,14 @@ If something goes wrong:
    is not needed (the account isn't compromised, just being impersonated).
 2. **Suspected `SANITY_WEBHOOK_SECRET` leak.**
    - Generate a new secret: `openssl rand -hex 32`.
-   - Update `sops infra/terraform.tfvars.sops` → `terraform apply`.
+   - Update `sops ../infra-secrets/meryl-green-designs/terraform.tfvars.sops` → `terraform apply`.
    - Update the secret in the Sanity webhook configuration to match.
 3. **Suspected `SANITY_API_TOKEN` leak.**
    - Revoke the token in Sanity dashboard → API → Tokens.
-   - Create a new one, update `sops infra/terraform.tfvars.sops` → `terraform apply`.
+   - Create a new one, update `sops ../infra-secrets/meryl-green-designs/terraform.tfvars.sops` → `terraform apply`.
 4. **Suspected `RESEND_API_KEY` leak.**
    - Revoke in the Resend dashboard.
-   - Create a new key, update `sops infra/terraform.tfvars.sops` → `terraform apply`.
+   - Create a new key, update `sops ../infra-secrets/meryl-green-designs/terraform.tfvars.sops` → `terraform apply`.
 5. **Sanity database compromised or accidentally made public.**
    - In the Sanity dashboard, set the `production` dataset to **private**
      (it should already be).
@@ -624,11 +640,13 @@ If something goes wrong:
      Filter for events whose `resources` includes the project key ARN and
      whose source IP / user agent looks suspicious.
    - If the attacker could have decrypted the SOPS files during the
-     exposure window, treat every secret in `infra/terraform.tfvars.sops`
-     and `backend/.env.sops` as leaked. Rotate all of them in their source
-     dashboards (Resend, Sanity API token, Sanity webhook secret).
-   - Update the values via `sops infra/terraform.tfvars.sops` and `sops
-     backend/.env.sops`, then `terraform apply`.
+     exposure window, treat every secret in
+     `../infra-secrets/meryl-green-designs/terraform.tfvars.sops`
+     and `../infra-secrets/meryl-green-designs/.env.sops` as leaked. Rotate all
+     of them in their source dashboards (Resend, Sanity API token, Sanity
+     webhook secret).
+   - Update the values via `sops ../infra-secrets/meryl-green-designs/terraform.tfvars.sops`
+     and `sops ../infra-secrets/meryl-green-designs/.env.sops`, then `terraform apply`.
    - Optionally also rotate the KMS key itself by creating a new key and
      updating the alias (see `docs/deployment.md § Rotating the KMS key`).
      Not strictly required — the leaked credential can't grant itself new
@@ -636,7 +654,7 @@ If something goes wrong:
 7. **Suspected `ADMIN_API_TOKEN` leak** (bearer token guarding
    `/admin/orders/:ref/*` routes consumed by Studio's PII panels).
    - Generate a new token: `openssl rand -hex 32`.
-   - Update `sops infra/terraform.tfvars.sops:admin_api_token` →
+   - Update `sops ../infra-secrets/meryl-green-designs/terraform.tfvars.sops:admin_api_token` →
      `terraform apply` (pushes the new value to the Lambda env).
    - Update the `production` GHA secret of the same name:
      `gh secret set ADMIN_API_TOKEN --env production --body <new>`.
@@ -664,8 +682,9 @@ If something goes wrong:
      recovery incident, not a security incident (the secrets are not
      leaked, they're just no longer readable by you).
    - Regenerate every secret from its source dashboard (Resend, Sanity).
-   - Create a new AWS account, run `bin/sops-init.sh` to provision a
-     fresh KMS key, fill in the encrypted files with the new values.
+   - Create a new AWS account, run `infra-secrets/bin/sops-init.sh --project
+     meryl-green-designs` to provision a fresh KMS key, fill in the encrypted
+     files with the new values.
    - Commit. Run the full `bin/setup.sh` to re-provision infrastructure
      under the new account.
    - Total downtime depends on how long AWS account creation takes and

@@ -10,8 +10,9 @@ This repo uses SOPS-encrypted `*.sops` files for secrets at rest. The trust boun
 
 ## What to check
 
-1. **SOPS files are actually encrypted.**
-   - `backend/.env.sops`, `infra/terraform.tfvars.sops`: open and confirm each file matches the unstructured-JSON SOPS shape:
+1. **No encrypted secrets are committed in THIS repo; the source files are encrypted in the private repo.**
+   - This public repo must contain **no** `*.sops` blob (relocated 2026-06-24 to the sibling private repo `Absence0760/infra-secrets`). `.gitignore` blocks `*.sops`; any such file tracked here is a High finding.
+   - The real encrypted files live at `../infra-secrets/meryl-green-designs/terraform.tfvars.sops` and `../infra-secrets/meryl-green-designs/.env.sops`. If that repo is cloned alongside, open each and confirm it matches the unstructured-JSON SOPS shape:
      - A single top-level `"data": "ENC[AES256_GCM,data:...,iv:...,tag:...,type:str]"` blob holding the encrypted body.
      - A `"sops"` metadata object with `kms` recipient ARNs, `mac` (`ENC[...]`), `unencrypted_suffix`, `version`.
    - The whole-file blob shape is normal for SOPS-encrypted `.env` / `.tfvars` (unstructured input) — distinct from YAML SOPS where each value is individually `ENC[...]`. Either is fine; reject any file that's plaintext at the top level.
@@ -36,7 +37,7 @@ This repo uses SOPS-encrypted `*.sops` files for secrets at rest. The trust boun
 6. **Backend env hygiene.**
    - `backend/src/` references `process.env.X` directly (per `backend/CLAUDE.md`, no `dotenv` imports reachable from `lambda.ts`).
    - Grep `backend/src/lambda.ts` and everything it transitively imports for `import 'dotenv'` or `dotenv/config`. Any hit is a finding — dotenv must only live in `server.ts`.
-   - `backend/.env.example` lists the env-var names. Compare against the SOPS-encrypted `backend/.env.sops` (run `sops -d backend/.env.sops` if you have `kms:Decrypt` and report by name, never by value) — any key in `.env.example` missing from the encrypted file is a Medium; any extra key in the encrypted file is a Low.
+   - `backend/.env.example` lists the env-var names. Compare against the SOPS-encrypted `../infra-secrets/meryl-green-designs/.env.sops` (run `sops -d ../infra-secrets/meryl-green-designs/.env.sops` if that repo is cloned and you have `kms:Decrypt` — report by name, never by value) — any key in `.env.example` missing from the encrypted file is a Medium; any extra key in the encrypted file is a Low.
 
 7. **GitHub Actions workflow secrets.**
    - `.github/workflows/*.yml`: every `env:` block should reference `${{ secrets.X }}` or `${{ vars.X }}`, never a literal value.
@@ -68,7 +69,7 @@ For each: the literal env-var name and the file:line, what should change. **Neve
 - `backend/CLAUDE.md § Three entry points` — dotenv-isolation rationale
 - `frontend/CLAUDE.md § Hard rules` — static-only invariant
 - `.github/workflows/deploy-*.yml` — OIDC pattern
-- `.sops.yaml` — KMS recipient configuration
+- `../infra-secrets/.sops.yaml` — KMS recipient configuration (in the sibling private repo)
 - `docs/deployment.md § Secrets management` — the full workflow
 - `docs/security.md § Risk 8` (secrets management) — the risk register entry
 

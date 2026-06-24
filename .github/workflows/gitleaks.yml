@@ -10,8 +10,8 @@ name: gitleaks
 #     vulns, not secrets.
 #   - pnpm audit (workflows/audit.yml) — flags CVEs in dependencies,
 #     not committed secrets.
-#   - SOPS + AWS KMS for the secrets we mean to keep
-#     (`infra/terraform.tfvars.sops`, `backend/.env.sops`) — defends
+#   - SOPS + AWS KMS for the secrets we mean to keep (now stored in the
+#     sibling private repo Absence0760/infra-secrets, not here) — defends
 #     correctly-stored secrets, doesn't catch a stray paste.
 #
 # What gitleaks adds: regex-matching against the entire working tree

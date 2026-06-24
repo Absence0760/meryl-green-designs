@@ -115,7 +115,8 @@ resource "aws_lambda_function" "backend" {
       # Phase 0 orders-PII-split: admin routes that power the Studio's
       # custom PII panels. ADMIN_API_TOKEN gates them via constant-time
       # bearer compare; STUDIO_ORIGINS narrows CORS to the Studio's
-      # deployed URL. Both come from terraform.tfvars.sops.
+      # deployed URL. Both come from terraform.tfvars (decrypted from the
+      # sibling private repo's meryl-green-designs/terraform.tfvars.sops).
       ADMIN_API_TOKEN = var.admin_api_token
       STUDIO_ORIGINS  = var.studio_origins
     }

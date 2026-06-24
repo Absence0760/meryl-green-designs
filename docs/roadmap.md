@@ -44,8 +44,10 @@ automated status emails, and the Sanity Studio with four schemas
   Full inventory in [`architecture.md`](./architecture.md#deployment-targets);
   ops walkthrough in [`deployment.md`](./deployment.md).
 - **Secrets** — SOPS + AWS KMS (`alias/meryl-green-designs-sops` in
-  `af-south-1`); `bin/setup.sh` + `bin/sops-init.sh` are idempotent
-  one-command bootstraps. Workflow lives under
+  `af-south-1`); encrypted files live in the sibling private repo
+  `Absence0760/infra-secrets`. `bin/setup.sh` (here) and
+  `infra-secrets/bin/sops-init.sh` (there) are idempotent bootstraps. Workflow
+  lives under
   [`deployment.md § Secrets management`](./deployment.md#secrets-management).
 - **Supply-chain hygiene** — Dependabot grouped weekly updates,
   pnpm-lock auto-sync, conservative auto-merge for minor/patch bumps,
@@ -207,11 +209,13 @@ traffic. Most are external, and each is documented with exact steps in
 - [ ] Domain registered + Route 53 hosted zone existing
 
 ### Deployment
-- [ ] Run `./bin/sops-init.sh` to provision the project's KMS key and seed
-      encrypted `infra/terraform.tfvars.sops` + `backend/.env.sops` from
-      the examples
-- [ ] Fill in real values: `sops infra/terraform.tfvars.sops` and `sops
-      backend/.env.sops`
+- [ ] Clone the private secrets repo next to this one: `git clone
+      git@github.com:Absence0760/infra-secrets.git ../infra-secrets`
+      (the project's KMS key + encrypted files already exist there; the
+      one-time bootstrap is `infra-secrets/bin/sops-init.sh --project
+      meryl-green-designs --region af-south-1`)
+- [ ] Confirm/fill values: `sops ../infra-secrets/meryl-green-designs/terraform.tfvars.sops`
+      and `sops ../infra-secrets/meryl-green-designs/.env.sops`
 - [ ] Run `./bin/setup.sh` (one command, ~15 min of which is CloudFront
       propagation)
 - [ ] Cut the first GitHub release to trigger the release-gated deploy

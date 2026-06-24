@@ -133,11 +133,9 @@ meryl-green-designs/
 │   ├── dynamodb.tf           Orders PII table (prevent_destroy, PITR, TTL, AWS-managed encryption)
 │   ├── budget.tf             CloudWatch monthly budget + email alerts (50/80/100% actual + 100% forecast)
 │   ├── github_oidc.tf        GitHub OIDC provider + CI role (trust-policied to `production` env) + scoped policy
-│   ├── terraform.tfvars.example  Plaintext example; real values live in terraform.tfvars.sops (KMS-encrypted)
-│   └── terraform.tfvars.sops     SOPS-encrypted secrets (resend_api_key, payfast_*, admin_api_token, sanity tokens, etc.)
+│   └── terraform.tfvars.example  Plaintext example; real values live ENCRYPTED in the sibling private repo at ../infra-secrets/meryl-green-designs/terraform.tfvars.sops (KMS-encrypted; resend_api_key, payfast_*, admin_api_token, sanity tokens, etc.)
 ├── bin/
-│   ├── setup.sh              One-command production bootstrap (state backend + apply + GH Actions vars + Sanity webhook)
-│   ├── sops-init.sh          Provisions the KMS key + .sops.yaml + seeds *.sops files (idempotent)
+│   ├── setup.sh              One-command production bootstrap (state backend + apply + GH Actions vars + Sanity webhook). Decrypts tfvars from ../infra-secrets
 │   ├── dynamodb-local-up.sh  Local-dev bootstrap: LocalStack DynamoDB on :4566 + orders table (idempotent)
 │   └── dev-emails-open.sh    Opens the most recent captured email (when EMAIL_BACKEND=file)
 ├── docker-compose.yml        LocalStack service for local-dev DynamoDB emulation

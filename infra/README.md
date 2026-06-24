@@ -121,21 +121,23 @@ bucket/table names, so the next `terraform init` will pick them up.
 
 ## Configure
 
-Variables live in `terraform.tfvars.sops` — SOPS-encrypted with the
-project KMS key (`alias/meryl-green-designs-sops`). The plaintext
+Variables live in `../../infra-secrets/meryl-green-designs/terraform.tfvars.sops`
+— SOPS-encrypted with the project KMS key (`alias/meryl-green-designs-sops`) in
+the sibling PRIVATE repo `Absence0760/infra-secrets`. The plaintext
 `terraform.tfvars` file is gitignored and only exists transiently when
 `bin/setup.sh` decrypts it for `terraform apply`.
 
-To seed the encrypted file from the example (first-time only):
+The encrypted file (and its `terraform.tfvars.example` template) already live in
+`infra-secrets`; clone that repo next to this one if you haven't:
 
 ```bash
-../bin/sops-init.sh   # creates the KMS key, .sops.yaml, and seeds *.sops files
+git clone git@github.com:Absence0760/infra-secrets.git ../../infra-secrets
 ```
 
-To edit:
+To edit (needs `kms:Decrypt`/`kms:Encrypt` on the project key):
 
 ```bash
-sops terraform.tfvars.sops   # opens in $EDITOR, re-encrypts on save
+sops ../../infra-secrets/meryl-green-designs/terraform.tfvars.sops   # opens in $EDITOR, re-encrypts on save
 ```
 
 Running `bin/setup.sh` decrypts to a scratch `terraform.tfvars`, runs
@@ -183,7 +185,7 @@ To rotate `resend_api_key` (or `admin_api_token`, PayFast credentials,
 Sanity write token, etc.):
 
 ```bash
-sops terraform.tfvars.sops   # edit the value
+sops ../../infra-secrets/meryl-green-designs/terraform.tfvars.sops   # edit the value
 # then re-run setup.sh or apply manually with the decrypted scratch file
 ```
 
