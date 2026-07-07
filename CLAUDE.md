@@ -75,6 +75,10 @@ Treat "code changed, docs and tests unchanged" as an incomplete task — flag it
 - Don't introduce AWS access keys — CI uses GitHub OIDC.
 - Don't replace PayFast with another card processor without discussing.
 
+## Merging & branch protection
+
+`main` follows the estate "sealed main + CI gate" standard: every change reaches `origin/main` through a PR — **no direct pushes** (enforced on admins, including the owner). Merging requires a green **`CI gate`** status check — the single required check, an aggregator job present in each functional CI workflow that `needs:` that workflow's jobs. There are **0 required approvals** — a green CI is the merge gate, not a human sign-off. Force-pushes, branch deletion, and unresolved conversations are blocked; history is linear. Commit locally per-piece, but land via a CI-gated PR.
+
 ## Where to look (cross-cutting docs)
 
 - `docs/architecture.md` — system diagram, service boundaries, content + order flow
