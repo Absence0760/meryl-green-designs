@@ -13,13 +13,13 @@
 		"install-browsers": "playwright install --with-deps chromium"
 	},
 	"devDependencies": {
-		"@aws-sdk/client-dynamodb": "^3.1048.0",
-		"@aws-sdk/lib-dynamodb": "^3.1048.0",
-		"@playwright/test": "1.60.0",
-		"@sanity/client": "^7.22.0",
-		"@types/node": "25.9.0",
+		"@aws-sdk/client-dynamodb": "^3.1132.0",
+		"@aws-sdk/lib-dynamodb": "^3.1132.0",
+		"@playwright/test": "1.63.0",
+		"@sanity/client": "^7.27.0",
+		"@types/node": "25.9.6",
 		"dotenv": "^17.4.2",
-		"tsx": "4.22.1",
+		"tsx": "4.23.13",
 		"typescript": "6.0.3"
 	}
 }

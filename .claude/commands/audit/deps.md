@@ -15,7 +15,7 @@ The repo has four workspaces with their own `package.json`:
 
 Plus:
 
-- **Root `package.json`** — workspace orchestration + pnpm overrides (currently `js-yaml@<3.14.2` and `cookie@<0.7.0`)
+- **Root `package.json`** — workspace orchestration + pnpm overrides (currently `js-yaml`, `cookie`, `devalue`, `@smithy/types`, `adm-zip`, `esbuild` 0.27.x, `vite` 7.x and `uuid` — `git log -p package.json` shows the advisory behind each)
 - **GitHub Actions** — `.github/workflows/*.yml` — action SHA pinning vs `@v6` floating tags
 - **Dependabot config** — `.github/dependabot.yml` — must cover every workspace + GitHub Actions
 
