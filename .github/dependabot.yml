@@ -2,31 +2,41 @@
 # https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
 #
 # Strategy:
-# - One update schedule per workspace package (frontend/backend/studio) + one
-#   for GitHub Actions workflows.
+# - ONE npm entry at the workspace root, not one per workspace package.
+#   This is a pnpm workspace with a single root `pnpm-lock.yaml`. Pointed at
+#   `/frontend`, `/backend`, etc., Dependabot finds no lockfile in that
+#   directory, rewrites only the workspace `package.json`, and leaves the
+#   root lockfile stale — every such PR then fails `ci.yml`'s
+#   `pnpm install --frozen-lockfile` (ERR_PNPM_OUTDATED_LOCKFILE). From `/`
+#   Dependabot reads `pnpm-workspace.yaml`, bumps the dependency in every
+#   workspace that declares it, and regenerates the root lockfile in the
+#   same commit. No lockfile-sync workflow is needed.
+# - One entry for GitHub Actions workflows and one for the Terraform
+#   providers under infra/.
 # - Weekly, on Monday morning South Africa time — low noise, predictable.
 # - Related packages are grouped so they move together (e.g. svelte ecosystem,
 #   sanity ecosystem, react + types). Everything else is bundled into a single
-#   "minor-and-patch" group per package so you get ~1-2 PRs per package per
-#   week instead of dozens.
+#   "minor-and-patch" group so you get a handful of PRs per week instead of
+#   dozens. A package matches the first group whose patterns fit it.
 # - Major version bumps for ungrouped packages open as individual PRs and
 #   require review — see pnpm-outdated-safe-bumps discussion in docs/roadmap.md.
 
 version: 2
 updates:
   # ---------------------------------------------------------------------------
-  # Frontend (SvelteKit)
+  # npm — the whole pnpm workspace (frontend, backend, studio, playwright)
   # ---------------------------------------------------------------------------
   - package-ecosystem: "npm"
-    directory: "/frontend"
+    directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
       time: "06:00"
       timezone: "Africa/Johannesburg"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 10
     commit-message:
-      prefix: "chore(frontend)"
+      prefix: "chore(deps)"
+      prefix-development: "chore(deps-dev)"
       include: "scope"
     groups:
       svelte-ecosystem:
@@ -38,96 +48,23 @@ updates:
         patterns:
           - "@sanity/*"
           - "sanity"
-      minor-and-patch:
-        update-types:
-          - "minor"
-          - "patch"
-
-  # ---------------------------------------------------------------------------
-  # Backend (Hono + Lambda)
-  # ---------------------------------------------------------------------------
-  - package-ecosystem: "npm"
-    directory: "/backend"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "06:00"
-      timezone: "Africa/Johannesburg"
-    open-pull-requests-limit: 5
-    commit-message:
-      prefix: "chore(backend)"
-      include: "scope"
-    groups:
       hono:
         patterns:
           - "hono"
           - "@hono/*"
-      sanity:
+      aws-sdk:
         patterns:
-          - "@sanity/*"
-      types:
-        patterns:
-          - "@types/*"
-      minor-and-patch:
-        update-types:
-          - "minor"
-          - "patch"
-
-  # ---------------------------------------------------------------------------
-  # Studio (Sanity Studio)
-  # ---------------------------------------------------------------------------
-  - package-ecosystem: "npm"
-    directory: "/studio"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "06:00"
-      timezone: "Africa/Johannesburg"
-    open-pull-requests-limit: 5
-    commit-message:
-      prefix: "chore(studio)"
-      include: "scope"
-    groups:
-      sanity:
-        patterns:
-          - "@sanity/*"
-          - "sanity"
+          - "@aws-sdk/*"
       react:
         patterns:
           - "react"
           - "react-dom"
           - "@types/react"
           - "@types/react-dom"
-      minor-and-patch:
-        update-types:
-          - "minor"
-          - "patch"
-
-  # ---------------------------------------------------------------------------
-  # Playwright (e2e test workspace)
-  # ---------------------------------------------------------------------------
-  - package-ecosystem: "npm"
-    directory: "/playwright"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "06:00"
-      timezone: "Africa/Johannesburg"
-    open-pull-requests-limit: 5
-    commit-message:
-      prefix: "chore(playwright)"
-      include: "scope"
-    groups:
       playwright:
         patterns:
           - "@playwright/*"
           - "playwright"
-      aws-sdk:
-        patterns:
-          - "@aws-sdk/*"
-      sanity:
-        patterns:
-          - "@sanity/*"
       types:
         patterns:
           - "@types/*"

@@ -1,9 +1,9 @@
 name: Dependabot auto-merge
 
 # Automatically squash-merges minor + patch Dependabot PRs once CI is
-# green. Saves review burden — `.github/dependabot.yml` configures 4
-# ecosystems (frontend npm, backend npm, studio npm, GitHub Actions),
-# each opening a few grouped PRs per week. Without this, most of the
+# green. Saves review burden — `.github/dependabot.yml` configures 3
+# ecosystems (npm for the whole pnpm workspace, GitHub Actions,
+# Terraform), each opening a few grouped PRs per week. Without this, most of the
 # human review time goes to bumping a patch version of an action or a
 # transitive lodash dep.
 #
@@ -16,9 +16,10 @@ name: Dependabot auto-merge
 # returns an error and the workflow no-ops; PRs sit waiting for a
 # human like before, so worst case is degenerate, not destructive.
 #
-# CI gating: the squash merge waits on the `Test and typecheck` job
-# in `ci.yml` (and any other required checks configured in branch
-# protection) before landing. A red CI run keeps the PR queued
+# CI gating: the squash merge waits on the `CI gate` required check
+# (the aggregator job in `ci.yml` and `e2e.yml`) before landing. The
+# Playwright job is skipped on Dependabot PRs (they get no secrets),
+# so for these PRs the gate rests on typecheck + vitest. A red CI run keeps the PR queued
 # indefinitely until either a human intervenes or the PR is closed.
 
 on:

@@ -38,16 +38,17 @@ There's already a scheduled `audit.yml` workflow that runs `pnpm audit` weekly a
    If one exists, surface its title — that's the scheduled `audit.yml`'s most recent flagged set. Confirm whether the findings match what `pnpm audit` returns today.
 
 3. **Dependabot coverage.** Read `.github/dependabot.yml`. The expected shape is:
-   - `package-ecosystem: "npm"` × 3 — one entry per workspace at `/frontend`, `/backend`, `/studio`.
+   - `package-ecosystem: "npm"` × 1 — `directory: "/"`. Dependabot reads `pnpm-workspace.yaml` from the root, bumps every workspace `package.json` that declares the dependency, and regenerates the root `pnpm-lock.yaml` in the same commit.
    - `package-ecosystem: "github-actions"` × 1 — `directory: "/"` (Dependabot scans `.github/workflows/` from this root).
-   - Schedule weekly; grouped where it reduces PR churn (svelte-ecosystem, sanity, types, hono).
-   - **No npm entry at `/`** — the root `package.json` only holds workspace orchestration + pnpm overrides; nothing for Dependabot to bump.
-   - Flag any missing workspace entry, any non-weekly schedule, or any ungrouped flood of related packages.
+   - `package-ecosystem: "terraform"` × 1 — `directory: "/infra"`.
+   - Schedule weekly; grouped where it reduces PR churn (svelte-ecosystem, sanity, hono, aws-sdk, react, playwright, types).
+   - **No per-workspace npm entries** (`/frontend`, `/backend`, …) — those directories have no lockfile, so Dependabot rewrites only the workspace `package.json`, leaves the root lockfile stale, and `ci.yml`'s `pnpm install --frozen-lockfile` fails with `ERR_PNPM_OUTDATED_LOCKFILE`.
+   - Flag any per-workspace npm entry, any non-weekly schedule, or any ungrouped flood of related packages.
 
-4. **Lockfile-sync workflow exists.** Dependabot edits `<workspace>/package.json` but never touches the root `pnpm-lock.yaml`, which breaks `ci.yml`'s `pnpm install --frozen-lockfile`. The compensating workflow is `.github/workflows/dependabot-lockfile.yml` — it regenerates the lockfile on every Dependabot PR and commits the result back so CI retriggers and the PR can go green without manual intervention. Verify:
-   - The workflow file exists.
-   - It uses `DEPENDABOT_LOCKFILE_PAT` (a fine-grained PAT with `Contents: Write`), not `GITHUB_TOKEN` — GitHub blocks the latter from retriggering `pull_request` events.
-   - The PAT is scoped to this repo and has an expiry. If it's stale or revoked, dep PRs pile up unmerged.
+4. **Dependabot PRs carry the lockfile.** There is no lockfile-sync workflow (removed in #113) — the root-directory npm entry above is what keeps `pnpm-lock.yaml` in step. Verify:
+   - `gh pr list --author app/dependabot --json number,title,files` — every npm PR should touch `pnpm-lock.yaml`, not just a workspace `package.json`.
+   - No open Dependabot PR is red on `ERR_PNPM_OUTDATED_LOCKFILE`. If one is, the config has drifted back to per-workspace directories.
+   - Dependabot PRs skip the Playwright job (`e2e.yml` gates it on `github.actor != 'dependabot[bot]'`) — they get no secrets, so running it would fail on an empty `SANITY_API_TOKEN`.
 
 5. **GitHub Actions pinning.** Grep `.github/workflows/` for `uses: <action>@<ref>`.
    - Floating refs (`@main`, `@v6`) are supply-chain risks for actions that can be force-pushed by the publisher.

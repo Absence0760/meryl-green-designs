@@ -822,6 +822,12 @@ can't accidentally point at real resources. Used by `.github/workflows/e2e.yml`
 on every PR and every push to `main`. Set under **Repository → Settings →
 Environments → New environment → `e2e`**.
 
+Dependabot-triggered runs never see these values — GitHub withholds
+Actions and environment secrets from them — so `e2e.yml` skips the
+Playwright job when `github.actor` is `dependabot[bot]`. Don't "fix"
+that by copying the secrets into the Dependabot secrets store: code
+from an unreviewed dependency bump would then run with them in scope.
+
 The Sanity values come from a **dedicated test Sanity account** (the
 operator's chosen pattern — see `playwright/README.md`), not a second
 project under the production login. This means the `SANITY_E2E_TOKEN`
