@@ -414,8 +414,9 @@ client, Resend SDK, esbuild, vitest, etc.) ships a CVE. We pick it up via
   Monday at 06:00 UTC and on manual dispatch, scanning all workspaces at
   `--audit-level=moderate`. Findings open a `dependency-audit`-labelled
   GitHub issue; the next clean run auto-closes it.
-- Dependabot is configured (grouped weekly updates per workspace) — see
-  the roadmap.
+- Dependabot is configured (grouped weekly updates across the pnpm
+  workspace, the GitHub Actions workflows and the Terraform providers) —
+  see the roadmap.
 
 **Residual risk:**
 - `pnpm audit`'s vulnerability database lags GHSA/NVD by hours-to-days for

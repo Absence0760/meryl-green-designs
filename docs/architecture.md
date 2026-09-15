@@ -21,11 +21,11 @@ and GitHub Actions workflows for CI/CD:
   Lambda, API Gateway HTTP API, DynamoDB for order PII, auto-cancel Lambda +
   EventBridge schedule, SNS ops alerts + SQS DLQ, CloudWatch budget, IAM,
   Route 53, ACM, GitHub OIDC). Not a workspace package.
-- `.github/workflows/` — fifteen workflows: three release-gated deploy
+- `.github/workflows/` — fourteen workflows: three release-gated deploy
   workflows (frontend, backend, studio) that authenticate to AWS via OIDC,
   plus CI (typecheck + vitest), E2E (Playwright against LocalStack), CodeQL
   SAST, weekly dependency audit, Gitleaks secret-scan, OpenSSF Scorecard,
-  Terraform fmt/validate/Trivy, two Dependabot helpers, the Claude Code
+  Terraform fmt/validate/Trivy, Dependabot auto-merge, the Claude Code
   automation, a PR labeler, and a conventional-commit PR-title linter. The
   deploy workflows run on `release: published` with skip-if-unchanged checks
   per workspace. Full inventory at the bottom of this file.
@@ -151,7 +151,6 @@ meryl-green-designs/
         ├── gitleaks.yml                 Secret-scan on PR + push + weekly full-history sweep
         ├── scorecard.yml                Weekly OpenSSF Scorecard
         ├── terraform.yml                fmt -check + validate + Trivy IaC on infra/** changes
-        ├── dependabot-lockfile.yml      Syncs root pnpm-lock.yaml on Dependabot PRs
         ├── dependabot-auto-merge.yml    Auto-merges minor/patch Dependabot PRs
         ├── labeler.yml                  Path-based PR labels (config in .github/labeler.yml)
         ├── pr-title-lint.yml            Enforces conventional-commit PR titles
@@ -543,7 +542,9 @@ CI/CD lives in `.github/workflows/`:
   dedicated `test-e2e` Sanity dataset + public PayFast sandbox)
   on every PR + push to `main`. The env-guard in
   `playwright/global-setup.ts` refuses to run if anything would
-  point at production. See `playwright/README.md`.
+  point at production. Skipped on Dependabot PRs: those runs get no
+  Actions or environment secrets, so the job could only fail. See
+  `playwright/README.md`.
 - `codeql.yml` — CodeQL SAST on JS/TS + GitHub Actions YAML on every PR,
   push to main, and weekly. Findings surface in the Security tab.
 - `audit.yml` — `pnpm audit` weekly; auto-files a `dependency-audit`
@@ -565,19 +566,14 @@ CI/CD lives in `.github/workflows/`:
   updates the Lambda via `aws lambda update-function-code`.
 - `deploy-studio.yml` — runs on `release: published`, same skip-if-unchanged
   logic scoped to `studio/**`. Runs `sanity deploy`.
-- `dependabot-lockfile.yml` — runs on Dependabot PRs that touch any
-  `package.json`. Regenerates the root `pnpm-lock.yaml` with
-  `pnpm install --lockfile-only` and commits it back, because Dependabot
-  itself only rewrites per-workspace `package.json` and leaves the shared
-  root lockfile stale (which otherwise breaks `ci.yml`'s `--frozen-lockfile`).
-  Requires a `DEPENDABOT_LOCKFILE_PAT` **Dependabot** secret (Settings →
-  Secrets and variables → Dependabot, NOT the Actions tab — workflows
-  triggered by Dependabot PRs can't read Actions secrets). Set via
-  `gh secret set DEPENDABOT_LOCKFILE_PAT --app dependabot`. See the
-  workflow file for the rest of the setup.
 - `dependabot-auto-merge.yml` — squash-merges minor + patch Dependabot
-  PRs once CI is green. Major bumps stay manual (audit history shows
-  they need code changes). Repo setting required: "Allow auto-merge".
+  PRs once the `CI gate` check is green. Major bumps stay manual (audit
+  history shows they need code changes). Repo setting required: "Allow
+  auto-merge" (enabled). There is no lockfile-sync helper: the npm entry
+  in `.github/dependabot.yml` points at the workspace root (`/`), so
+  Dependabot rewrites the root `pnpm-lock.yaml` in the same commit as the
+  workspace `package.json`. Per-workspace directories (`/frontend`, …)
+  have no lockfile and produce PRs that fail `--frozen-lockfile`.
 - `labeler.yml` — applies path-based labels to PRs on open/sync/reopen so
   reviewers see at a glance which workspaces a PR touches. Configuration in
   `.github/labeler.yml`; advisory only (doesn't block merging).

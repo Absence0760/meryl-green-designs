@@ -118,6 +118,8 @@ What's **not** covered:
 and every push to `main`. It uses a LocalStack service container, the
 public PayFast sandbox merchant, and the `test-e2e` Sanity dataset
 (secrets provided via the repository's GitHub Actions environment).
+The job is skipped on Dependabot PRs, because GitHub gives those runs
+no secrets; `ci.yml`'s typecheck + vitest still gate them.
 
 If a spec fails in CI, the workflow uploads the Playwright HTML report
 as an artifact — open it locally to see traces / screenshots / video.

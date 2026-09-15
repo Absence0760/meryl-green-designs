@@ -16,6 +16,14 @@ permissions:
 jobs:
   playwright:
     name: Playwright (LocalStack + test-e2e Sanity)
+    # Dependabot-triggered runs are treated like forks: they get no Actions
+    # or environment secrets, so SANITY_API_TOKEN is empty and
+    # playwright.config.ts aborts before a single test runs. Skip instead
+    # of failing — the CI gate below counts a skip as a pass, and ci.yml's
+    # typecheck + vitest still gate the bump. Mirroring the e2e secrets into
+    # the Dependabot store was rejected: code from an unreviewed dependency
+    # bump would then run with them in scope.
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     # Use the dedicated 'e2e' GitHub Actions environment so the SANITY_E2E_*
     # secrets/vars are isolated from the 'production' environment that the
