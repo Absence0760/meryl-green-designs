@@ -112,8 +112,8 @@ importers:
   studio:
     dependencies:
       '@sanity/ui':
-        specifier: ^3.5.5
-        version: 3.5.5(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(styled-components@6.5.3(react-dom@19.3.0(react@19.3.0))(react@19.3.0))
+        specifier: ^4.2.1
+        version: 4.2.1(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(styled-components@6.5.3(react-dom@19.3.0(react@19.3.0))(react@19.3.0))
       '@sanity/vision':
         specifier: ^5.31.2
         version: 5.31.2(@babel/runtime@7.29.7)(@codemirror/lint@6.9.6)(@codemirror/theme-one-dark@6.1.3)(codemirror@6.0.2)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(sanity@5.31.2(@emotion/is-prop-valid@1.4.0)(@noble/hashes@2.2.0)(@oclif/core@4.14.0)(@sanity/cli-core@1.3.4(@noble/hashes@2.2.0)(@types/node@25.9.6)(babel-plugin-react-compiler@1.0.0)(lightningcss@1.33.0)(supports-color@8.1.1)(yaml@2.8.4))(@types/node@25.9.6)(@types/react@19.3.0)(babel-plugin-react-compiler@1.0.0)(jiti@2.7.0)(lightningcss@1.33.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(styled-components@6.5.3(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(supports-color@8.1.1)(typescript@6.0.3)(vitest@4.1.11(@types/node@25.9.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@7.3.6(@types/node@25.9.6)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.13)(yaml@2.8.4))))(styled-components@6.5.3(react-dom@19.3.0(react@19.3.0))(react@19.3.0))
@@ -2352,6 +2352,14 @@ packages:
       react-dom: ^18 || >=19.0.0-0
       styled-components: ^5.2 || ^6
 
+  '@sanity/ui@4.2.1':
+    resolution: {integrity: sha512-pBuSBo3k6ZSoVjmd8j5qs0bNC/K0LRQk8P5LfV1+EQHVcw3gCZjCXEBiVwqNdrRh2CP3AxWMUyDv16HcuunWyw==}
+    engines: {node: '>=22.12'}
+    peerDependencies:
+      react: ^19.2
+      react-dom: ^19.2
+      styled-components: ^6.1
+
   '@sanity/util@5.31.2':
     resolution: {integrity: sha512-SnICS2gbzKO8hlkUDgkPZ3xvtGyeDE/BYQqlBsCw2cI8+zYYgrLkUVYOWH9unXkVw4Fj6lmePO/n2sUIawGnsw==}
     engines: {node: '>=20.19 <22 || >=22.12'}
@@ -2620,6 +2628,12 @@ packages:
       codemirror: '>=6.0.0'
       react: '>=17.0.0'
       react-dom: '>=17.0.0'
+
+  '@vanilla-extract/dynamic@2.1.5':
+    resolution: {integrity: sha512-QGIFGb1qyXQkbzx6X6i3+3LMc/iv/ZMBttMBL+Wm/DetQd36KsKsFg5CtH3qy+1hCA/5w93mEIIAiL4fkM8ycw==}
+
+  '@vanilla-extract/private@1.0.9':
+    resolution: {integrity: sha512-gT2jbfZuaaCLrAxwXbRgIhGhcXbRZCG3v4TTUnjw0EJ7ArdBRxkq4msNJkbuRkCgfIK5ATmprB5t9ljvLeFDEA==}
 
   '@vercel/edge@1.3.0':
     resolution: {integrity: sha512-uGTduh8jLCcshoZ23QNG3LZoLsKu09d78Vb04iQxuLbpND+edR7dKR/2p52hMwE8Lgk24JVqoxlf18aWC6X3ZQ==}
@@ -5070,11 +5084,6 @@ packages:
     resolution: {integrity: sha512-nFxV0HwLdRUt20kvIgqHYZe6PK/v4mU1X8/eLsT1ti5ck0l2ob0HDRziaJPx+YWzBo6dMm4cTac3mcyk68Gh+A==}
     peerDependencies:
       react: '>=16.8.0'
-
-  use-effect-event@2.0.3:
-    resolution: {integrity: sha512-fz1en+z3fYXCXx3nMB8hXDMuygBltifNKZq29zDx+xNJ+1vEs6oJlYd9sK31vxJ0YI534VUsHEBY0k2BATsmBQ==}
-    peerDependencies:
-      react: ^18.3 || ^19.0.0-0
 
   use-effect-event@2.0.4:
     resolution: {integrity: sha512-il5ezAwTIxg1dr+eXP+1SS1EpXe6IFy1oADvGxmiCNGCDX1X+ygERRDOFoCyzc+r6ktqag3VITmrw1ZPfoig1g==}
@@ -7910,7 +7919,7 @@ snapshots:
 
   '@sanity/logos@2.2.2(react@19.3.0)':
     dependencies:
-      '@sanity/color': 3.0.6
+      '@sanity/color': 3.0.8
       react: 19.3.0
 
   '@sanity/media-library-types@1.4.0': {}
@@ -8159,6 +8168,22 @@ snapshots:
       motion: 13.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       react: 19.3.0
       react-compiler-runtime: 1.0.0(react@19.3.0)
+      react-dom: 19.3.0(react@19.3.0)
+      react-is: 19.3.0
+      react-refractor: 4.0.0(react@19.3.0)
+      styled-components: 6.5.3(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      use-effect-event: 2.0.4(react@19.3.0)
+
+  '@sanity/ui@4.2.1(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(styled-components@6.5.3(react-dom@19.3.0(react@19.3.0))(react@19.3.0))':
+    dependencies:
+      '@floating-ui/react-dom': 2.1.9(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@sanity/color': 3.0.8
+      '@sanity/icons': 5.2.2(react@19.3.0)
+      '@vanilla-extract/dynamic': 2.1.5
+      clsx: 2.1.1
+      csstype: 3.2.3
+      motion: 13.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      react: 19.3.0
       react-dom: 19.3.0(react@19.3.0)
       react-is: 19.3.0
       react-refractor: 4.0.0(react@19.3.0)
@@ -8484,6 +8509,12 @@ snapshots:
       - '@codemirror/language'
       - '@codemirror/lint'
       - '@codemirror/search'
+
+  '@vanilla-extract/dynamic@2.1.5':
+    dependencies:
+      '@vanilla-extract/private': 1.0.9
+
+  '@vanilla-extract/private@1.0.9': {}
 
   '@vercel/edge@1.3.0': {}
 
@@ -10256,7 +10287,7 @@ snapshots:
       react: 19.3.0
       react-compiler-runtime: 1.0.0(react@19.3.0)
       rxjs: 7.8.2
-      use-effect-event: 2.0.3(react@19.3.0)
+      use-effect-event: 2.0.4(react@19.3.0)
 
   react@19.3.0: {}
 
@@ -11005,10 +11036,6 @@ snapshots:
       '@types/react': 19.3.0
 
   use-device-pixel-ratio@1.1.2(react@19.3.0):
-    dependencies:
-      react: 19.3.0
-
-  use-effect-event@2.0.3(react@19.3.0):
     dependencies:
       react: 19.3.0
 
