@@ -17,8 +17,8 @@ importers:
         specifier: ^3.1135.0
         version: 3.1135.0(@aws-sdk/client-dynamodb@3.1135.0)
       '@sanity/client':
-        specifier: ^7.27.0
-        version: 7.27.0
+        specifier: ^8.6.2
+        version: 8.6.2(vitest@4.1.11(@types/node@25.9.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.3.0(@types/node@25.9.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.8.4)))
       dotenv:
         specifier: ^17.4.2
         version: 17.4.2
@@ -94,8 +94,8 @@ importers:
         specifier: 1.63.0
         version: 1.63.0
       '@sanity/client':
-        specifier: ^7.27.0
-        version: 7.27.0
+        specifier: ^8.6.2
+        version: 8.6.2(vitest@4.1.11(@types/node@25.9.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.3.0(@types/node@25.9.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.8.4)))
       '@types/node':
         specifier: 25.9.6
         version: 25.9.6
@@ -2125,8 +2125,8 @@ packages:
     resolution: {integrity: sha512-qPVfGFo0bjUmRRtrx8mk1a2UnPPM93CFQr97bNacm2J3nShdhJlR6goNA/pQ7eRQO9uEG8moyUNrINYVGXgpPA==}
     engines: {node: '>=20'}
 
-  '@sanity/client@8.6.1':
-    resolution: {integrity: sha512-sYASM1fuPeCx2dZzlq3edtv1UmvizUmMLkN0x3Rkxs/NrTAikxGyOAtEuAZt25mwliqBiHsYbB0L4G6MWVgHLw==}
+  '@sanity/client@8.6.2':
+    resolution: {integrity: sha512-e/rKvOxMy3hP+4p1fdVfONKrdmlNQQyjzHai/cQYPTe/CLLsxVQZWcPsXOq+rgZ3gitxXHtqx1H4nrYmBG97Qg==}
     engines: {node: '>=22.12.0'}
 
   '@sanity/codegen@6.1.2':
@@ -3442,10 +3442,6 @@ packages:
     resolution: {integrity: sha512-9fSjSaos/fRIVIp+xSJlE6lfwhES7LNtKaCBIamHsjr2na1BiABJPo0mOjjz8GJDURarmCPGqaiVg5mfjb98CQ==}
     engines: {node: '>= 0.4'}
 
-  get-it@8.7.2:
-    resolution: {integrity: sha512-slSwC/BBAnoz9OnHopU+V5pJKAieddoF6dmx2CvbWMRePgup8ftiB+D7d+pr2PZzcqNtZOVDMoLOsXGsERhTEg==}
-    engines: {node: '>=14.0.0'}
-
   get-it@8.8.3:
     resolution: {integrity: sha512-IfkbWqOGO2kd2Ccgiz/NIzk3bcwjtVqBm3RNa3j/veHg2q7c1DgS3EXrCrvIWH0jbNTbhkdblnxBP7Dm8CiH+A==}
     engines: {node: '>=14.0.0'}
@@ -4204,6 +4200,10 @@ packages:
 
   obug@2.2.1:
     resolution: {integrity: sha512-XrsrhT5sybtKI6wakr2SPOlGZWWYbUXZ7a0jT8/QOeAPau+1X/bSegNe5YR75oJmEZQbKningirmGOEJCIk61Q==}
+    engines: {node: '>=12.20.0'}
+
+  obug@3.0.0:
+    resolution: {integrity: sha512-5vvB5+W7ePv+p3uqxi+RcW1XAzLW0/hxt3/4X4Lc4qHudzOhmBiBwOY6DRob4WnanAEGvNcLjF+KNOufrUoEQw==}
     engines: {node: '>=12.20.0'}
 
   once@1.4.0:
@@ -7747,11 +7747,20 @@ snapshots:
       nanoid: 3.3.19
       rxjs: 7.8.2
 
-  '@sanity/client@8.6.1(vitest@4.1.11(@types/node@25.9.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@7.3.6(@types/node@25.9.6)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.13)(yaml@2.8.4)))':
+  '@sanity/client@8.6.2(vitest@4.1.11(@types/node@25.9.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@7.3.6(@types/node@25.9.6)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.13)(yaml@2.8.4)))':
     dependencies:
       eventsource: 5.1.1
       get-it: 9.5.4(vitest@4.1.11(@types/node@25.9.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@7.3.6(@types/node@25.9.6)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.13)(yaml@2.8.4)))
-      obug: 2.2.1
+      obug: 3.0.0
+      rxjs: 7.8.2
+    transitivePeerDependencies:
+      - vitest
+
+  '@sanity/client@8.6.2(vitest@4.1.11(@types/node@25.9.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.3.0(@types/node@25.9.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.8.4)))':
+    dependencies:
+      eventsource: 5.1.1
+      get-it: 9.5.4(vitest@4.1.11(@types/node@25.9.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.3.0(@types/node@25.9.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.8.4)))
+      obug: 3.0.0
       rxjs: 7.8.2
     transitivePeerDependencies:
       - vitest
@@ -7836,7 +7845,7 @@ snapshots:
   '@sanity/export@6.2.1(supports-color@8.1.1)':
     dependencies:
       debug: 4.4.3(supports-color@8.1.1)
-      get-it: 8.7.2
+      get-it: 8.8.3
       json-stream-stringify: 3.1.6
       p-queue: 9.2.0
       tar: 7.5.22
@@ -7874,7 +7883,7 @@ snapshots:
       '@sanity/generate-help-url': 4.0.0
       '@sanity/mutator': 6.13.2(@types/react@19.3.0)(vitest@4.1.11(@types/node@25.9.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@7.3.6(@types/node@25.9.6)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.13)(yaml@2.8.4)))
       debug: 4.4.3(supports-color@8.1.1)
-      get-it: 8.7.2
+      get-it: 8.8.3
       gunzip-maybe: 1.4.2
       p-map: 7.0.4
       tar-fs: 3.1.2
@@ -7962,7 +7971,7 @@ snapshots:
   '@sanity/mutate@0.18.2(vitest@4.1.11(@types/node@25.9.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@7.3.6(@types/node@25.9.6)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.13)(yaml@2.8.4)))(xstate@5.33.0)':
     dependencies:
       '@isaacs/ttlcache': 2.1.5
-      '@sanity/client': 8.6.1(vitest@4.1.11(@types/node@25.9.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@7.3.6(@types/node@25.9.6)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.13)(yaml@2.8.4)))
+      '@sanity/client': 8.6.2(vitest@4.1.11(@types/node@25.9.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@7.3.6(@types/node@25.9.6)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.13)(yaml@2.8.4)))
       '@sanity/diff-match-patch': 3.2.0
       '@sanity/uuid': 3.0.2
       hotscript: 1.0.13
@@ -8143,7 +8152,7 @@ snapshots:
 
   '@sanity/types@6.13.2(@types/react@19.3.0)(vitest@4.1.11(@types/node@25.9.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@7.3.6(@types/node@25.9.6)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.13)(yaml@2.8.4)))':
     dependencies:
-      '@sanity/client': 8.6.1(vitest@4.1.11(@types/node@25.9.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@7.3.6(@types/node@25.9.6)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.13)(yaml@2.8.4)))
+      '@sanity/client': 8.6.2(vitest@4.1.11(@types/node@25.9.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@7.3.6(@types/node@25.9.6)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.13)(yaml@2.8.4)))
       '@sanity/media-library-types': 1.7.0(@sanity/types@6.13.2(@types/react@19.3.0)(vitest@4.1.11(@types/node@25.9.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@7.3.6(@types/node@25.9.6)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.13)(yaml@2.8.4))))
       '@types/react': 19.3.0
     transitivePeerDependencies:
@@ -9292,13 +9301,6 @@ snapshots:
       hasown: 2.0.3
       math-intrinsics: 1.1.0
 
-  get-it@8.7.2:
-    dependencies:
-      decompress-response: 7.0.0
-      is-retry-allowed: 2.2.0
-      through2: 4.0.2
-      tunnel-agent: 0.6.0
-
   get-it@8.8.3:
     dependencies:
       decompress-response: 7.0.0
@@ -9312,9 +9314,15 @@ snapshots:
     optionalDependencies:
       vitest: 4.1.11(@types/node@25.9.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@7.3.6(@types/node@25.9.6)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.13)(yaml@2.8.4))
 
+  get-it@9.5.4(vitest@4.1.11(@types/node@25.9.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.3.0(@types/node@25.9.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.8.4))):
+    dependencies:
+      undici: 7.29.1
+    optionalDependencies:
+      vitest: 4.1.11(@types/node@25.9.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.3.0(@types/node@25.9.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.8.4))
+
   get-latest-version@6.0.1:
     dependencies:
-      get-it: 8.7.2
+      get-it: 8.8.3
       registry-auth-token: 5.1.1
       registry-url: 7.2.0
       semver: 7.7.4
@@ -9992,6 +10000,8 @@ snapshots:
   obug@2.1.1: {}
 
   obug@2.2.1: {}
+
+  obug@3.0.0: {}
 
   once@1.4.0:
     dependencies:
