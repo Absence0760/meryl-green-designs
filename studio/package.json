@@ -11,7 +11,7 @@
 	},
 	"dependencies": {
 		"@sanity/ui": "^3.5.5",
-		"@sanity/vision": "^5.31.2",
+		"@sanity/vision": "^6.15.0",
 		"react": "^19.3.0",
 		"react-dom": "^19.3.0",
 		"sanity": "^5.31.2",
