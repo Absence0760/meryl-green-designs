@@ -23,7 +23,7 @@
 	"dependencies": {
 		"@aws-sdk/client-dynamodb": "^3.1135.0",
 		"@aws-sdk/lib-dynamodb": "^3.1135.0",
-		"@sanity/client": "^7.27.0",
+		"@sanity/client": "^8.6.2",
 		"dotenv": "^17.4.2",
 		"hono": "4.13.8"
 	},
