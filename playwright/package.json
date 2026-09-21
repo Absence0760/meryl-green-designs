@@ -18,7 +18,7 @@
 		"@playwright/test": "1.63.0",
 		"@sanity/client": "^7.27.0",
 		"@types/node": "25.9.6",
-		"dotenv": "^17.4.2",
+		"dotenv": "^18.0.0",
 		"tsx": "4.23.13",
 		"typescript": "6.0.3"
 	}
