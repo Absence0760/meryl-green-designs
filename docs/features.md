@@ -70,6 +70,9 @@ anything in the repo) — see [`roadmap.md`](./roadmap.md).
     lightbox).
   - Primary nav links carry `aria-current="page"` (`src/lib/navActive.ts`,
     tested).
+  - Mobile nav popup is a plain `<nav>` disclosure (no `role="menu"`):
+    opening it focuses the first link, Escape closes it and returns focus
+    to the hamburger, and tabbing out of it closes it.
   - Cart panel is a real modal dialog (`role="dialog"`, `aria-modal`):
     `use:focusTrap` (`src/lib/focusTrap.ts`, tested) moves focus to the
     close button on open, keeps Tab inside, and returns focus to the cart

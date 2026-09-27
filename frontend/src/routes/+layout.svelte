@@ -41,15 +41,35 @@
 
 	let cartOpen = false;
 	let menuOpen = false;
+	let menuButton: HTMLButtonElement;
 
 	function closeMenu() {
 		menuOpen = false;
 	}
 
 	function onKeydown(e: KeyboardEvent) {
-		if (e.key === 'Escape' && menuOpen) closeMenu();
+		if (e.key === 'Escape' && menuOpen) {
+			closeMenu();
+			// Keyboard users land back on the toggle, not at the top of the page.
+			menuButton?.focus();
+		}
 	}
 
+	// Disclosure-pattern nav popup: focus its first link when it opens so
+	// keyboard users don't have to tab past the brand + cart to reach it
+	// (it sits after them in the DOM).
+	function focusFirstLink(node: HTMLElement) {
+		node.querySelector<HTMLElement>('a')?.focus();
+	}
+
+	// Close when focus moves somewhere other than the popup or its toggle,
+	// so a Tab past the last link doesn't leave it hanging open.
+	function onMenuFocusOut(e: FocusEvent) {
+		const next = e.relatedTarget as Node | null;
+		if (!next) return;
+		const popup = e.currentTarget as HTMLElement;
+		if (!popup.contains(next) && !menuButton?.contains(next)) closeMenu();
+	}
 
 </script>
 
@@ -79,6 +99,7 @@
 	<div class="container header-inner">
 		<button
 			class="menu-btn"
+			bind:this={menuButton}
 			on:click={() => (menuOpen = !menuOpen)}
 			aria-label={menuOpen ? 'Close menu' : 'Open menu'}
 			aria-expanded={menuOpen}
@@ -137,27 +158,19 @@
 	     header element, which means it stays pinned correctly as the
 	     page scrolls. -->
 	{#if menuOpen}
-		<div
-			class="mobile-nav-backdrop"
-			on:click={closeMenu}
-			on:keydown={(e) => e.key === 'Escape' && closeMenu()}
-			role="button"
-			tabindex="-1"
-			aria-label="Close menu"
-		></div>
-		<div
-			class="mobile-nav"
-			id="mobile-nav"
-			role="menu"
-			aria-label="Main menu"
-		>
-			<nav>
+		<!-- Pointer-only tap-to-close layer; keyboard users close with Escape
+		     or the toggle, so it is hidden from assistive tech. -->
+		<!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+		<div class="mobile-nav-backdrop" on:click={closeMenu} aria-hidden="true"></div>
+		<!-- A plain nav disclosure (not role="menu": these are page links,
+		     and the ARIA menu pattern would demand arrow-key handling). -->
+		<div class="mobile-nav" id="mobile-nav" on:focusout={onMenuFocusOut}>
+			<nav aria-label="Main" use:focusFirstLink>
 				<ul>
 					{#each nav as item}
 						<li>
 							<a
 								href={item.href}
-								role="menuitem"
 								class:active={isNavActive(item.href, page.url.pathname)}
 								aria-current={isNavActive(item.href, page.url.pathname) ? 'page' : undefined}
 								on:click={closeMenu}
