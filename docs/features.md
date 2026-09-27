@@ -254,7 +254,9 @@ Page copy and the closing CTA reflect that — visitors are guided to
   a static shell with heading, lede, and 6 shimmering skeleton cards. After
   hydration, `onMount` calls `GET /products`, the skeletons swap for real
   cards, and product photos lazy-load from Sanity's CDN (capped at 640 px
-  wide, not the original upload resolution).
+  wide, not the original upload resolution). The first row of the first
+  category (up to three cards, `ProductCard priority`) loads eagerly with
+  `fetchpriority="high"` instead — its photo is the page's LCP element.
 - **Category sections** — products are grouped by their Sanity `category`
   into "Folding screens" then "Cushion covers" (`groupProductsByCategory`
   in `src/lib/productGroups.ts`, vitest-covered). A section with no
@@ -308,8 +310,8 @@ Page copy and the closing CTA reflect that — visitors are guided to
   gallery on the left and product info on the right that stacks on
   narrow viewports.
 - **Photo gallery** — main photo at the top (4:5, matching the shop
-  cards, so tall screens aren't cropped) with click-to-switch
-  thumbnails below. Gracefully handles 1, 2, or many photos.
+  cards, so tall screens aren't cropped; `fetchpriority="high"` as the
+  LCP element) with click-to-switch thumbnails below. Gracefully handles 1, 2, or many photos.
 - **Product info block** — name, blurb, price (bark accent), optional
   dimensions in a labelled key/value block, "Add to order" button +
   "← Back to shop" link, full description (respects newlines). For

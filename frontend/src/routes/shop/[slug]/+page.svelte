@@ -150,7 +150,16 @@
 					{#if product.photos && product.photos.length > 0}
 						{@const main = imageUrl(product.photos[activePhotoIndex], 1200)}
 						{#if main}
-							<img class="gallery__main" src={main} alt={product.photos[activePhotoIndex].alt ?? product.name} />
+							<!-- LCP element; width/height give the 4:5 box before CSS
+							     applies (the CSS aspect-ratio wins once it does). -->
+							<img
+								class="gallery__main"
+								src={main}
+								alt={product.photos[activePhotoIndex].alt ?? product.name}
+								width="1200"
+								height="1500"
+								fetchpriority="high"
+							/>
 						{/if}
 						{#if product.photos.length > 1}
 							<!-- Toggle buttons (aria-pressed), not tabs: there is no
@@ -295,6 +304,7 @@
 
 	.gallery__main {
 		width: 100%;
+		height: auto;
 		/* 4:5 matches the shop cards and fits tall three-panel screens
 		   (a square crop cut off their legs). */
 		aspect-ratio: 4 / 5;

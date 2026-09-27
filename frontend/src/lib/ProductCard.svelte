@@ -20,6 +20,11 @@
 	export let hoverReveal = true;
 	/** Heading level for the product name, so the card fits the page outline. */
 	export let headingTag: 'h2' | 'h3' = 'h3';
+	/**
+	 * Above-the-fold card (first shop row): load eagerly at high priority
+	 * instead of lazily, since its photo is the page's LCP element.
+	 */
+	export let priority = false;
 
 	$: photo = product.photos?.[0] ? imageUrl(product.photos[0], imageWidth) : null;
 	$: hover = hoverReveal && product.photos?.[1] ? imageUrl(product.photos[1], imageWidth) : null;
@@ -32,7 +37,8 @@
 				class="card__img card__img--primary"
 				src={photo}
 				alt={product.photos?.[0]?.alt ?? product.name}
-				loading="lazy"
+				loading={priority ? 'eager' : 'lazy'}
+				fetchpriority={priority ? 'high' : 'auto'}
 			/>
 			{#if hover}
 				<!-- Not lazy-loaded — the secondary is stacked behind the

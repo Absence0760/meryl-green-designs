@@ -83,7 +83,7 @@
 				</p>
 			</div>
 		{:else}
-			{#each sections as section (section.category)}
+			{#each sections as section, sectionIndex (section.category)}
 				<section class="category" aria-labelledby="category-{section.category}">
 					<header class="category__header">
 						<h2 id="category-{section.category}" class="category__title">{section.heading}</h2>
@@ -120,7 +120,9 @@
 					<div class="product-grid">
 						{#each section.products as product, i (product._id)}
 							<article class="product" use:reveal={{ delay: (i % 3) * 90 }}>
-								<ProductCard {product} />
+								<!-- First row of the first category is above the fold
+								     (and holds the LCP photo): no lazy-load. -->
+								<ProductCard {product} priority={sectionIndex === 0 && i < 3} />
 								<div class="product-cta">
 									<Button
 										variant="outlined"
