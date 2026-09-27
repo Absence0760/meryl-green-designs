@@ -1,9 +1,11 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { PUBLIC_API_URL } from '$env/static/public';
-	import { formatPrice, imageUrl, type Product } from '$lib/sanity';
+	import type { Product } from '$lib/sanity';
+	import { groupProductsByCategory } from '$lib/productGroups';
 	import { cart } from '$lib/cartStore.svelte';
 	import Button from '$lib/Button.svelte';
+	import ProductCard from '$lib/ProductCard.svelte';
 
 	const apiUrl = PUBLIC_API_URL;
 
@@ -12,18 +14,7 @@
 	let productsError: string | null = null;
 	const skeletonCount = 6;
 
-	function productMainImage(product: Product): string | null {
-		const first = product.photos?.[0];
-		return first ? imageUrl(first, 640) : null;
-	}
-
-	// Second photo (if uploaded) is revealed on hover. Classic e-commerce
-	// pattern — primary photo shows the product, secondary shows a detail
-	// crop or alternate angle.
-	function productHoverImage(product: Product): string | null {
-		const second = product.photos?.[1];
-		return second ? imageUrl(second, 640) : null;
-	}
+	$: sections = groupProductsByCategory(products);
 
 	function addToCart(product: Product) {
 		cart.add(product);
@@ -45,43 +36,25 @@
 			productsLoading = false;
 		}
 	});
+
+	const metaDescription =
+		'Folding screens and cushion covers from Meryl Green Designs, featuring photographs of the African bush. Pay securely with card, Apple Pay, or EFT.';
 </script>
 
 <svelte:head>
 	<title>Shop — Meryl Green Designs</title>
-	<meta
-		name="description"
-		content="Finished pieces from Meryl Green Designs — printed on durable cotton canvas, framed in stained Meranti hardwood. Pay securely with card, Apple Pay, or EFT."
-	/>
+	<meta name="description" content={metaDescription} />
 	<meta property="og:title" content="Shop — Meryl Green Designs" />
-	<meta
-		property="og:description"
-		content="Finished pieces from Meryl Green Designs — printed on durable cotton canvas, framed in stained Meranti hardwood. Pay securely with card, Apple Pay, or EFT."
-	/>
+	<meta property="og:description" content={metaDescription} />
 </svelte:head>
 
-<section class="section">
+<section class="section section--intro">
 	<div class="container">
 		<p class="eyebrow">Shop</p>
 		<h1>Finished products</h1>
 		<p class="lede">
-			A selection of finished pieces from Meryl Green Designs, available to order.
+			Folding screens and cushion covers from Meryl Green Designs, available to order.
 		</p>
-
-		<dl class="specs">
-			<div class="specs__row">
-				<dt>Frame</dt>
-				<dd>Meranti hardwood, finished with a traditional teak stain</dd>
-			</div>
-			<div class="specs__row">
-				<dt>Canvas</dt>
-				<dd>100% cotton, digitally printed with a protective colour-fast coating</dd>
-			</div>
-			<div class="specs__row">
-				<dt>Lead time</dt>
-				<dd>Made to order — typically 3 weeks from payment to dispatch</dd>
-			</div>
-		</dl>
 	</div>
 </section>
 
@@ -91,8 +64,8 @@
 			<div class="product-grid" aria-busy="true" aria-label="Loading products">
 				{#each Array(skeletonCount) as _, i (i)}
 					<article class="product product--skeleton" aria-hidden="true">
-						<div class="product-image skeleton-shimmer"></div>
-						<div class="product-body">
+						<div class="skeleton-image skeleton-shimmer"></div>
+						<div class="skeleton-body">
 							<div class="skeleton-line skeleton-line--title"></div>
 							<div class="skeleton-line skeleton-line--price"></div>
 						</div>
@@ -109,58 +82,50 @@
 				</p>
 			</div>
 		{:else}
-			<div class="product-grid">
-				{#each products as product (product._id)}
-					{@const photo = productMainImage(product)}
-					{@const hover = productHoverImage(product)}
-					<article class="product">
-						<a class="product-link" href="/shop/{product.slug}" aria-label="View {product.name}">
-							{#if photo}
-								<div class="product-image-stack">
-									<img
-										class="product-image product-image--photo product-image--primary"
-										src={photo}
-										alt={product.photos?.[0]?.alt ?? product.name}
-										loading="lazy"
-									/>
-									{#if hover}
-										<!-- Not lazy-loaded — the secondary is stacked behind the
-										     primary with opacity: 0, and some browsers treat that
-										     as non-visible and defer loading, which causes a flash
-										     of empty cream on first hover. Loading eagerly costs
-										     one extra request per product but eliminates the flash. -->
-										<img
-											class="product-image product-image--photo product-image--secondary"
-											src={hover}
-											alt={product.photos?.[1]?.alt ?? product.name}
-											aria-hidden="true"
-										/>
-									{/if}
+			{#each sections as section (section.category)}
+				<section class="category" aria-labelledby="category-{section.category}">
+					<header class="category__header">
+						<h2 id="category-{section.category}" class="category__title">{section.heading}</h2>
+						{#if section.category === 'screen'}
+							<!-- Construction shared by every folding screen. Screens only;
+							     cushion covers get no spec list until their details are known. -->
+							<dl class="specs">
+								<div class="specs__row">
+									<dt>Frame</dt>
+									<dd>Meranti hardwood, finished with a traditional teak stain</dd>
 								</div>
-							{:else}
-								<div class="product-image">Product photo</div>
-							{/if}
-							<div class="product-body">
-								<h3>{product.name}</h3>
-								{#if product.dimensions}
-									<p class="dimensions">{product.dimensions}</p>
-								{/if}
-								<p class="price">{formatPrice(product.priceZar)}</p>
-							</div>
-						</a>
-						<div class="product-cta">
-							<Button
-								variant="outlined"
-								size="sm"
-								on:click={() => addToCart(product)}
-								disabled={!product.priceZar}
-							>
-								Add to order
-							</Button>
-						</div>
-					</article>
-				{/each}
-			</div>
+								<div class="specs__row">
+									<dt>Canvas</dt>
+									<dd>100% cotton, digitally printed with a protective colour-fast coating</dd>
+								</div>
+								<div class="specs__row">
+									<dt>Lead time</dt>
+									<dd>Made to order — typically 3 weeks from payment to dispatch</dd>
+								</div>
+							</dl>
+						{:else if section.category === 'cushion-cover'}
+							<!-- TODO(Meryl): cushion cover specs -->
+						{/if}
+					</header>
+					<div class="product-grid">
+						{#each section.products as product (product._id)}
+							<article class="product">
+								<ProductCard {product} />
+								<div class="product-cta">
+									<Button
+										variant="outlined"
+										size="sm"
+										on:click={() => addToCart(product)}
+										disabled={!product.priceZar}
+									>
+										Add to order
+									</Button>
+								</div>
+							</article>
+						{/each}
+					</div>
+				</section>
+			{/each}
 		{/if}
 	</div>
 </section>
@@ -170,8 +135,8 @@
 		<p class="eyebrow">Secure checkout</p>
 		<p class="payment-lede">
 			Checkout is handled by <strong>PayFast</strong> — we never see your
-			card details. Once payment clears, your piece is made to order and
-			typically dispatched within 3 weeks.
+			card details. Folding screens are made to order once payment clears
+			and typically dispatched within 3 weeks.
 		</p>
 		<ul class="payment-methods" aria-label="Accepted payment methods">
 			<li>Credit &amp; debit cards</li>
@@ -189,6 +154,7 @@
 		--color-warn: #a2432f;
 		--color-warn-soft: #f5e3e0;
 		--color-warn-ink: #6b2a1b;
+		padding-top: 0;
 	}
 
 	.lede {
@@ -197,15 +163,37 @@
 		margin-bottom: 0;
 	}
 
-	.section--products {
-		padding-top: 0;
+	.narrow {
+		max-width: 680px;
+	}
+
+	/* ----- category sections ----- */
+	.category + .category {
+		margin-top: var(--space-5);
+		padding-top: var(--space-4);
+		border-top: 1px solid var(--color-rule);
+	}
+
+	/* Desktop: heading on the left, spec list on the right, so the specs
+	   add no height above the grid. */
+	.category__header {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: var(--space-2) var(--space-4);
+		margin-bottom: var(--space-3);
+	}
+
+	.category__title {
+		margin: 0;
 	}
 
 	.specs {
-		margin: 0 0 var(--space-4);
+		margin: 0;
 		padding: 0 0 0 var(--space-2);
 		border-left: 2px solid var(--color-rule);
-		max-width: 60ch;
+		max-width: 52ch;
 		display: grid;
 		gap: 0.4rem;
 	}
@@ -232,116 +220,55 @@
 		color: var(--color-ink);
 	}
 
-	@media (max-width: 480px) {
+	/* Mobile: keep label + value on one row (not stacked) and tighten the
+	   type, so three rows cost ~6 short lines and the first product still
+	   shows above the fold. */
+	@media (max-width: 600px) {
+		.section--intro {
+			padding-bottom: var(--space-3);
+		}
+
+		.category__header {
+			margin-bottom: var(--space-2);
+		}
+
+		.specs {
+			gap: 0.2rem;
+			padding-left: var(--space-1);
+		}
+
 		.specs__row {
-			grid-template-columns: 1fr;
-			gap: 0.15rem;
+			grid-template-columns: 4.25rem 1fr;
+			gap: var(--space-1);
+		}
+
+		.specs dt {
+			font-size: 0.65rem;
+		}
+
+		.specs dd {
+			font-size: 0.78rem;
+			line-height: 1.4;
+			color: var(--color-ink-soft);
 		}
 	}
 
-	.narrow {
-		max-width: 680px;
-	}
-
+	/* ----- grid ----- */
 	.product-grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
 		gap: var(--space-4) var(--space-3);
 	}
 
-	/* Edge-to-edge INKE-style tile: no card chrome, no border, no shadow.
-	   The image IS the tile visual. Text sits directly on the backdrop. */
 	.product {
 		display: flex;
 		flex-direction: column;
-		background: none;
-		border: none;
-		border-radius: 0;
-		overflow: visible;
-		box-shadow: none;
 	}
 
-	.product-link {
+	.product-cta {
 		display: flex;
-		flex-direction: column;
-		text-decoration: none;
-		color: inherit;
-		border-bottom: none;
-	}
-
-	.product-link:hover {
-		color: inherit;
-		border-bottom: none;
-	}
-
-	.product-image {
-		aspect-ratio: 1 / 1;
-		display: flex;
-		align-items: center;
 		justify-content: center;
-		background: repeating-linear-gradient(
-			45deg,
-			#e3e6da 0 16px,
-			#d8dccd 16px 32px
-		);
-		color: var(--color-ink-soft);
-		font-family: var(--font-display);
-		font-style: italic;
-	}
-
-	/* Stack container so the primary and secondary (hover-reveal) photos
-	   occupy the same box. The product's `aspect-ratio: 1 / 1` is moved
-	   onto the stack wrapper itself. */
-	.product-image-stack {
-		position: relative;
-		aspect-ratio: 1 / 1;
-		overflow: hidden;
-	}
-
-	/* Subtle cream under the photo. Serves two jobs:
-	   1. When a product PNG has transparency (current uploads), the
-	      cream reads as a white-backed studio shot instead of letting
-	      the page background show through.
-	   2. When Meryl uploads real lifestyle photography with its own
-	      background, the cream is fully hidden anyway — invisible. */
-	.product-image--photo {
-		object-fit: cover;
-		width: 100%;
-		height: 100%;
-		background: var(--color-surface);
-	}
-
-	.product-image--primary,
-	.product-image--secondary {
-		position: absolute;
-		inset: 0;
-		transition: opacity 280ms ease;
-	}
-
-	.product-image--secondary {
-		opacity: 0;
-	}
-
-	/* Reveal the secondary on hover of the stack. No need to guard on a
-	   `has-hover` class because the secondary only exists in the DOM
-	   when a second photo is uploaded. For products with one photo, the
-	   selectors simply match nothing. `:has(...)` guards the primary
-	   fade-out so single-photo tiles don't flash on hover. */
-	.product-image-stack:hover .product-image--secondary,
-	.product-image-stack:focus-within .product-image--secondary {
-		opacity: 1;
-	}
-
-	.product-image-stack:hover:has(.product-image--secondary) .product-image--primary,
-	.product-image-stack:focus-within:has(.product-image--secondary) .product-image--primary {
-		opacity: 0;
-	}
-
-	/* Touch devices get no hover reveal — show only the primary. */
-	@media (hover: none) {
-		.product-image--secondary {
-			display: none;
-		}
+		margin-top: 0.25rem;
 	}
 
 	.empty {
@@ -356,6 +283,18 @@
 	/* ----- skeleton loading state ----- */
 	.product--skeleton {
 		pointer-events: none;
+	}
+
+	/* Same 4:5 box as ProductCard so the swap-in doesn't shift layout. */
+	.skeleton-image {
+		aspect-ratio: 4 / 5;
+	}
+
+	.skeleton-body {
+		padding: var(--space-2) 0 0;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
 	}
 
 	.skeleton-shimmer,
@@ -381,15 +320,9 @@
 		width: 70%;
 	}
 
-	.skeleton-line--sm {
-		height: 0.75rem;
-		width: 90%;
-	}
-
 	.skeleton-line--price {
 		height: 0.9rem;
 		width: 35%;
-		margin-top: auto;
 	}
 
 	@keyframes skeleton-shimmer {
@@ -406,48 +339,6 @@
 		.skeleton-line {
 			animation: none;
 		}
-	}
-
-	.product-body {
-		padding: var(--space-2) 0 0;
-		display: flex;
-		flex-direction: column;
-		gap: 0.35rem;
-		flex: 1;
-		min-height: 0;
-		text-align: center;
-	}
-
-	.product-body h3 {
-		margin: 0;
-		font-size: 1rem;
-		letter-spacing: 0.04em;
-		text-transform: uppercase;
-		color: var(--color-ink);
-		font-family: var(--font-body);
-		font-weight: 500;
-	}
-
-	.dimensions {
-		margin: 0;
-		font-size: 0.78rem;
-		letter-spacing: 0.04em;
-		color: var(--color-ink-soft);
-	}
-
-	.price {
-		margin: 0;
-		font-family: var(--font-display);
-		font-size: 1.05rem;
-		font-weight: 500;
-		color: var(--color-bark);
-		letter-spacing: 0.02em;
-	}
-
-	.product-cta {
-		display: flex;
-		justify-content: center;
-		margin-top: 0.25rem;
 	}
 
 	.alert--error {

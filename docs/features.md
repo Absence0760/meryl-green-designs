@@ -142,11 +142,23 @@ Page copy and the closing CTA reflect that — visitors are guided to
   hydration, `onMount` calls `GET /products`, the skeletons swap for real
   cards, and product photos lazy-load from Sanity's CDN (capped at 640 px
   wide, not the original upload resolution).
-- **Materials spec block** directly below the lede — a compact two-row
-  definition list (`Frame`, `Canvas`) describing the shared construction of
-  every piece. Styled as plain labelled facts rather than prose, so it
-  doesn't compete with the product grid for attention.
-- **Minimal tile layout** — each tile is a square photograph with only
+- **Category sections** — products are grouped by their Sanity `category`
+  into "Folding screens" then "Cushion covers" (`groupProductsByCategory`
+  in `src/lib/productGroups.ts`, vitest-covered). A section with no
+  products is hidden; within a section the backend's display order
+  (order, then name) is kept. A product with no category is treated as
+  a folding screen.
+- **Screen spec block** in the "Folding screens" section header — a
+  compact three-row definition list (`Frame`, `Canvas`, `Lead time`)
+  describing the shared construction of every screen. Sits beside the
+  section heading on desktop; on narrow viewports it stays one row per
+  fact in smaller type so the first product remains above the fold. The
+  "Cushion covers" section shows no spec list yet (fabric, insert and
+  lead time are unconfirmed — marked `TODO(Meryl)` in the page source).
+- **Minimal tile layout** (`src/lib/ProductCard.svelte`, shared with the
+  home page "Featured pieces" strip) — each tile is a 4:5 portrait
+  photograph (portrait rather than square so tall screens keep their
+  legs) with only
   the product name (body font, small caps) and price (display font,
   bark/ochre accent) beneath; the "Add to order" button is a small
   outlined pill in the leaf-dark colour. No card chrome (no border, no
