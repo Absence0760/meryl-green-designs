@@ -196,9 +196,11 @@ Page copy and the closing CTA reflect that — visitors are guided to
   thumbnails below. Gracefully handles 1, 2, or many photos.
 - **Product info block** — name, blurb, price (bark accent), optional
   dimensions in a labelled key/value block, "Add to order" button +
-  "← Back to shop" link, full description (respects newlines), and a
-  compact materials spec (Frame, Canvas) mirroring the shop page
-  block.
+  "← Back to shop" link, full description (respects newlines). For
+  folding screens only, a "Made to order — typically 3 weeks" line under
+  the button and a compact materials spec (Frame, Canvas) mirroring the
+  shop page block. Cushion covers show neither until their specs are
+  confirmed (`TODO(Meryl)` in the page source).
 - **Slug-routed** — fetches `GET /products/:slug` on mount and
   renders the first matching available product. Unknown or
   unpublished slugs render a "Product not found" state linking back

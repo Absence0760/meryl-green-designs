@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { PUBLIC_API_URL } from '$env/static/public';
 	import { formatPrice, imageUrl, type Product } from '$lib/sanity';
+	import { isScreen } from '$lib/productGroups';
 	import { cart } from '$lib/cartStore.svelte';
 	import Button from '$lib/Button.svelte';
 
@@ -15,6 +16,12 @@
 	let activePhotoIndex = 0;
 
 	$: slug = page.params.slug ?? '';
+	// Frame/Canvas specs and the 3-week lead time are facts about the
+	// folding screens only.
+	$: screen = product ? isScreen(product) : false;
+	$: fallbackDescription = product
+		? `${product.name} — ${screen ? 'a handcrafted folding screen' : 'a cushion cover'} by Meryl Green Designs.`
+		: '';
 
 	function addToCart() {
 		if (!product) return;
@@ -47,7 +54,7 @@
 <svelte:head>
 	{#if product}
 		<title>{product.name} — Meryl Green Designs</title>
-		<meta name="description" content={product.blurb ?? `${product.name} — a handcrafted screen by Meryl Green Designs.`} />
+		<meta name="description" content={product.blurb ?? fallbackDescription} />
 	{:else}
 		<title>Shop — Meryl Green Designs</title>
 	{/if}
@@ -139,9 +146,14 @@
 						</Button>
 						<a class="info__back" href="/shop">← Back to shop</a>
 					</div>
-					<p class="info__lead-time">
-						Made to order — typically 3 weeks from payment to dispatch.
-					</p>
+					{#if screen}
+						<p class="info__lead-time">
+							Made to order — typically 3 weeks from payment to dispatch.
+						</p>
+					{:else}
+						<!-- TODO(Meryl): cushion cover specs -->
+						<div class="info__cta-spacer"></div>
+					{/if}
 
 					{#if product.description?.trim()}
 						<div class="info__description">
@@ -150,18 +162,22 @@
 						</div>
 					{/if}
 
-					<div class="info__materials">
-						<dl>
-							<div class="info__materials-row">
-								<dt>Frame</dt>
-								<dd>Meranti hardwood, finished with a traditional teak stain</dd>
-							</div>
-							<div class="info__materials-row">
-								<dt>Canvas</dt>
-								<dd>100% cotton, digitally printed with a protective colour-fast coating</dd>
-							</div>
-						</dl>
-					</div>
+					{#if screen}
+						<div class="info__materials">
+							<dl>
+								<div class="info__materials-row">
+									<dt>Frame</dt>
+									<dd>Meranti hardwood, finished with a traditional teak stain</dd>
+								</div>
+								<div class="info__materials-row">
+									<dt>Canvas</dt>
+									<dd>100% cotton, digitally printed with a protective colour-fast coating</dd>
+								</div>
+							</dl>
+						</div>
+					{:else}
+						<!-- TODO(Meryl): cushion cover specs -->
+					{/if}
 				</div>
 			</div>
 		{/if}
@@ -314,6 +330,11 @@
 		gap: var(--space-2);
 		margin-bottom: var(--space-1);
 		flex-wrap: wrap;
+	}
+
+	/* Keeps the CTA-to-description gap the lead-time line normally provides. */
+	.info__cta-spacer {
+		height: var(--space-2);
 	}
 
 	.info__lead-time {
