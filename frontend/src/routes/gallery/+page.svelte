@@ -316,6 +316,7 @@
 		position: fixed;
 		inset: 0;
 		background: rgba(12, 18, 10, 0.92);
+		--focus-ring: #f6f4ee;
 		display: flex;
 		align-items: center;
 		justify-content: center;

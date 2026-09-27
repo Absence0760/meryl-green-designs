@@ -123,6 +123,39 @@ a:hover {
 	border-bottom-color: var(--color-bark);
 }
 
+/* Keyboard focus ring. One consistent, clearly visible ring for every
+   interactive element (browser defaults vary and were near-invisible on
+   the cream + texture). Dark surfaces (hero, footer, lightbox) set
+   --focus-ring to cream. Component rules that already draw their own
+   :focus-visible outline keep it — this only fills the gaps. */
+:root {
+	--focus-ring: var(--color-leaf-dark);
+}
+
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+	outline: 2px solid var(--focus-ring);
+	outline-offset: 3px;
+}
+
+/* Skip link (first element in +layout.svelte). Off-screen until focused. */
+.skip-link {
+	position: absolute;
+	left: var(--space-2);
+	top: -100px;
+	z-index: 200;
+	padding: 0.6rem 1rem;
+	background: var(--color-leaf-dark);
+	color: #f6f4ee;
+	font-size: 0.9rem;
+	border-bottom: none;
+}
+
+.skip-link:focus {
+	top: var(--space-1);
+	color: #f6f4ee;
+	outline-color: var(--color-leaf-dark);
+}
+
 .container {
 	max-width: var(--max-width);
 	margin: 0 auto;

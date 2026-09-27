@@ -61,6 +61,17 @@ anything in the repo) — see [`roadmap.md`](./roadmap.md).
     photos push in slightly on hover.
   - All motion is removed (reveal becomes a plain fade) under
     `prefers-reduced-motion: reduce`.
+- **Accessibility** (audited with axe-core at 1440px and 390px on home,
+  shop, product, gallery, track and 404):
+  - "Skip to content" link as the first tab stop, jumping focus to
+    `<main id="main">`.
+  - One visible keyboard focus ring site-wide (`:focus-visible` in
+    `app.css`, `--focus-ring` token; cream on the hero, footer and
+    lightbox).
+  - Primary nav links carry `aria-current="page"` (`src/lib/navActive.ts`,
+    tested).
+  - Hero scrim is weighted so the cream headline and tagline keep AA
+    contrast over the pale sky of the photo.
 - **Branded error page** (`src/routes/+error.svelte`) — any unknown URL
   (the 404.html SPA fallback boots and client-side routing finds no
   match) or error thrown while loading a route renders the logo emblem,

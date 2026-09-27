@@ -6,6 +6,7 @@
 	import Cart from '$lib/Cart.svelte';
 	import { cart } from '$lib/cartStore.svelte';
 	import { jsonLdScript } from '$lib/jsonLd';
+	import { isNavActive } from '$lib/navActive';
 
 	const nav = [
 		{ href: '/', label: 'Home' },
@@ -71,6 +72,8 @@
 	{@html orgJsonLd}
 </svelte:head>
 
+<a class="skip-link" href="#main">Skip to content</a>
+
 <header class="site-header">
 	<div class="container header-inner">
 		<button
@@ -93,14 +96,14 @@
 		</a>
 
 		<div class="header-right">
-			<nav class="desktop-nav">
+			<nav class="desktop-nav" aria-label="Main">
 				<ul>
 					{#each nav as item}
 						<li>
 							<a
 								href={item.href}
-								class:active={page.url.pathname === item.href ||
-									(item.href !== '/' && page.url.pathname.startsWith(item.href))}
+								class:active={isNavActive(item.href, page.url.pathname)}
+								aria-current={isNavActive(item.href, page.url.pathname) ? 'page' : undefined}
 							>
 								{item.label}
 							</a>
@@ -149,8 +152,8 @@
 							<a
 								href={item.href}
 								role="menuitem"
-								class:active={page.url.pathname === item.href ||
-									(item.href !== '/' && page.url.pathname.startsWith(item.href))}
+								class:active={isNavActive(item.href, page.url.pathname)}
+								aria-current={isNavActive(item.href, page.url.pathname) ? 'page' : undefined}
 								on:click={closeMenu}
 							>
 								{item.label}
@@ -163,7 +166,8 @@
 	{/if}
 </header>
 
-<main>
+<!-- tabindex=-1 so the skip link moves focus (not just scroll) here. -->
+<main id="main" tabindex="-1">
 	<slot />
 </main>
 
@@ -404,6 +408,11 @@
 		flex: 1;
 	}
 
+	/* Programmatic focus target only (skip link) — no ring on the whole page. */
+	main:focus {
+		outline: none;
+	}
+
 	.footer-skyline {
 		margin-top: var(--space-6);
 		height: clamp(64px, 8vw, 120px);
@@ -421,6 +430,7 @@
 	.site-footer {
 		background: var(--color-leaf-dark);
 		color: #e8ece1;
+		--focus-ring: #f6f4ee;
 		padding: var(--space-4) 0;
 		/* The skyline above supplies the gap and meets the footer flush. */
 		margin-top: -1px;

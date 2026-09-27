@@ -285,6 +285,7 @@
 		color: var(--color-bg);
 		position: relative;
 		overflow: hidden;
+		--focus-ring: #f6f4ee;
 	}
 
 	.hero-image {
