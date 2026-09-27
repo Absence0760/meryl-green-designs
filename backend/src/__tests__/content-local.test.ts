@@ -171,3 +171,43 @@ describe('GET /dev-content/images/:name', () => {
 		expect(res.headers.get('content-type')).not.toBe('image/jpeg');
 	});
 });
+
+describe('resolveContentDir fallback (CONTENT_DEV_DIR unset)', () => {
+	let cwd: string;
+	let work: string;
+
+	beforeEach(() => {
+		cwd = process.cwd();
+		work = mkdtempSync(join(tmpdir(), 'mgd-fallback-'));
+		mkdirSync(join(work, 'dev-content.sample'));
+		writeFileSync(
+			join(work, 'dev-content.sample', 'content.json'),
+			JSON.stringify({ products: [product({ _id: 'from-sample' })] })
+		);
+		process.chdir(work);
+		delete process.env.CONTENT_DEV_DIR;
+	});
+
+	afterEach(() => {
+		process.chdir(cwd);
+		rmSync(work, { recursive: true, force: true });
+	});
+
+	it('reads the committed sample when .dev-content/content.json is absent', async () => {
+		// An orders-only .dev-content/ (created by a local checkout) must
+		// not hide the sample.
+		mkdirSync(join(work, '.dev-content'));
+		writeFileSync(join(work, '.dev-content', 'orders.json'), '{"orders":[]}');
+		expect(resolveContentDir()).toMatch(/dev-content\.sample$/);
+		expect((await getLocalProducts()).map((p) => p._id)).toEqual(['from-sample']);
+	});
+
+	it('prefers your own .dev-content/content.json once it exists', async () => {
+		mkdirSync(join(work, '.dev-content'));
+		writeFileSync(
+			join(work, '.dev-content', 'content.json'),
+			JSON.stringify({ products: [product({ _id: 'mine' })] })
+		);
+		expect((await getLocalProducts()).map((p) => p._id)).toEqual(['mine']);
+	});
+});

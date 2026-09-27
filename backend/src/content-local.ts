@@ -1,12 +1,14 @@
+import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { extname, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import type { SanityGalleryPhoto, SanityProduct, SanityTestimonial } from './sanity.js';
 
-// Local-dev content backend. Activated by CONTENT_BACKEND=local in
-// backend/.env: the public content getters in sanity.ts read from
-// <CONTENT_DEV_DIR>/content.json instead of Sanity, and photos whose
-// asset ref is `local:<file>` are served from <CONTENT_DEV_DIR>/images/
+// Local-dev content backend. Activated by CONTENT_BACKEND=local (the
+// committed backend/.env.development default): the public content getters
+// in sanity.ts read from <content dir>/content.json instead of Sanity
+// (see resolveContentDir for which dir), and photos whose
+// asset ref is `local:<file>` are served from <content dir>/images/
 // by the /dev-content/images route. Lets new products and photos be
 // previewed without a Sanity project, token, or network. Strictly
 // dev-only — the env var stays unset on the deployed Lambda, so the
@@ -55,8 +57,22 @@ export function resolveLocalDataDir(): string {
 	return assertSafeDir(resolve(process.env.CONTENT_DEV_DIR ?? '.dev-content'));
 }
 
+// Committed sample content (generic placeholder copy + images), relative
+// to the backend working directory. Used when you haven't set up your own
+// content, so a fresh clone shows a populated shop with zero setup.
+export const SAMPLE_CONTENT_DIR = 'dev-content.sample';
+
+// Where content.json + images/ are read from:
+//   1. CONTENT_DEV_DIR, when set explicitly (no fallback);
+//   2. .dev-content/, when it holds a content.json;
+//   3. otherwise the committed sample (dev-content.sample/).
+// Checked per call so creating .dev-content/content.json takes effect on
+// the next request, no restart needed.
 export function resolveContentDir(): string {
-	return resolveLocalDataDir();
+	if (process.env.CONTENT_DEV_DIR) return resolveLocalDataDir();
+	const own = resolveLocalDataDir();
+	if (existsSync(resolve(own, 'content.json'))) return own;
+	return assertSafeDir(resolve(SAMPLE_CONTENT_DIR));
 }
 
 // Re-read on every call so edits to content.json show up on the next

@@ -300,7 +300,22 @@ instead, switched via `CONTENT_BACKEND`:
 | Value | Behaviour |
 |---|---|
 | unset / `sanity` (default) | Products, gallery and testimonials come from Sanity; needs `SANITY_PROJECT_ID` + `SANITY_API_TOKEN`. |
-| `local` | Reads `backend/.dev-content/content.json` (re-read on every request, so edits show on refresh) and serves photos from `backend/.dev-content/images/`. No Sanity, no network, no secrets. |
+| `local` | Reads `backend/.dev-content/content.json` (re-read on every request, so edits show on refresh) and serves photos from `backend/.dev-content/images/` — falling back to the committed `backend/dev-content.sample/` when you have no `content.json` of your own. No Sanity, no network, no secrets. |
+
+**Sample content.** Until you create your own
+`backend/.dev-content/content.json`, the backend reads the committed
+sample in `backend/dev-content.sample/` (a few generic products across
+both categories, two gallery photos, a testimonial — placeholder copy
+and images only, all labelled "sample"). To preview your own content,
+copy it and edit the copy:
+
+```bash
+cp -R backend/dev-content.sample/. backend/.dev-content/
+```
+
+Keep the committed sample generic: this repo is public, and
+`backend/src/__tests__/dev-content-sample.test.ts` checks it stays
+small, labelled, and self-consistent.
 
 `content.json` holds the same shapes the backend returns from Sanity
 (`SanityProduct`, `SanityGalleryPhoto`, `SanityTestimonial` in

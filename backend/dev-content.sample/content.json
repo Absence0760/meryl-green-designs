@@ -1,0 +1,126 @@
+{
+	"_comment": "SAMPLE content for local dev (CONTENT_BACKEND=local). Committed and public: generic placeholder copy and images only - never put client photos here. The backend reads this folder when backend/.dev-content/content.json does not exist; to preview your own content, copy this folder to backend/.dev-content/ (gitignored) and edit it there. See docs/run-locally.md.",
+	"products": [
+		{
+			"_id": "sample-acacia-screen",
+			"name": "Acacia Screen (sample)",
+			"slug": "sample-acacia-screen",
+			"category": "screen",
+			"blurb": "Sample product for local development - a three-panel folding screen.",
+			"description": "This is placeholder copy for local development. It is not a real product.\n\nA three-panel folding screen with a hand-painted acacia motif.",
+			"priceZar": 4500,
+			"dimensions": "180 x 150 cm (sample)",
+			"available": true,
+			"order": 10,
+			"photos": [
+				{
+					"_key": "sample-acacia-1",
+					"alt": "Sample placeholder image for the Acacia Screen",
+					"asset": { "_ref": "local:sample-screen-acacia.jpg" }
+				}
+			]
+		},
+		{
+			"_id": "sample-riverbed-screen",
+			"name": "Riverbed Screen (sample)",
+			"slug": "sample-riverbed-screen",
+			"category": "screen",
+			"blurb": "Sample product for local development - a four-panel screen in earth tones.",
+			"description": "This is placeholder copy for local development. It is not a real product.",
+			"priceZar": 6200,
+			"dimensions": "180 x 200 cm (sample)",
+			"available": true,
+			"order": 20,
+			"photos": [
+				{
+					"_key": "sample-riverbed-1",
+					"alt": "Sample placeholder image for the Riverbed Screen",
+					"asset": { "_ref": "local:sample-screen-riverbed.jpg" }
+				}
+			]
+		},
+		{
+			"_id": "sample-leaf-cushion-cover",
+			"name": "Leaf Cushion Cover (sample)",
+			"slug": "sample-leaf-cushion-cover",
+			"category": "cushion-cover",
+			"blurb": "Sample product for local development - a printed cushion cover.",
+			"description": "This is placeholder copy for local development. It is not a real product.",
+			"priceZar": 450,
+			"dimensions": "50 x 50 cm (sample)",
+			"available": true,
+			"order": 30,
+			"photos": [
+				{
+					"_key": "sample-leaf-1",
+					"alt": "Sample placeholder image for the Leaf Cushion Cover",
+					"asset": { "_ref": "local:sample-cushion-leaf.jpg" }
+				}
+			]
+		},
+		{
+			"_id": "sample-dune-cushion-cover",
+			"name": "Dune Cushion Cover (sample)",
+			"slug": "sample-dune-cushion-cover",
+			"category": "cushion-cover",
+			"blurb": "Sample product for local development - price on enquiry.",
+			"description": "This is placeholder copy for local development. It is not a real product. It has no price, to exercise the 'Price on enquiry' path.",
+			"priceZar": null,
+			"dimensions": null,
+			"available": true,
+			"order": 40,
+			"photos": [
+				{
+					"_key": "sample-dune-1",
+					"alt": "Sample placeholder image for the Dune Cushion Cover",
+					"asset": { "_ref": "local:sample-cushion-dune.jpg" }
+				}
+			]
+		},
+		{
+			"_id": "sample-hidden-screen",
+			"name": "Hidden Screen (sample, unavailable)",
+			"slug": "sample-hidden-screen",
+			"category": "screen",
+			"blurb": "Sample of an unavailable product - never listed.",
+			"description": null,
+			"priceZar": 1000,
+			"dimensions": null,
+			"available": false,
+			"order": 50,
+			"photos": []
+		}
+	],
+	"galleryPhotos": [
+		{
+			"_id": "sample-gallery-two-trees",
+			"image": {
+				"alt": "Two trees in a landscape (sample gallery photo)",
+				"asset": { "_ref": "local:sample-gallery-two-trees.jpg" }
+			},
+			"caption": "Sample gallery photo",
+			"visible": true,
+			"order": 10
+		},
+		{
+			"_id": "sample-gallery-studio",
+			"image": {
+				"alt": "Sample placeholder image for a studio photo",
+				"asset": { "_ref": "local:sample-gallery-studio.jpg" }
+			},
+			"caption": "Sample placeholder - in the studio",
+			"visible": true,
+			"order": 20
+		}
+	],
+	"testimonials": [
+		{
+			"_id": "sample-testimonial-1",
+			"quote": "This is a sample testimonial for local development, not a real customer review.",
+			"author": "Sample Customer",
+			"location": "Sample Town",
+			"visible": true,
+			"order": 10
+		}
+	]
+}
