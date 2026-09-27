@@ -13,10 +13,12 @@ For deploying to AWS, see [`deployment.md`](./deployment.md) instead.
   (`corepack enable && corepack prepare pnpm@latest --activate`) rather
   than `npm install -g pnpm`, so the version is pinned per Node install
   and you don't need a root npm global directory.
-- **Docker + Docker Compose** — *optional*, only to place orders locally.
-  Order PII goes to a DynamoDB table, served locally by a LocalStack
-  container on `:4566` (never the prod table). Browsing the shop, gallery
-  and contact pages works without it. See
+- **Docker + Docker Compose, and the AWS CLI v2 binary** — *optional*, only
+  to place orders locally. Order PII goes to a DynamoDB table, served
+  locally by a LocalStack container on `:4566` (never the prod table);
+  `pnpm dev:db:up` uses the `aws` CLI to create the table, with dummy
+  credentials — no AWS account or login needed. Browsing the shop, gallery
+  and contact pages works without either. See
   [Setting up local DynamoDB](#setting-up-local-dynamodb).
 
 Not needed for local dev: an AWS account, the private `infra-secrets` repo,

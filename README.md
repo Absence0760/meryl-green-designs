@@ -40,7 +40,7 @@ emails captured to disk, PayFast's public sandbox, LocalStack for DynamoDB):
 
 ```bash
 pnpm install
-pnpm dev:db:up              # optional: LocalStack (Docker) so checkout / order tracking work
+pnpm dev:db:up              # optional: LocalStack (Docker + aws CLI, no account) for checkout / tracking
 pnpm dev                    # frontend (:7777) + backend (:3001)
 ```
 

@@ -61,7 +61,7 @@ If the current scripts block predates this format, migrate it the next time a ch
 Zero secrets, zero copying — each workspace's committed `.env.development` (non-sensitive defaults: `CONTENT_BACKEND=local` sample content, `EMAIL_BACKEND=file`, LocalStack endpoint, PayFast public sandbox, `local-dev-admin-token`) loads automatically:
 
 1. `pnpm install`
-2. *(optional)* `pnpm dev:db:up` — LocalStack (DynamoDB on `:4566`, needs Docker) + the orders table. Needed for checkout, `/track` and the Studio PII panels; the rest of the site works without it.
+2. *(optional)* `pnpm dev:db:up` — LocalStack (DynamoDB on `:4566`; needs Docker + the `aws` CLI binary, no AWS account) + the orders table. Needed for checkout, `/track` and the Studio PII panels; the rest of the site works without it.
 3. `pnpm dev` — frontend :7777 + backend :3001, on the committed sample content in `backend/dev-content.sample/`.
 
 Personal overrides and real secrets go in gitignored `<workspace>/.env.development.local` (wins key by key). `backend/.env` is no longer read. The Studio is optional and needs a real (free, personal) Sanity project ID in `studio/.env.development.local` — without it `pnpm studio dev` / `dev:all` stop with a pointer to `docs/run-locally.md § Sanity Studio (optional)`.
