@@ -66,7 +66,9 @@
 
 	font-family: var(--font-body);
 	color: var(--color-ink);
-	background: var(--color-bg);
+	/* Faint linen weave over the cream — a nod to the cotton canvas the
+	   prints are made on. 14 KB tile, ~4% opacity. */
+	background: var(--color-bg) url('/graphics/canvas-texture.webp') repeat;
 	line-height: 1.6;
 	font-optical-sizing: auto;
 }
@@ -147,4 +149,28 @@ a:hover {
 	text-transform: uppercase;
 	color: var(--color-bark);
 	margin-bottom: var(--space-2);
+}
+
+/* ---------------------------------------------------------------------
+   Scroll reveal (src/lib/reveal.ts). The `reveal` class is only added by
+   JS at mount, so without JS nothing is hidden.
+   --------------------------------------------------------------------- */
+.reveal {
+	opacity: 0;
+	transform: translateY(18px);
+	transition:
+		opacity 700ms ease,
+		transform 700ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.reveal.is-visible {
+	opacity: 1;
+	transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.reveal {
+		transform: none;
+		transition: opacity 300ms ease;
+	}
 }

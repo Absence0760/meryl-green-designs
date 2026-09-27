@@ -7,6 +7,8 @@
 	import { HERO_SIZES, heroFallbackSrc, heroSrc, heroSrcset } from '$lib/heroImage';
 	import Button from '$lib/Button.svelte';
 	import ProductCard from '$lib/ProductCard.svelte';
+	import SectionDivider from '$lib/SectionDivider.svelte';
+	import { reveal } from '$lib/reveal';
 
 	const heroFallback = heroFallbackSrc(base);
 	const heroWebpSrcset = heroSrcset(base);
@@ -162,7 +164,7 @@
 </svelte:head>
 
 <section class="section">
-	<div class="container narrow">
+	<div class="container narrow" use:reveal>
 		<p class="eyebrow">Our story</p>
 		<h2>How it all began</h2>
 		{#each storyParagraphs as paragraph}
@@ -171,9 +173,11 @@
 	</div>
 </section>
 
+<SectionDivider />
+
 {#if featuredProducts.length > 0}
 	<section class="section featured-pieces" aria-labelledby="featured-pieces-title">
-		<div class="container">
+		<div class="container" use:reveal>
 			<div class="featured-pieces__header">
 				<div>
 					<p class="eyebrow">From the shop</p>
@@ -193,7 +197,7 @@
 {#if testimonials.length > 0}
 	<section class="section testimonials" aria-label="What customers are saying">
 		<div class="container">
-			<p class="eyebrow">In their words</p>
+			<p class="eyebrow" use:reveal>In their words</p>
 			<div class="testimonials__grid">
 				{#each testimonials as t (t._id)}
 					<blockquote class="testimonial">
@@ -227,7 +231,7 @@
 {/if}
 
 <section class="section section--alt">
-	<div class="container narrow">
+	<div class="container narrow" use:reveal>
 		<p class="eyebrow">A Poem</p>
 		<h2 class="poem-title">{poemTitle}</h2>
 		<blockquote class="poem">
@@ -241,8 +245,10 @@
 	</div>
 </section>
 
+<SectionDivider />
+
 <section class="section">
-	<div class="container">
+	<div class="container" use:reveal>
 		<div class="cta-grid">
 			<a class="cta-card" href="/gallery">
 				<div class="cta-card__media">
@@ -288,6 +294,17 @@
 		height: 100%;
 		object-fit: cover;
 		object-position: center;
+		/* One slow settle on load — the photo drifts from 6% zoom to rest. */
+		animation: hero-settle 14s cubic-bezier(0.2, 0.6, 0.2, 1) both;
+	}
+
+	@keyframes hero-settle {
+		from {
+			transform: scale(1.06);
+		}
+		to {
+			transform: scale(1);
+		}
 	}
 
 	.hero::before {
@@ -576,6 +593,10 @@
 	}
 
 	@media (prefers-reduced-motion: reduce) {
+		.hero-image {
+			animation: none;
+		}
+
 		.cta-card,
 		.cta-card__media img {
 			transition: none;

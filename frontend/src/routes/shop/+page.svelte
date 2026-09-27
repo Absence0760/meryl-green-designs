@@ -6,6 +6,7 @@
 	import { cart } from '$lib/cartStore.svelte';
 	import Button from '$lib/Button.svelte';
 	import ProductCard from '$lib/ProductCard.svelte';
+	import { reveal } from '$lib/reveal';
 
 	const apiUrl = PUBLIC_API_URL;
 
@@ -108,8 +109,8 @@
 						{/if}
 					</header>
 					<div class="product-grid">
-						{#each section.products as product (product._id)}
-							<article class="product">
+						{#each section.products as product, i (product._id)}
+							<article class="product" use:reveal={{ delay: (i % 3) * 90 }}>
 								<ProductCard {product} />
 								<div class="product-cta">
 									<Button

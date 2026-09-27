@@ -42,7 +42,23 @@ anything in the repo) — see [`roadmap.md`](./roadmap.md).
   `preconnect` + `display=swap`; falls back to Georgia / Cormorant
   Garamond) paired with a sans-serif body.
 - **Responsive layout**: grids collapse to single column on narrow viewports.
-- **Footer** with copyright and brand tagline.
+- **Footer** with copyright and brand tagline, topped by a bushveld
+  skyline (`static/graphics/bushveld-skyline.svg` — acacias on a
+  horizon, same tree as the logo) that the green footer grows out of.
+- **Graphics & motion** — kept deliberately light so the photography
+  stays the focus:
+  - Faint linen/canvas texture over the cream background
+    (`static/graphics/canvas-texture.webp`, 14 KB tile, set in `app.css`).
+  - `SectionDivider.svelte` — small acacia-on-horizon ornament between
+    home page sections.
+  - Scroll reveal (`src/lib/reveal.ts`, `use:reveal`) — sections and shop
+    tiles fade up once as they enter the viewport; shop tiles stagger in
+    threes. Progressive enhancement: the hiding class is added by JS, so
+    nothing is hidden without JS or IntersectionObserver.
+  - Home hero photo settles from a 6% zoom over ~14s on load; product
+    photos push in slightly on hover.
+  - All motion is removed (reveal becomes a plain fade) under
+    `prefers-reduced-motion: reduce`.
 - **Favicon** — the logo scene on a rounded square (no ring, so it stays
   legible at 16px) in `static/favicon.svg`, plus a 180px
   `static/apple-touch-icon.png` for iOS home screens (iOS ignores SVG

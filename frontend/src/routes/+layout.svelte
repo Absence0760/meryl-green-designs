@@ -168,6 +168,12 @@
 
 <Cart open={cartOpen} onclose={() => (cartOpen = false)} />
 
+<!-- Bushveld skyline (acacias on a horizon, same tree as the logo) that
+     the green footer grows out of. Decorative; `slice` keeps the trees
+     undistorted and crops the scene's edges on narrow screens. -->
+<div class="footer-skyline" aria-hidden="true">
+	<img src="{base}/graphics/bushveld-skyline.svg" alt="" />
+</div>
 <footer class="site-footer">
 	<div class="container">
 		<ul class="footer-trust" aria-label="Shipping and checkout">
@@ -397,11 +403,26 @@
 		flex: 1;
 	}
 
+	.footer-skyline {
+		margin-top: var(--space-6);
+		height: clamp(64px, 8vw, 120px);
+		line-height: 0;
+	}
+
+	.footer-skyline img {
+		display: block;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		object-position: center bottom;
+	}
+
 	.site-footer {
 		background: var(--color-leaf-dark);
 		color: #e8ece1;
 		padding: var(--space-4) 0;
-		margin-top: var(--space-6);
+		/* The skyline above supplies the gap and meets the footer flush. */
+		margin-top: -1px;
 		text-align: center;
 		font-size: 0.9rem;
 	}

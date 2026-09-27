@@ -101,7 +101,27 @@
 		height: 100%;
 		object-fit: cover;
 		background: var(--color-surface);
-		transition: opacity 280ms ease;
+		transition:
+			opacity 280ms ease,
+			transform 700ms cubic-bezier(0.2, 0.7, 0.2, 1);
+	}
+
+	/* Gentle push-in on hover — the photo is the product, so it gets the
+	   motion rather than the tile. */
+	.card:hover .card__img,
+	.card:focus-visible .card__img {
+		transform: scale(1.04);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.card__img {
+			transition: opacity 280ms ease;
+		}
+
+		.card:hover .card__img,
+		.card:focus-visible .card__img {
+			transform: none;
+		}
 	}
 
 	.card__img--secondary {
