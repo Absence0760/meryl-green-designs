@@ -2,6 +2,7 @@ import { defineConfig } from 'sanity';
 import { structureTool } from 'sanity/structure';
 import { visionTool } from '@sanity/vision';
 import { schemaTypes } from './schemas';
+import { productTemplates, structure } from './structure';
 
 import { requireStudioProjectId } from './project-env';
 
@@ -13,8 +14,11 @@ export default defineConfig({
 	title: 'Meryl Green Designs',
 	projectId,
 	dataset,
-	plugins: [structureTool(), visionTool()],
+	plugins: [structureTool({ structure }), visionTool()],
 	schema: {
-		types: schemaTypes
+		types: schemaTypes,
+		// Keep the default per-type templates ("Product", "Order", …) and
+		// add the category presets.
+		templates: (prev) => [...prev, ...productTemplates]
 	}
 });
