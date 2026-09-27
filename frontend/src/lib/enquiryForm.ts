@@ -75,17 +75,40 @@ type ProductPhoto = Product['photos'][number];
 
 /**
  * The first product (in the order the API returned them) with a usable
- * photo — one whose asset ref is set. Null when there's nothing to show,
- * so the page falls back to its static hero image.
+ * photo — one whose asset ref is set. A `preferred` product (the one a
+ * `?product=` link asks about) is tried first. Null when there's nothing
+ * to show, so the page falls back to its static hero image.
  */
 export function pickContactPhoto(
-	products: readonly Product[]
+	products: readonly Product[],
+	preferred: Product | null = null
 ): { product: Product; photo: ProductPhoto } | null {
-	for (const product of products) {
+	for (const product of preferred ? [preferred, ...products] : products) {
 		const photo = product.photos?.find(
 			(p) => typeof p?.asset?._ref === 'string' && p.asset._ref.length > 0
 		);
 		if (photo) return { product, photo };
 	}
 	return null;
+}
+
+/** The product page's "Ask about this piece" link. */
+export function productEnquiryHref(slug: string): string {
+	return `/contact?product=${encodeURIComponent(slug)}`;
+}
+
+/**
+ * What a `/contact?product=<slug>` link pre-fills: the "Interested in"
+ * choice from the product's category and its name as the photo
+ * reference. Null for an unknown slug, so the form stays blank.
+ */
+export function productEnquiryPrefill(
+	products: readonly Product[],
+	slug: string
+): { product: Product; interest: EnquiryInterest; photoReference: string } | null {
+	const product = slug ? products.find((p) => p.slug === slug) : undefined;
+	if (!product) return null;
+	const interest: EnquiryInterest =
+		product.category === 'cushion-cover' ? 'cushion-cover' : 'screen';
+	return { product, interest, photoReference: product.name };
 }

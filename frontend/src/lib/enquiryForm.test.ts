@@ -6,7 +6,9 @@ import {
 	INTEREST_OPTIONS,
 	enquiryChoiceFields,
 	fieldCopy,
-	pickContactPhoto
+	pickContactPhoto,
+	productEnquiryHref,
+	productEnquiryPrefill
 } from './enquiryForm';
 import type { Product } from './sanity';
 
@@ -129,5 +131,63 @@ describe('pickContactPhoto', () => {
 
 	it('returns null when no product has a usable photo', () => {
 		expect(pickContactPhoto([product({ photos: [] })])).toBeNull();
+	});
+
+	it('prefers the asked-about product when it has a usable photo', () => {
+		const first = product();
+		const asked = product({ _id: 'p2', name: 'Asked' });
+		expect(pickContactPhoto([first, asked], asked)?.product._id).toBe('p2');
+	});
+
+	it('falls back to the list when the preferred product has no usable photo', () => {
+		const first = product();
+		const asked = product({ _id: 'p2', photos: [] });
+		expect(pickContactPhoto([first, asked], asked)?.product._id).toBe('p1');
+	});
+});
+
+describe('productEnquiryHref', () => {
+	it('links to /contact with the slug as ?product=', () => {
+		expect(productEnquiryHref('sunbird-screen')).toBe('/contact?product=sunbird-screen');
+	});
+
+	it('encodes the slug', () => {
+		expect(productEnquiryHref('a b&c')).toBe('/contact?product=a%20b%26c');
+	});
+});
+
+describe('productEnquiryPrefill', () => {
+	const screen = product();
+	const cushion = product({
+		_id: 'p2',
+		name: 'Wild Amaryllis cushion cover',
+		slug: 'wild-amaryllis',
+		category: 'cushion-cover'
+	});
+
+	it('pre-fills a screen with its name and the screen interest', () => {
+		const prefill = productEnquiryPrefill([screen, cushion], 'sunbird-screen');
+		expect(prefill?.product._id).toBe('p1');
+		expect(prefill?.interest).toBe('screen');
+		expect(prefill?.photoReference).toBe('Sunbird screen');
+	});
+
+	it('pre-fills a cushion cover with the cushion-cover interest', () => {
+		const prefill = productEnquiryPrefill([screen, cushion], 'wild-amaryllis');
+		expect(prefill?.interest).toBe('cushion-cover');
+		expect(prefill?.photoReference).toBe('Wild Amaryllis cushion cover');
+	});
+
+	it('always yields an interest the backend accepts', () => {
+		for (const p of [screen, cushion]) {
+			const prefill = productEnquiryPrefill([p], p.slug);
+			expect(ENQUIRY_INTERESTS).toContain(prefill?.interest);
+		}
+	});
+
+	it('returns null for an unknown or empty slug, or before products load', () => {
+		expect(productEnquiryPrefill([screen], 'nope')).toBeNull();
+		expect(productEnquiryPrefill([screen], '')).toBeNull();
+		expect(productEnquiryPrefill([], 'sunbird-screen')).toBeNull();
 	});
 });

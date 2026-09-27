@@ -318,7 +318,9 @@ Page copy and the closing CTA reflect that — visitors are guided to
   LCP element) with click-to-switch thumbnails below. Gracefully handles 1, 2, or many photos.
 - **Product info block** — name, blurb, price (bark accent), optional
   dimensions in a labelled key/value block, "Add to order" button +
-  "← Back to shop" link, full description (respects newlines). For
+  "← Back to shop" link, an "Ask about this piece" link to
+  `/contact?product=<slug>` (pre-fills the enquiry form — see Contact),
+  full description (respects newlines). For
   folding screens, a "Made to order — typically 3 weeks" line under the
   button and a compact materials spec (Frame, Canvas) mirroring the shop
   page block. Cushion covers show "Typically 3 weeks from payment to
@@ -421,7 +423,12 @@ Page copy and the closing CTA reflect that — visitors are guided to
   free-text message. Placeholders are neutral until a choice is made and
   switch with it (screen examples for a screen, "Wild Amaryllis in
   bloom" / "60cm × 60cm" for a cushion cover); the wood/finish field is
-  hidden for cushion covers and its value isn't sent. The copy lives in
+  hidden for cushion covers and its value isn't sent. Arriving via a
+  product page's "Ask about this piece" link (`?product=<slug>`) pre-fills
+  "Interested in" from the product's category and the photo reference
+  with its name once `/products` loads — only fields still empty, once —
+  and the desktop image column shows that product's photo; an unknown
+  slug leaves the form blank. The copy and pre-fill logic live in
   `src/lib/enquiryForm.ts` (tested). POSTs JSON to `${PUBLIC_API_URL}/enquiries`. The backend
   validates, then sends a single email to `OWNER_EMAIL` via Resend with
   `replyTo` set to the visitor's email and a yellow "unverified

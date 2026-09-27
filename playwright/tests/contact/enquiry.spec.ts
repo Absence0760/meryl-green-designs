@@ -110,6 +110,30 @@ test.describe('POST /enquiries', () => {
 		expect(emails[0].subject).toContain('(cushion cover)');
 	});
 
+	// A product page's "Ask about this piece" link opens /contact with
+	// ?product=<slug>; the form pre-fills the interest (from the product's
+	// category) and the photo reference (its name). Nothing is submitted.
+	test('form: "Ask about this piece" pre-fills from the product page', async ({ page }) => {
+		await page.goto('/shop/test-cushion-cover');
+		await page.getByRole('link', { name: 'Ask about this piece' }).click();
+		await expect(page).toHaveURL(/\/contact\?product=test-cushion-cover$/);
+
+		const form = page.locator('form.enquiry-form');
+		const interest = form.getByRole('group', { name: /interested in/i });
+		await expect(interest.getByLabel('Cushion cover')).toBeChecked();
+		await expect(form.getByLabel(/which photograph/i)).toHaveValue('Test Cushion Cover');
+		await expect(form.getByLabel(/wood or finish/i)).toHaveCount(0);
+	});
+
+	test('form: an unknown ?product= slug leaves the form blank', async ({ page }) => {
+		await page.goto('/contact?product=no-such-product');
+		const form = page.locator('form.enquiry-form');
+		// Wait for hydration + the /products fetch before asserting nothing changed.
+		await page.waitForLoadState('networkidle');
+		await expect(form.getByRole('radio', { checked: true })).toHaveCount(0);
+		await expect(form.getByLabel(/which photograph/i)).toHaveValue('');
+	});
+
 	test('interest: a value outside the allowed list is rejected with 400', async ({ request }) => {
 		const res = await postEnquiry(request, { interest: 'sofa' });
 		expect(res.status()).toBe(400);

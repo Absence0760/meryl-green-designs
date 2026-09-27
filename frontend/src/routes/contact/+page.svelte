@@ -11,16 +11,24 @@
 		enquiryChoiceFields,
 		fieldCopy,
 		pickContactPhoto,
+		productEnquiryPrefill,
 		type EnquiryInterest
 	} from '$lib/enquiryForm';
 
 	const apiUrl = PUBLIC_API_URL;
 
-	// Desktop-only image column beside the form: the first product photo
-	// once /products lands, the hero photograph until then (or if the
-	// fetch fails / returns nothing usable).
+	// /contact?product=<slug> comes from a product page's "Ask about this
+	// piece" link. Once /products lands it pre-fills the interest and photo
+	// reference (only fields still empty, and only once).
 	let products: Product[] = [];
-	$: picked = pickContactPhoto(products);
+	let askedSlug = '';
+	let prefilled = false;
+	$: asked = productEnquiryPrefill(products, askedSlug);
+
+	// Desktop-only image column beside the form: the asked-about product's
+	// photo, else the first product photo once /products lands, the hero
+	// photograph until then (or if the fetch fails / returns nothing usable).
+	$: picked = pickContactPhoto(products, asked?.product ?? null);
 	$: pickedSrc = picked ? imageUrl(picked.photo, 900) : null;
 	$: asideSrc = pickedSrc || heroSrc(1280, base);
 	$: asideAlt =
@@ -43,6 +51,13 @@
 	// Honeypot — bots fill every input; humans never see it.
 	let website = '';
 
+	// Pre-fill from ?product= (see `asked` above).
+	$: if (asked && !prefilled) {
+		prefilled = true;
+		if (!interest) interest = asked.interest;
+		if (!photoReference) photoReference = asked.photoReference;
+	}
+
 	type SubmitState = 'idle' | 'sending' | 'sent' | 'error';
 	let state: SubmitState = 'idle';
 	let errorMessage = '';
@@ -54,6 +69,7 @@
 		if (photo) {
 			photoReference = photo;
 		}
+		askedSlug = page.url.searchParams.get('product') ?? '';
 
 		// Silent no-op on failure, like the home page — the static hero
 		// image already fills the column.

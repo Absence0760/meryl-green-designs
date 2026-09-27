@@ -7,6 +7,7 @@
 	import { PUBLIC_API_URL, PUBLIC_SITE_URL } from '$env/static/public';
 	import { formatPrice, imageUrl, type Product } from '$lib/sanity';
 	import { isScreen, pickRelatedProducts } from '$lib/productGroups';
+	import { productEnquiryHref } from '$lib/enquiryForm';
 	import ProductCard from '$lib/ProductCard.svelte';
 	import { reveal } from '$lib/reveal';
 	import { productStructuredData } from '$lib/productJsonLd';
@@ -223,6 +224,10 @@
 							Typically 3 weeks from payment to dispatch.
 						</p>
 					{/if}
+					<p class="info__ask">
+						Questions, or a different size?
+						<a href={productEnquiryHref(product.slug)}>Ask about this piece</a>
+					</p>
 
 					{#if product.description?.trim()}
 						<div class="info__description">
@@ -421,6 +426,12 @@
 		margin: 0 0 var(--space-3);
 		font-size: 0.85rem;
 		font-style: italic;
+		color: var(--color-ink-soft);
+	}
+
+	.info__ask {
+		margin: 0 0 var(--space-3);
+		font-size: 0.9rem;
 		color: var(--color-ink-soft);
 	}
 
