@@ -63,18 +63,33 @@ anything in the repo) — see [`roadmap.md`](./roadmap.md).
 
 ## Home (`/`)
 
-- **Hero** rendered across a full-bleed photograph of the African bush
-  (`static/two_trees.JPG`, compressed to 643 KB at 1920 px wide). The H1
-  reads "Inspired by Nature" followed by a short italic tagline and two
-  CTA buttons: a primary cream-filled "Shop the collection" and a ghost
-  "View gallery" outlined in cream. The hero image is preloaded via
-  `<link rel="preload" as="image">` so the first paint shows the
-  photograph immediately.
+- **Hero** rendered across a full-bleed photograph of the African bush.
+  The photo is a `<picture>` behind the text overlay (`object-fit:
+  cover`): WebP at 800 / 1280 / 1920 px wide (`static/two_trees-*.webp`,
+  66–246 KB) via `srcset` + `sizes`, with the original
+  `static/two_trees.JPG` (643 KB) as the fallback for browsers without
+  WebP. Paths and `sizes` live in `src/lib/heroImage.ts` (vitest checks
+  the files exist). The H1 reads "Inspired by Nature" followed by a
+  short italic tagline naming folding screens and cushion covers, and
+  two CTA buttons: a primary cream-filled "Shop the collection" and a
+  ghost "View gallery" outlined in cream. The WebP is preloaded via
+  `<link rel="preload" as="image" imagesrcset imagesizes>` matching the
+  `<source>`, so the browser fetches the same candidate it renders. The
+  og:image stays the JPG (set in `+layout.svelte`).
 - **Story** section with Meryl's three-paragraph introduction to The Green
   Collection, covering where the work comes from and what she's trying to
   evoke. Materials detail (Meranti hardwood frames, 100% cotton canvas)
   lives on the Shop page as a compact spec block rather than here, so the
   story stays narrative.
+- **Featured pieces strip** directly under the story — up to four
+  products fetched at runtime from `GET /products` (in parallel with the
+  gallery and testimonials fetches), picked by `pickFeaturedProducts` in
+  `src/lib/productGroups.ts` (products with a photo, in shop display
+  order). Rendered with the same `ProductCard` as the shop (4:5 photo,
+  name, price, links to `/shop/<slug>`), four across on desktop and two
+  on narrow viewports, with a "Visit the shop →" link. The section only
+  renders if the fetch returns products with photos, so it silently
+  no-ops when the backend is unreachable.
 - **Testimonials band** — if one or more testimonials are published in
   Sanity (`testimonial` document type: quote, author, optional
   location, visibility toggle, display order), they render above the
@@ -87,9 +102,14 @@ anything in the repo) — see [`roadmap.md`](./roadmap.md).
   has a subtle hover zoom. The band only renders if the fetch returns
   photos, so it silently no-ops when the backend is unreachable. Breaks
   up the text-heavy middle of the home page and previews the gallery.
-- **Poem** section on an alternate background, rendering "Africa" (author
-  unknown) as three stanzas with a styled blockquote and leaf-green accent.
-- **Call-to-action cards** linking to the Gallery and Shop.
+- **Poem** section on an alternate background, rendering "Africa" as
+  three stanzas with a styled blockquote and leaf-green accent, under an
+  "A poem" eyebrow. No attribution line is shown.
+- **Call-to-action cards** linking to the Gallery and Shop — image-led
+  (3:2 photo over a text panel). The Shop card uses the first featured
+  product's photo and the Gallery card the first gallery photo, once
+  those fetches land; until then (or if they fail) both show the 800 px
+  hero WebP.
 
 ## Gallery (`/gallery`)
 
@@ -427,7 +447,7 @@ Page copy and the closing CTA reflect that — visitors are guided to
 - **Routes**:
   - `GET /health` — uptime check, returns `{ ok: true }`
   - `GET /products` — list of published, available products from Sanity
-    (called by the shop page on hydration)
+    (called by the shop page and the home "Featured pieces" strip on hydration)
   - `GET /products/:slug` — single product by slug (called by the
     `/shop/[slug]` detail page on hydration); 404 if the slug doesn't
     match a published product

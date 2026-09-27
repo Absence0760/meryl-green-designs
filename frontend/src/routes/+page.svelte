@@ -2,22 +2,45 @@
 	import { onMount } from 'svelte';
 	import { base } from '$app/paths';
 	import { PUBLIC_API_URL } from '$env/static/public';
-	import { imageUrl, type GalleryPhoto, type Testimonial } from '$lib/sanity';
+	import { imageUrl, type GalleryPhoto, type Product, type Testimonial } from '$lib/sanity';
+	import { pickFeaturedProducts } from '$lib/productGroups';
+	import { HERO_SIZES, heroFallbackSrc, heroSrc, heroSrcset } from '$lib/heroImage';
 	import Button from '$lib/Button.svelte';
+	import ProductCard from '$lib/ProductCard.svelte';
 
-	const heroImage = `${base}/two_trees.JPG`;
+	const heroFallback = heroFallbackSrc(base);
+	const heroWebpSrcset = heroSrcset(base);
 	const apiUrl = PUBLIC_API_URL;
 
 	let featured: GalleryPhoto[] = [];
 	let testimonials: Testimonial[] = [];
+	let featuredProducts: Product[] = [];
+
+	// Image-led CTA cards: a real product / gallery photo once the fetches
+	// land, the hero photograph until then (or if they fail).
+	const ctaFallback = heroSrc(800, base);
+	$: shopCtaImage =
+		(featuredProducts[0]?.photos?.[0] && imageUrl(featuredProducts[0].photos[0], 800)) ||
+		ctaFallback;
+	$: galleryCtaImage = (featured[0] && imageUrl(featured[0].image, 800)) || ctaFallback;
 
 	onMount(async () => {
-		// Fetch gallery + testimonials in parallel. Both are silent no-ops on
-		// failure — the home page is already complete without them.
-		const [galleryRes, testimonialsRes] = await Promise.allSettled([
+		// Fetch gallery + testimonials + products in parallel. All are silent
+		// no-ops on failure — the home page is already complete without them.
+		const [galleryRes, testimonialsRes, productsRes] = await Promise.allSettled([
 			fetch(`${apiUrl}/gallery`),
-			fetch(`${apiUrl}/testimonials`)
+			fetch(`${apiUrl}/testimonials`),
+			fetch(`${apiUrl}/products`)
 		]);
+
+		if (productsRes.status === 'fulfilled' && productsRes.value.ok) {
+			try {
+				const body = (await productsRes.value.json()) as { products?: Product[] };
+				featuredProducts = pickFeaturedProducts(body.products ?? [], 4);
+			} catch {
+				/* ignore */
+			}
+		}
 
 		if (galleryRes.status === 'fulfilled' && galleryRes.value.ok) {
 			try {
@@ -47,7 +70,6 @@
 	];
 
 	const poemTitle = 'Africa';
-	const poemAuthor = 'Author unknown';
 	// Verses stored as an array so each one can be rendered as its own
 	// stanza with blank lines between. Lines inside a stanza are joined
 	// with newlines and rendered via `white-space: pre-line`.
@@ -86,13 +108,27 @@
 	];
 </script>
 
-<section class="hero" style={heroImage ? `background-image: url(${heroImage})` : ''}>
+<section class="hero">
+	<!-- Decorative (alt=""): the H1 and tagline carry the meaning. WebP at
+	     800/1280/1920w, JPG fallback for browsers without WebP. -->
+	<picture>
+		<source type="image/webp" srcset={heroWebpSrcset} sizes={HERO_SIZES} />
+		<img
+			class="hero-image"
+			src={heroFallback}
+			alt=""
+			width="1920"
+			height="1246"
+			fetchpriority="high"
+			decoding="async"
+		/>
+	</picture>
 	<div class="hero-overlay">
 		<div class="container">
 			<h1>Inspired by Nature</h1>
 			<p class="tagline">
-				Photographs of the African bush — printed on cotton canvas,
-				framed in Meranti hardwood.
+				Photographs of the African bush — made into folding screens
+				and cushion covers for your home.
 			</p>
 			<div class="hero-cta">
 				<Button href="/shop" variant="ghost-primary">Shop the collection</Button>
@@ -106,14 +142,23 @@
 	<title>Meryl Green Designs — Inspired by Nature</title>
 	<meta
 		name="description"
-		content="Handcrafted screens and designs from Meryl Green, inspired by the light, colour and stillness of the African bush."
+		content="Handcrafted folding screens and cushion covers from Meryl Green, inspired by the light, colour and stillness of the African bush."
 	/>
 	<meta property="og:title" content="Meryl Green Designs — Inspired by Nature" />
 	<meta
 		property="og:description"
-		content="Handcrafted screens and designs from Meryl Green, inspired by the light, colour and stillness of the African bush."
+		content="Handcrafted folding screens and cushion covers from Meryl Green, inspired by the light, colour and stillness of the African bush."
 	/>
-	<link rel="preload" as="image" href={heroImage} />
+	<!-- Mirrors the <source> above so the browser preloads the same
+	     candidate it will pick for the hero. -->
+	<link
+		rel="preload"
+		as="image"
+		type="image/webp"
+		imagesrcset={heroWebpSrcset}
+		imagesizes={HERO_SIZES}
+		fetchpriority="high"
+	/>
 </svelte:head>
 
 <section class="section">
@@ -125,6 +170,25 @@
 		{/each}
 	</div>
 </section>
+
+{#if featuredProducts.length > 0}
+	<section class="section featured-pieces" aria-labelledby="featured-pieces-title">
+		<div class="container">
+			<div class="featured-pieces__header">
+				<div>
+					<p class="eyebrow">From the shop</p>
+					<h2 id="featured-pieces-title">Featured pieces</h2>
+				</div>
+				<a class="featured-pieces__link" href="/shop">Visit the shop →</a>
+			</div>
+			<div class="featured-pieces__grid">
+				{#each featuredProducts as product (product._id)}
+					<ProductCard {product} imageWidth={480} hoverReveal={false} />
+				{/each}
+			</div>
+		</div>
+	</section>
+{/if}
 
 {#if testimonials.length > 0}
 	<section class="section testimonials" aria-label="What customers are saying">
@@ -174,7 +238,6 @@
 				{/if}
 			{/each}
 		</blockquote>
-		<cite class="poem-author">— {poemAuthor}</cite>
 	</div>
 </section>
 
@@ -182,35 +245,56 @@
 	<div class="container">
 		<div class="cta-grid">
 			<a class="cta-card" href="/gallery">
-				<h3>Gallery</h3>
-				<p>Browse photographs of screens and design options.</p>
-				<span class="cta-link">View gallery →</span>
+				<div class="cta-card__media">
+					<img src={galleryCtaImage} alt="" loading="lazy" />
+				</div>
+				<div class="cta-card__body">
+					<h3>Gallery</h3>
+					<p>Browse photographs of screens and design options.</p>
+					<span class="cta-link">View gallery →</span>
+				</div>
 			</a>
 			<a class="cta-card" href="/shop">
-				<h3>Shop</h3>
-				<p>Finished products available for purchase.</p>
-				<span class="cta-link">Visit shop →</span>
+				<div class="cta-card__media">
+					<img src={shopCtaImage} alt="" loading="lazy" />
+				</div>
+				<div class="cta-card__body">
+					<h3>Shop</h3>
+					<p>Folding screens and cushion covers, ready to order.</p>
+					<span class="cta-link">Visit shop →</span>
+				</div>
 			</a>
 		</div>
 	</div>
 </section>
 
 <style>
+	/* The photo is an <img> (not a CSS background) so the browser can pick
+	   a WebP width from srcset. Sage background-color shows until it loads. */
 	.hero {
 		min-height: 72vh;
 		background-color: #c8d1b9;
-		background-size: cover;
-		background-position: center;
 		display: flex;
 		align-items: flex-end;
 		color: var(--color-bg);
 		position: relative;
+		overflow: hidden;
+	}
+
+	.hero-image {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		object-position: center;
 	}
 
 	.hero::before {
 		content: '';
 		position: absolute;
 		inset: 0;
+		z-index: 1;
 		/* Gentle dark vignette that lifts text legibility on top of a real
 		   photograph, without washing the image out. */
 		background: linear-gradient(
@@ -224,6 +308,7 @@
 
 	.hero-overlay {
 		position: relative;
+		z-index: 2;
 		width: 100%;
 		padding: var(--space-5) 0;
 		background: linear-gradient(to top, rgba(20, 30, 15, 0.78), rgba(20, 30, 15, 0));
@@ -292,13 +377,44 @@
 		height: var(--space-2);
 	}
 
-	.poem-author {
-		display: block;
-		margin-top: var(--space-2);
-		padding-left: var(--space-3);
+	/* ----- featured pieces (products) ----- */
+	.featured-pieces {
+		padding-top: 0;
+	}
+
+	.featured-pieces__header {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: flex-end;
+		justify-content: space-between;
+		gap: var(--space-1) var(--space-3);
+		margin-bottom: var(--space-3);
+	}
+
+	.featured-pieces__header h2 {
+		margin: 0;
+	}
+
+	.featured-pieces__link {
 		font-size: 0.9rem;
-		color: var(--color-ink-soft);
-		font-style: italic;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: var(--color-bark);
+		font-weight: 500;
+		border-bottom: none;
+	}
+
+	.featured-pieces__grid {
+		display: grid;
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		gap: var(--space-4) var(--space-3);
+	}
+
+	@media (max-width: 900px) {
+		.featured-pieces__grid {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+			gap: var(--space-3) var(--space-2);
+		}
 	}
 
 	.testimonials {
@@ -410,12 +526,14 @@
 		gap: var(--space-3);
 	}
 
+	/* Image-led CTA cards: photo on top, text panel below. */
 	.cta-card {
-		display: block;
+		display: flex;
+		flex-direction: column;
 		background: var(--color-surface);
 		border: 1px solid var(--color-rule);
 		border-radius: 4px;
-		padding: var(--space-4);
+		overflow: hidden;
 		color: var(--color-ink);
 		border-bottom: 1px solid var(--color-rule);
 		transition:
@@ -427,6 +545,45 @@
 		transform: translateY(-2px);
 		box-shadow: 0 10px 30px rgba(47, 74, 37, 0.12);
 		border-color: var(--color-leaf);
+	}
+
+	.cta-card__media {
+		aspect-ratio: 3 / 2;
+		overflow: hidden;
+		background: #c8d1b9;
+	}
+
+	.cta-card__media img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		display: block;
+		transition: transform 500ms ease;
+	}
+
+	.cta-card:hover .cta-card__media img {
+		transform: scale(1.04);
+	}
+
+	.cta-card__body {
+		padding: var(--space-3) var(--space-4) var(--space-4);
+	}
+
+	@media (max-width: 520px) {
+		.cta-card__body {
+			padding: var(--space-2) var(--space-3) var(--space-3);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.cta-card,
+		.cta-card__media img {
+			transition: none;
+		}
+
+		.cta-card:hover .cta-card__media img {
+			transform: none;
+		}
 	}
 
 	.cta-card h3 {
