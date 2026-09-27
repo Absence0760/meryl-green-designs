@@ -50,7 +50,8 @@ anything in the repo) — see [`roadmap.md`](./roadmap.md).
 - **Graphics & motion** — kept deliberately light so the photography
   stays the focus:
   - Faint linen/canvas texture over the cream background
-    (`static/graphics/canvas-texture.webp`, 14 KB tile, set in `app.css`).
+    (`static/graphics/canvas-texture.webp`, 8 KB lossless 192px tile with
+    its alpha quantised to five levels — was 14 KB — set in `app.css`).
   - `SectionDivider.svelte` — small acacia-on-horizon ornament between
     home page sections.
   - Scroll reveal (`src/lib/reveal.ts`, `use:reveal`) — sections and shop

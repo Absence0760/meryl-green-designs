@@ -72,7 +72,8 @@
 	font-family: var(--font-body);
 	color: var(--color-ink);
 	/* Faint linen weave over the cream — a nod to the cotton canvas the
-	   prints are made on. 14 KB tile, ~4% opacity. */
+	   prints are made on. 8 KB lossless tile (alpha quantised to 0/3/6/9/11
+	   of 255 — 14 KB before, indistinguishable at this opacity), ~4% opacity. */
 	background: var(--color-bg) url('/graphics/canvas-texture.webp') repeat;
 	line-height: 1.6;
 	font-optical-sizing: auto;
