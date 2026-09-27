@@ -570,7 +570,9 @@ CI/CD lives in `.github/workflows/`:
 - `codeql.yml` — CodeQL SAST on JS/TS + GitHub Actions YAML on every PR,
   push to main, and weekly. Findings surface in the Security tab.
 - `audit.yml` — `pnpm audit` weekly; auto-files a `dependency-audit`
-  issue on findings and auto-closes on next clean run.
+  issue on findings and auto-closes it on the next clean run. Known false
+  positives are ignored via `pnpm.auditConfig.ignoreGhsas` (see
+  `docs/security.md`).
 - `gitleaks.yml` — secret-scan on every PR + push + weekly full-history
   sweep. Catches accidentally-committed tokens.
 - `scorecard.yml` — weekly OpenSSF Scorecard supply-chain posture

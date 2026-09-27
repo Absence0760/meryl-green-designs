@@ -423,7 +423,14 @@ client, Resend SDK, esbuild, vitest, etc.) ships a CVE. We pick it up via
 - **Scheduled `pnpm audit`** (`.github/workflows/audit.yml`) runs every
   Monday at 06:00 UTC and on manual dispatch, scanning all workspaces at
   `--audit-level=moderate`. Findings open a `dependency-audit`-labelled
-  GitHub issue; the next clean run auto-closes it.
+  GitHub issue; the next clean run auto-closes every open one.
+- **Audit ignore list** (`pnpm.auditConfig.ignoreGhsas` in the root
+  `package.json`) holds known false positives only. Currently
+  `GHSA-7mvr-c777-76hp`: pnpm mistakes the `playwright/` workspace
+  (version 0.0.1) for the npm `playwright` package; the real dependency is
+  patched. `backend/src/__tests__/audit-config.test.ts` fails if an ignore
+  has no documented reason or the real package drops below the patched
+  version — add both there when ignoring anything new.
 - Dependabot is configured (grouped weekly updates across the pnpm
   workspace, the GitHub Actions workflows and the Terraform providers) —
   see the roadmap.
