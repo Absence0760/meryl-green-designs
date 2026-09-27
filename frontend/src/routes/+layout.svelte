@@ -114,7 +114,10 @@
 
 		<a class="brand" href="/" aria-label="Meryl Green Designs — home">
 			<img class="brand-mark" src="{base}/logo.svg" alt="" width="40" height="40" />
-			<span class="brand-word">Meryl Green<span class="brand-sub">Designs</span></span>
+			<!-- The space before "Designs" is invisible (flex column) but makes
+			     the text read "Meryl Green Designs", so the aria-label contains
+			     the visible label (WCAG 2.5.3). -->
+			<span class="brand-word">Meryl Green<span class="brand-sub"> Designs</span></span>
 		</a>
 
 		<div class="header-right">
