@@ -54,6 +54,13 @@ anything in the repo) — see [`roadmap.md`](./roadmap.md).
     its alpha quantised to five levels — was 14 KB — set in `app.css`).
   - `SectionDivider.svelte` — small acacia-on-horizon ornament between
     home page sections.
+  - Two 4:5 home page illustrations drawn in the same silhouette style
+    (same acacia as the logo): `story-golden-hour.svg` (sunset,
+    giraffes, birds) beside the story and `poem-moonrise.svg` (moonrise,
+    elephant, stars, fish eagle) beside the poem, so the page moves from
+    day to night. Decorative (`aria-hidden`), ~3 KB each;
+    `src/lib/graphics.test.ts` checks every SVG here is decorative,
+    self-contained (no scripts or external refs) and ≤ 6 KB.
   - Scroll reveal (`src/lib/reveal.ts`, `use:reveal`) — sections and shop
     tiles fade up once as they enter the viewport; shop tiles stagger in
     threes. Progressive enhancement: the hiding class is added by JS, so
@@ -176,7 +183,9 @@ anything in the repo) — see [`roadmap.md`](./roadmap.md).
   Collection, covering where the work comes from and what she's trying to
   evoke. Materials detail (Meranti hardwood frames, 100% cotton canvas)
   lives on the Shop page as a compact spec block rather than here, so the
-  story stays narrative.
+  story stays narrative. On wide screens the text sits left of the
+  golden-hour illustration; below 800px the illustration follows the
+  text, cropped to 3:2.
 - **Featured pieces strip** directly under the story — up to four
   products fetched at runtime from `GET /products` (in parallel with the
   gallery and testimonials fetches), picked by `pickFeaturedProducts` in
@@ -207,12 +216,10 @@ anything in the repo) — see [`roadmap.md`](./roadmap.md).
   up the text-heavy middle of the home page and previews the gallery.
 - **Poem** section on an alternate background, rendering "Africa" as
   three stanzas with a styled blockquote and leaf-green accent, under an
-  "A poem" eyebrow, beside a 4:5 photograph on wide screens. The photo
-  is the first gallery photo not already in the featured band
-  (`pickPoemPhoto` in `src/lib/poemPhoto.ts`, tested), else the hero's
-  portrait crop; nothing loads until the gallery fetch settles. Below
-  800px it stacks (3:2 photo first) and shows only the first stanza
-  with a "Read the full poem" / "Show less" toggle (`aria-expanded`); the
+  "A poem" eyebrow, right of the moonrise illustration on wide screens
+  (mirroring the story). Below 800px it stacks (illustration first,
+  cropped to 3:2) and shows only the first stanza with a "Read the full
+  poem" / "Show less" toggle (`aria-expanded`); the
   collapse only applies once JS has run. No attribution line is shown.
 - **Commission prompt** closes the page — "Have something specific in
   mind?" with an "Enquire about a commission" button to `/contact`,

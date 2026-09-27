@@ -10,7 +10,6 @@
 		HERO_PORTRAIT_SIZES,
 		HERO_SIZES,
 		heroFallbackSrc,
-		heroPortraitSrc,
 		heroPortraitSrcset,
 		heroSrcset
 	} from '$lib/heroImage';
@@ -19,15 +18,13 @@
 	import SectionDivider from '$lib/SectionDivider.svelte';
 	import { reveal } from '$lib/reveal';
 	import { ORDERING_STEPS } from '$lib/orderingSteps';
-	import { FEATURED_BAND_COUNT, pickPoemPhoto } from '$lib/poemPhoto';
 
 	const heroFallback = heroFallbackSrc(base);
 	const heroWebpSrcset = heroSrcset(base);
 	const heroPortraitWebpSrcset = heroPortraitSrcset(base);
 	const apiUrl = PUBLIC_API_URL;
 
-	let galleryPhotos: GalleryPhoto[] = [];
-	$: featured = galleryPhotos.slice(0, FEATURED_BAND_COUNT);
+	let featured: GalleryPhoto[] = [];
 	let testimonials: Testimonial[] = [];
 	let featuredProducts: Product[] = [];
 
@@ -65,12 +62,11 @@
 		if (galleryRes.status === 'fulfilled' && galleryRes.value.ok) {
 			try {
 				const body = (await galleryRes.value.json()) as { photos?: GalleryPhoto[] };
-				galleryPhotos = body.photos ?? [];
+				featured = (body.photos ?? []).slice(0, 4);
 			} catch {
 				/* ignore */
 			}
 		}
-		gallerySettled = true;
 
 		if (testimonialsRes.status === 'fulfilled' && testimonialsRes.value.ok) {
 			try {
@@ -89,20 +85,6 @@
 		'Let the sounds and calls of the African bush envelope your senses and take you on a journey of deep inner reflection, where everything seems right in the world; a meditative state of deep healing, that only nature can provide.',
 		'It all started more than 10 years ago in a very special place in the African bush, where I fell in love with the perfection, simplicity and vibrancy of the natural world. Using my very simple but exceptional camera, I began a journey capturing the \u2018Big 5\u2019, antelope, smaller creatures, beautiful birds, plant life and unforgettable \u2018bush sunsets\u2019.'
 	];
-
-	// Photo beside the poem (desktop) / above it (phones): the next gallery
-	// photo not already in the featured band, else the hero's portrait
-	// crop. Nothing renders until the gallery fetch settles, so the
-	// fallback is never downloaded just to be replaced.
-	let gallerySettled = false;
-	$: poemPhoto = pickPoemPhoto(galleryPhotos);
-	$: poemPhotoSrc = gallerySettled
-		? (poemPhoto && imageUrl(poemPhoto.image, 900)) || heroPortraitSrc(936, base)
-		: null;
-	$: poemPhotoAlt =
-		poemPhoto && imageUrl(poemPhoto.image, 900)
-			? (poemPhoto.image.alt ?? poemPhoto.caption ?? '')
-			: '';
 
 	// Phones show the first stanza with a "Read the full poem" toggle;
 	// wider screens always show it all (the toggle is hidden by CSS).
@@ -221,12 +203,24 @@
 </svelte:head>
 
 <section class="section">
-	<div class="container narrow" use:reveal>
-		<p class="eyebrow">Our story</p>
-		<h2>How it all began</h2>
-		{#each storyParagraphs as paragraph}
-			<p class="story-paragraph">{paragraph}</p>
-		{/each}
+	<div class="container art-layout art-layout--art-right" use:reveal>
+		<div class="art-layout__text">
+			<p class="eyebrow">Our story</p>
+			<h2>How it all began</h2>
+			{#each storyParagraphs as paragraph}
+				<p class="story-paragraph">{paragraph}</p>
+			{/each}
+		</div>
+		<!-- Decorative illustration (golden hour); pairs with the poem's moonrise. -->
+		<div class="art-layout__art" aria-hidden="true">
+			<img
+				src="{base}/graphics/story-golden-hour.svg"
+				alt=""
+				width="400"
+				height="500"
+				loading="lazy"
+			/>
+		</div>
 	</div>
 </section>
 
@@ -307,13 +301,18 @@
 {/if}
 
 <section class="section section--alt" aria-labelledby="poem-title">
-	<div class="container poem-layout" use:reveal>
-		<figure class="poem-photo">
-			{#if poemPhotoSrc}
-				<img src={poemPhotoSrc} alt={poemPhotoAlt} loading="lazy" decoding="async" />
-			{/if}
-		</figure>
-		<div class="poem-text">
+	<div class="container art-layout" use:reveal>
+		<!-- Decorative illustration (moonrise); pairs with the story's golden hour. -->
+		<div class="art-layout__art" aria-hidden="true">
+			<img
+				src="{base}/graphics/poem-moonrise.svg"
+				alt=""
+				width="400"
+				height="500"
+				loading="lazy"
+			/>
+		</div>
+		<div class="art-layout__text">
 			<p class="eyebrow">A Poem</p>
 			<h2 class="poem-title" id="poem-title">{poemTitle}</h2>
 			<blockquote
@@ -491,28 +490,33 @@
 		height: var(--space-2);
 	}
 
-	/* Photo beside the poem on wide screens; the 4:5 photo is roughly the
-	   poem's height, so the columns line up. Stacks (photo first, 3:2)
-	   below 800px, where the poem also collapses to its first stanza. */
-	.poem-layout {
+	/* Text beside a 4:5 illustration on wide screens (the story with its
+	   art on the right, the poem with its art on the left). Below 800px
+	   the columns stack — art above the poem, below the story — and the
+	   art is cropped to 3:2 from the bottom, where the scene is. */
+	.art-layout {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
 		gap: var(--space-5);
 		align-items: center;
 	}
 
-	.poem-photo {
-		margin: 0;
-		aspect-ratio: 4 / 5;
-		overflow: hidden;
-		background: #c8d1b9;
+	.art-layout--art-right {
+		grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
 	}
 
-	.poem-photo img {
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
+	.art-layout--art-right .art-layout__art {
+		order: 2;
+	}
+
+	.art-layout__art img {
 		display: block;
+		width: 100%;
+		height: auto;
+		aspect-ratio: 4 / 5;
+		object-fit: cover;
+		object-position: 50% 100%;
+		border-radius: 4px;
 	}
 
 	.poem-toggle {
@@ -520,12 +524,13 @@
 	}
 
 	@media (max-width: 799px) {
-		.poem-layout {
+		.art-layout,
+		.art-layout--art-right {
 			grid-template-columns: 1fr;
 			gap: var(--space-3);
 		}
 
-		.poem-photo {
+		.art-layout__art img {
 			aspect-ratio: 3 / 2;
 		}
 
