@@ -37,7 +37,9 @@ anything in the repo) — see [`roadmap.md`](./roadmap.md).
   methods. Same pattern as established-retailer footers, reduces
   abandonment for first-time buyers.
 - **Nature-inspired theme**: muted greens, warm bark/ochre accents
-  (prices, hover states, CTA arrows), cream background, editorial serif
+  (prices, hover states, CTA arrows — `--color-bark: #7d603d`, darkened
+  from `#8a6a44` so small text clears WCAG AA 4.5:1 on the linen
+  texture), cream background, editorial serif
   display type (`Fraunces`, variable, loaded from Google Fonts with
   `preconnect` + `display=swap`; falls back to Georgia / Cormorant
   Garamond) paired with a sans-serif body.

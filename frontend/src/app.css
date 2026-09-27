@@ -49,7 +49,12 @@
 	--color-ink-soft: #5a604f;
 	--color-leaf: #4a6b3a;
 	--color-leaf-dark: #2f4a25;
-	--color-bark: #8a6a44;
+	/* Warm brown accent. Was #8a6a44 — 4.52:1 on flat cream but only
+	   ~4.1:1 on the darkest pixels of the linen texture, which fails
+	   WCAG AA for the small uppercase eyebrows / links / prices that use
+	   it. #7d603d is the smallest shift that clears 4.5:1 on the texture
+	   (~4.8:1; 5.3:1 on flat cream, 5.9:1 on white). */
+	--color-bark: #7d603d;
 	--color-rule: #d8d3c2;
 
 	--font-display: 'Fraunces', Georgia, 'Cormorant Garamond', 'Times New Roman', serif;
