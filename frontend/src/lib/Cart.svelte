@@ -197,7 +197,7 @@
 		<!-- Modal dialog: focusTrap moves focus to the close button on open,
 		     keeps Tab inside the panel, and returns focus to the cart button
 		     on close. -->
-		<aside
+		<div
 			class="panel"
 			role="dialog"
 			aria-modal="true"
@@ -205,7 +205,7 @@
 			tabindex="-1"
 			use:focusTrap
 		>
-			<header class="panel-header">
+			<div class="panel-header">
 				<h2 id="cart-title">Your order</h2>
 				<button class="close-btn" on:click={onclose} aria-label="Close cart" data-autofocus>
 					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
@@ -213,7 +213,7 @@
 						<line x1="6" y1="6" x2="18" y2="18"></line>
 					</svg>
 				</button>
-			</header>
+			</div>
 
 			{#if redirecting}
 				<div class="redirecting-wrap">
@@ -328,7 +328,7 @@
 					</p>
 				</div>
 			{/if}
-		</aside>
+		</div>
 	</div>
 {/if}
 
