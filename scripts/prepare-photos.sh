@@ -38,9 +38,9 @@ Inputs are image files (jpg/jpeg/png/heic/heif/webp/tif/tiff) or directories
 (non-recursive, processed in sorted filename order).
 
 Options:
-  -o, --out DIR    Output directory (default: ./prepared). Must be outside a
-                   git working tree or gitignored — in this repo use
-                   .tmp-images/prepared
+  -o, --out DIR    Output directory (default: .tmp-images/prepared, which
+                   is gitignored in this repo). Must be outside a git
+                   working tree or gitignored.
   -n, --name SLUG  Name outputs SLUG-01.jpg, SLUG-02.jpg … in input order
                    (default: a slug of each original filename)
       --gentle     Lighter touch for already-saturated shots (e.g. sunsets)
@@ -143,7 +143,7 @@ fi
 
 # --- args ---
 
-OUT_DIR="./prepared"
+OUT_DIR=".tmp-images/prepared"
 NAME=""
 GENTLE=0
 WEBP=0
