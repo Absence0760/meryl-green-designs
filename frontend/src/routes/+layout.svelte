@@ -112,11 +112,12 @@
 			</svg>
 		</button>
 
-		<a class="brand" href="/" aria-label="Meryl Green Designs — home">
+		<!-- Named by its visible text, "Meryl Green Designs" (no aria-label:
+		     a label that differs from the visible wording fails WCAG 2.5.3
+		     label-in-name). The space before "Designs" is invisible in the
+		     flex column but keeps the words apart for assistive tech. -->
+		<a class="brand" href="/">
 			<img class="brand-mark" src="{base}/logo.svg" alt="" width="40" height="40" />
-			<!-- The space before "Designs" is invisible (flex column) but makes
-			     the text read "Meryl Green Designs", so the aria-label contains
-			     the visible label (WCAG 2.5.3). -->
 			<span class="brand-word">Meryl Green<span class="brand-sub"> Designs</span></span>
 		</a>
 
