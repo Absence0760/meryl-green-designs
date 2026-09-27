@@ -70,6 +70,12 @@ anything in the repo) — see [`roadmap.md`](./roadmap.md).
     lightbox).
   - Primary nav links carry `aria-current="page"` (`src/lib/navActive.ts`,
     tested).
+  - Cart panel is a real modal dialog (`role="dialog"`, `aria-modal`):
+    `use:focusTrap` (`src/lib/focusTrap.ts`, tested) moves focus to the
+    close button on open, keeps Tab inside, and returns focus to the cart
+    button on close. The cart button's name includes the item count, and
+    a polite live region announces "N items in your order" after "Add to
+    order" (`cartButtonLabel` / `cartStatusText` in `cartLogic.ts`).
   - Hero scrim is weighted so the cream headline and tagline keep AA
     contrast over the pale sky of the photo.
 - **Branded error page** (`src/routes/+error.svelte`) — any unknown URL

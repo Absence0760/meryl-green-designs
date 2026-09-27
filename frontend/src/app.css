@@ -137,6 +137,19 @@ a:hover {
 	outline-offset: 3px;
 }
 
+/* Hidden visually, still read by screen readers. */
+.visually-hidden {
+	position: absolute !important;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	white-space: nowrap;
+	border: 0;
+}
+
 /* Skip link (first element in +layout.svelte). Off-screen until focused. */
 .skip-link {
 	position: absolute;

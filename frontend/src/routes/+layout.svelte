@@ -5,6 +5,7 @@
 	import { PUBLIC_SITE_URL } from '$env/static/public';
 	import Cart from '$lib/Cart.svelte';
 	import { cart } from '$lib/cartStore.svelte';
+	import { cartButtonLabel, cartStatusText } from '$lib/cartLogic';
 	import { jsonLdScript } from '$lib/jsonLd';
 	import { isNavActive } from '$lib/navActive';
 
@@ -111,14 +112,19 @@
 					{/each}
 				</ul>
 			</nav>
-			<button class="cart-btn" on:click={() => (cartOpen = true)} aria-label="Open cart">
+			<button
+				class="cart-btn"
+				on:click={() => (cartOpen = true)}
+				aria-label={cartButtonLabel(cart.count)}
+				aria-haspopup="dialog"
+			>
 				<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 					<circle cx="9" cy="21" r="1"></circle>
 					<circle cx="20" cy="21" r="1"></circle>
 					<path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
 				</svg>
 				{#if cart.count > 0}
-					<span class="cart-badge">{cart.count}</span>
+					<span class="cart-badge" aria-hidden="true">{cart.count}</span>
 				{/if}
 			</button>
 		</div>
@@ -172,6 +178,10 @@
 </main>
 
 <Cart open={cartOpen} onclose={() => (cartOpen = false)} />
+
+<!-- Announces cart changes ("Add to order" gives no other non-visual
+     feedback). Polite, so it never interrupts. -->
+<p class="visually-hidden" aria-live="polite">{cartStatusText(cart.count)}</p>
 
 <!-- Bushveld skyline (acacias on a horizon, same tree as the logo) that
      the green footer grows out of. Decorative; `slice` keeps the trees
