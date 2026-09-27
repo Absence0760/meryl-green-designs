@@ -29,6 +29,23 @@ function decode(html: string): string {
 	});
 }
 
+// The page markup: everything after the component's instance <script>
+// block, with HTML comments removed.
+function markupWithoutComments(src: string): string {
+	const scriptClose = '</' + 'script>';
+	const afterScript = src.slice(src.indexOf(scriptClose) + scriptClose.length);
+	let out = '';
+	let pos = 0;
+	for (;;) {
+		const start = afterScript.indexOf('<!--', pos);
+		if (start === -1) return out + afterScript.slice(pos);
+		out += afterScript.slice(pos, start);
+		const end = afterScript.indexOf('-->', start + 4);
+		if (end === -1) return out;
+		pos = end + 3;
+	}
+}
+
 function readPage(route: string): string {
 	return readFileSync(
 		fileURLToPath(new URL(`../routes/${route}/+page.svelte`, import.meta.url)),
@@ -39,10 +56,9 @@ function readPage(route: string): string {
 describe.each(['terms', 'returns', 'privacy'])('/%s table of contents', (route) => {
 	const src = readPage(route);
 	// Headings live in the markup; skip the <script> (whose comments
-	// mention "<h2>") and any HTML comments.
-	const markup = src
-		.replace(/<script[\s\S]*?<\/script>/g, '')
-		.replace(/<!--[\s\S]*?-->/g, '');
+	// mention "<h2>") and any HTML comments. Plain slicing of our own
+	// source file, not sanitisation of untrusted input.
+	const markup = markupWithoutComments(src);
 	const h2s = [...markup.matchAll(/<h2\b([^>]*)>([\s\S]*?)<\/h2>/g)].map((m) => ({
 		attrs: m[1]!,
 		text: decode(m[2]!.replace(/\s+/g, ' ').trim())
