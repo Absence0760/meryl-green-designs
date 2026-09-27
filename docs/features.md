@@ -192,6 +192,13 @@ anything in the repo) — see [`roadmap.md`](./roadmap.md).
   featured-photographs band as a grid of blockquotes with a bark
   quote-mark ornament. The section only renders when there are
   published testimonials — no placeholder, no fake content.
+- **"How it works" strip** directly under the featured pieces — four
+  numbered steps (pay securely via PayFast, made for you, dispatched
+  within 3 weeks, delivered by courier in South Africa with a link to
+  `/track`) in a four-across grid (two-up on tablets, stacked on
+  phones). Always renders; the copy lives in `src/lib/orderingSteps.ts`,
+  whose test pins it to the Terms — "made to order" is claimed for
+  folding screens only.
 - **Featured photographs band** — a full-bleed four-across grid (two-up on
   narrow viewports) of the first four gallery photos, fetched at runtime
   from `GET /gallery`. Each tile links through to the gallery page and
@@ -201,12 +208,11 @@ anything in the repo) — see [`roadmap.md`](./roadmap.md).
 - **Poem** section on an alternate background, rendering "Africa" as
   three stanzas with a styled blockquote and leaf-green accent, under an
   "A poem" eyebrow. No attribution line is shown.
-- **Call-to-action cards** linking to the Gallery and Shop — image-led
-  (3:2 photo over a text panel). The Shop card uses the first featured
-  product's photo and the Gallery card the first gallery photo, once
-  those fetches land; if they fail both show the 800 px hero WebP. No
-  image is rendered until the fetches settle (the sage media box holds
-  the space), so the fallback is never downloaded just to be replaced.
+- **Commission prompt** closes the page — "Have something specific in
+  mind?" with an "Enquire about a commission" button to `/contact`,
+  mirroring the gallery's closing CTA. (Replaced the image-led Gallery /
+  Shop cards, which repeated links already in the hero and the featured
+  sections.)
 
 ## Gallery (`/gallery`)
 

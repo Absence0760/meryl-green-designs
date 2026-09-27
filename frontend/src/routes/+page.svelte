@@ -11,13 +11,13 @@
 		HERO_SIZES,
 		heroFallbackSrc,
 		heroPortraitSrcset,
-		heroSrc,
 		heroSrcset
 	} from '$lib/heroImage';
 	import Button from '$lib/Button.svelte';
 	import ProductCard from '$lib/ProductCard.svelte';
 	import SectionDivider from '$lib/SectionDivider.svelte';
 	import { reveal } from '$lib/reveal';
+	import { ORDERING_STEPS } from '$lib/orderingSteps';
 
 	const heroFallback = heroFallbackSrc(base);
 	const heroWebpSrcset = heroSrcset(base);
@@ -28,21 +28,6 @@
 	let testimonials: Testimonial[] = [];
 	let featuredProducts: Product[] = [];
 
-	// Image-led CTA cards: a real product / gallery photo once the fetches
-	// land, the hero photograph if they fail. Nothing is rendered until the
-	// fetches settle — in the short pre-fetch page the cards sit inside the
-	// lazy-load distance, so a placeholder <img> downloaded the 64 KB hero
-	// crop only to be swapped out a moment later. The sage media box holds
-	// the space meanwhile.
-	const ctaFallback = heroSrc(800, base);
-	let contentSettled = false;
-	$: shopCtaImage = contentSettled
-		? (featuredProducts[0]?.photos?.[0] && imageUrl(featuredProducts[0].photos[0], 800)) ||
-			ctaFallback
-		: null;
-	$: galleryCtaImage = contentSettled
-		? (featured[0] && imageUrl(featured[0].image, 800)) || ctaFallback
-		: null;
 
 	// Hero "settle" (6% zoom easing to rest) starts only after the page has
 	// painted. As a CSS animation that ran from first paint, Chrome held
@@ -90,8 +75,6 @@
 				/* ignore */
 			}
 		}
-
-		contentSettled = true;
 	});
 
 	const storyParagraphs: string[] = [
@@ -242,6 +225,25 @@
 	</section>
 {/if}
 
+<section class="section ordering" aria-labelledby="ordering-title">
+	<div class="container" use:reveal>
+		<p class="eyebrow">Ordering</p>
+		<h2 id="ordering-title">How it works</h2>
+		<ol class="ordering__steps">
+			{#each ORDERING_STEPS as step, i (step.title)}
+				<li class="ordering__step">
+					<span class="ordering__num" aria-hidden="true">{i + 1}</span>
+					<h3>{step.title}</h3>
+					<p>
+						{step.body}{#if step.link}
+							{' '}<a href={step.link.href}>{step.link.label}</a>.{/if}
+					</p>
+				</li>
+			{/each}
+		</ol>
+	</div>
+</section>
+
 {#if testimonials.length > 0}
 	<section class="section testimonials" aria-label="What customers are saying">
 		<div class="container">
@@ -295,34 +297,15 @@
 
 <SectionDivider />
 
-<section class="section">
-	<div class="container" use:reveal>
-		<div class="cta-grid">
-			<a class="cta-card" href="/gallery">
-				<div class="cta-card__media">
-					{#if galleryCtaImage}
-						<img src={galleryCtaImage} alt="" loading="lazy" width="800" height="533" />
-					{/if}
-				</div>
-				<div class="cta-card__body">
-					<h3>Gallery</h3>
-					<p>Browse photographs of screens and design options.</p>
-					<span class="cta-link">View gallery →</span>
-				</div>
-			</a>
-			<a class="cta-card" href="/shop">
-				<div class="cta-card__media">
-					{#if shopCtaImage}
-						<img src={shopCtaImage} alt="" loading="lazy" width="800" height="533" />
-					{/if}
-				</div>
-				<div class="cta-card__body">
-					<h3>Shop</h3>
-					<p>Folding screens and cushion covers, ready to order.</p>
-					<span class="cta-link">Visit shop →</span>
-				</div>
-			</a>
-		</div>
+<section class="commission-cta" aria-labelledby="commission-title">
+	<div class="container narrow" use:reveal>
+		<p class="eyebrow">Commissions</p>
+		<h2 id="commission-title">Have something specific in mind?</h2>
+		<p>
+			Any photograph in the gallery can be made for your space, in the size,
+			wood or finish you need. Send a quick note and we'll come back with a quote.
+		</p>
+		<Button href="/contact" variant="primary">Enquire about a commission</Button>
 	</div>
 </section>
 
@@ -602,78 +585,10 @@
 		font-weight: 500;
 	}
 
-	.cta-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-		gap: var(--space-3);
-	}
-
-	/* Image-led CTA cards: photo on top, text panel below. */
-	.cta-card {
-		display: flex;
-		flex-direction: column;
-		background: var(--color-surface);
-		border: 1px solid var(--color-rule);
-		border-radius: 4px;
-		overflow: hidden;
-		color: var(--color-ink);
-		border-bottom: 1px solid var(--color-rule);
-		transition:
-			transform 180ms ease,
-			box-shadow 180ms ease;
-	}
-
-	.cta-card:hover {
-		transform: translateY(-2px);
-		box-shadow: 0 10px 30px rgba(47, 74, 37, 0.12);
-		border-color: var(--color-leaf);
-	}
-
-	.cta-card__media {
-		aspect-ratio: 3 / 2;
-		overflow: hidden;
-		background: #c8d1b9;
-	}
-
-	.cta-card__media img {
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
-		display: block;
-		transition: transform 500ms ease;
-	}
-
-	.cta-card:hover .cta-card__media img {
-		transform: scale(1.04);
-	}
-
-	.cta-card__body {
-		padding: var(--space-3) var(--space-4) var(--space-4);
-	}
-
-	@media (max-width: 520px) {
-		.cta-card__body {
-			padding: var(--space-2) var(--space-3) var(--space-3);
-		}
-	}
-
 	@media (prefers-reduced-motion: reduce) {
 		.hero-image {
 			transform: none;
 			transition: none;
-		}
-
-		.cta-card,
-		.cta-card__media img {
-			transition: none;
-		}
-
-		.cta-card:hover .cta-card__media img {
-			transform: none;
-		}
-
-		.cta-card:hover {
-			transform: none;
 		}
 
 		.featured-band__tile img {
@@ -685,20 +600,67 @@
 		}
 	}
 
-	.cta-card h3 {
+	.ordering {
+		border-top: 1px solid var(--color-rule);
+	}
+
+	.ordering__steps {
+		list-style: none;
+		margin: var(--space-4) 0 0;
+		padding: 0;
+		display: grid;
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		gap: var(--space-4);
+	}
+
+	@media (max-width: 900px) {
+		.ordering__steps {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+
+	@media (max-width: 520px) {
+		.ordering__steps {
+			grid-template-columns: 1fr;
+			gap: var(--space-3);
+		}
+	}
+
+	.ordering__num {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 2rem;
+		height: 2rem;
+		margin-bottom: var(--space-2);
+		border: 1px solid var(--color-bark);
+		border-radius: 50%;
+		color: var(--color-bark);
+		font-family: var(--font-display);
+		font-size: 1rem;
+	}
+
+	.ordering__step h3 {
 		margin: 0 0 var(--space-1);
 	}
 
-	.cta-card p {
-		margin: 0 0 var(--space-2);
+	.ordering__step p {
+		margin: 0;
 		color: var(--color-ink-soft);
 	}
 
-	.cta-link {
-		font-size: 0.9rem;
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
-		color: var(--color-bark);
-		font-weight: 500;
+	.commission-cta {
+		padding: var(--space-5) 0 var(--space-6);
+		text-align: center;
+	}
+
+	.commission-cta h2 {
+		margin: 0 0 var(--space-2);
+	}
+
+	.commission-cta p:not(.eyebrow) {
+		max-width: 50ch;
+		margin: 0 auto var(--space-3);
+		color: var(--color-ink-soft);
 	}
 </style>

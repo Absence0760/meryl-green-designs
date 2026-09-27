@@ -19,6 +19,19 @@ test.describe('public pages render', () => {
 		await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 		// Testimonial seed fixture should land in the home page testimonials band
 		await expect(page.getByText('E2E Test Customer')).toBeVisible();
+		// "How it works" strip: four ordered steps, the last linking to /track.
+		const ordering = page.getByRole('region', { name: 'How it works' });
+		await expect(ordering.getByRole('listitem')).toHaveCount(4);
+		await expect(ordering.getByRole('link', { name: 'order tracking page' })).toHaveAttribute(
+			'href',
+			'/track',
+		);
+		// The page ends on a commission prompt, not repeat Shop/Gallery cards.
+		await expect(
+			page
+				.getByRole('region', { name: 'Have something specific in mind?' })
+				.getByRole('link', { name: 'Enquire about a commission' }),
+		).toHaveAttribute('href', '/contact');
 		expect(errs).toEqual([]);
 	});
 
