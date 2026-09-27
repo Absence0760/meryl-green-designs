@@ -38,6 +38,12 @@ updates:
       prefix: "chore(deps)"
       prefix-development: "chore(deps-dev)"
       include: "scope"
+    ignore:
+      # TypeScript 7 drops the programmatic compiler API that svelte-check
+      # uses, and svelte-check / @sveltejs/kit peer on `^5 || ^6`, so the
+      # frontend can't typecheck on 7. Remove once svelte-check supports it.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
     groups:
       svelte-ecosystem:
         patterns:
