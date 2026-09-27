@@ -395,6 +395,54 @@ gitignored; this repo is public, so client photos must never be
 committed. **Production must never set `CONTENT_BACKEND`**, and
 Terraform doesn't pass it through.
 
+### Preparing product photos
+
+`scripts/prepare-photos.sh` turns the client's phone photos into
+upload-ready JPEGs: auto-orient, a gentle clean-up tuned for
+WhatsApp-compressed shots, fit within a 2400px long edge (never
+upscaled), **all metadata stripped (EXIF incl. GPS location)**, sRGB,
+progressive JPEG q90. Needs ImageMagick 7 (`brew install imagemagick`);
+invoke it directly — it isn't a `pnpm` script.
+
+1. **Get originals.** Ask the client to send photos on WhatsApp as a
+   *Document* (attach → Document, not Photo/Gallery) or by email —
+   sending as a Photo recompresses and downsizes them.
+2. **Stage them** outside the repo or in the gitignored `.tmp-images/`.
+3. **Run the script** into a gitignored output dir. It refuses to write
+   anywhere inside a git work tree that isn't gitignored, never touches
+   the originals, and won't overwrite earlier outputs without `--force`:
+
+   ```bash
+   scripts/prepare-photos.sh --name acacia-screen --compare \
+     -o .tmp-images/prepared .tmp-images/acacia/
+   # → .tmp-images/prepared/acacia-screen-01.jpg, -02.jpg … (input order)
+   #   .tmp-images/prepared/compare/*-compare.jpg (before | after)
+   ```
+
+   Without `--name`, outputs are slugs of the original filenames
+   (`WhatsApp Image 2026-09-24 at 09.16.33 (2).jpeg` →
+   `2026-09-24-09-16-33-2.jpg`). Other flags: `--gentle` (lighter touch
+   for already-saturated shots such as sunsets — run those separately),
+   `--webp` (also write `.webp`), `--dry-run` (print the `magick`
+   commands, write nothing). `--help` lists everything. A summary table
+   shows each file's dimensions and size before/after.
+4. **Review** the side-by-side sheets in `compare/`; re-run a shot with
+   `--gentle` if the default looks overcooked.
+5. **Upload** the prepared JPEGs in Sanity Studio — Sanity's image CDN
+   handles responsive resizing and format negotiation, so upload the
+   2400px JPEG, not a webp. To preview first without Sanity, write them
+   into `backend/.dev-content/images/` instead (also gitignored; see
+   above).
+
+**Never commit client photos** — this repo is public. Both `.tmp-images/`
+and `backend/.dev-content/` are gitignored; delete the staged files once
+they're in Sanity.
+
+Tests: `scripts/test-prepare-photos.sh` (standalone, needs ImageMagick —
+not part of `pnpm test`/CI). It builds synthetic images with fake EXIF
+(GPS + rotation) in a temp dir and checks the outputs, stripped
+metadata, no upscaling, naming, and the safety guards.
+
 ## Running the site
 
 From the repository root:
