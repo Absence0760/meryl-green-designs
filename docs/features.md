@@ -220,8 +220,8 @@ anything in the repo) — see [`roadmap.md`](./roadmap.md).
   (mirroring the story). Below 800px it stacks (illustration first,
   cropped to 3:2) and shows only the first stanza with a "Read the full
   poem" / "Show less" toggle (`aria-expanded`); the
-  collapse only applies once JS has run. An italic "— Author unknown"
-  credit sits under the verse (Meryl confirmed the author isn't known).
+  collapse only applies once JS has run. No attribution line is shown
+  (the author is unknown — confirmed by Meryl, 2026-09-27).
 - **Commission prompt** closes the page — "Have something specific in
   mind?" with an "Enquire about a commission" button to `/contact`,
   mirroring the gallery's closing CTA. (Replaced the image-led Gallery /

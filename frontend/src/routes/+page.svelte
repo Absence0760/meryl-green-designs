@@ -328,7 +328,6 @@
 					{/if}
 				{/each}
 			</blockquote>
-			<p class="poem-credit">&mdash; Author unknown</p>
 			{#if poemCollapsible}
 				<button
 					type="button"
@@ -489,15 +488,6 @@
 	.poem-break {
 		display: block;
 		height: var(--space-2);
-	}
-
-	/* Lined up with the verse, past the blockquote's leaf rule. */
-	.poem-credit {
-		margin: var(--space-2) 0 0;
-		padding-left: calc(var(--space-3) + 3px);
-		font-size: 0.9rem;
-		font-style: italic;
-		color: var(--color-ink-soft);
 	}
 
 	/* Text beside a 4:5 illustration on wide screens (the story with its
