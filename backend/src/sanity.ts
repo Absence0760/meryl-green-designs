@@ -7,6 +7,12 @@ import {
 	getLocalTestimonials,
 	isLocalContent
 } from './content-local.js';
+import {
+	createLocalOrder,
+	deleteLocalOrder,
+	getLocalOrderByRef,
+	updateLocalOrderPayment
+} from './orders-local.js';
 
 export type OrderStatus =
 	| 'pending_payment'
@@ -172,6 +178,7 @@ export async function createOrder(
 	input: NewSanityOrderInput,
 	options?: { signal?: AbortSignal }
 ): Promise<SanityOrder> {
+	if (isLocalContent()) return createLocalOrder(input);
 	const client = getClient();
 	const created = await client.create(
 		{
@@ -195,6 +202,7 @@ export async function deleteOrder(orderId: string): Promise<void> {
 	// but the Sanity create fails — orders-store.ts catches and reverses
 	// the DynamoDB row; if Sanity itself errors AFTER inserting the doc
 	// (very rare), this is the cleanup hook.
+	if (isLocalContent()) return deleteLocalOrder(orderId);
 	const client = getClient();
 	await client.delete(orderId);
 }
@@ -203,6 +211,7 @@ export async function updateOrderPayment(
 	orderRef: string,
 	updates: { status: OrderStatus; paymentId?: string }
 ): Promise<SanityOrder> {
+	if (isLocalContent()) return updateLocalOrderPayment(orderRef, updates);
 	const client = getClient();
 	const query = `*[_type == "order" && orderRef == $ref][0]._id`;
 	const docId = await client.fetch<string | null>(query, { ref: orderRef });
@@ -227,6 +236,7 @@ export async function getProductsByIds(ids: string[]): Promise<SanityProduct[]> 
 }
 
 export async function getOrderByRef(orderRef: string): Promise<SanityOrder | null> {
+	if (isLocalContent()) return getLocalOrderByRef(orderRef);
 	const client = getClient();
 	const query = `*[_type == "order" && orderRef == $ref][0]`;
 	const result = await client.fetch<SanityOrder | null>(query, { ref: orderRef });

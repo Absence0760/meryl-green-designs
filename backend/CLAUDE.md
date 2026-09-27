@@ -50,7 +50,7 @@ Mounted in `src/app.ts`. Each route file lives under `src/routes/` and exports a
 - **Don't send banking details in any automated email.** Regression-guarded by a test in `email.test.ts` — see `docs/security.md § Risk 1` for the impersonation rationale.
 - **Use raw `fetch` for Resend, not a SDK.** Keeps the Lambda bundle tiny and the dependency surface small.
 - **`email.ts` has two backends** switched by `EMAIL_BACKEND` (`resend` default, `file` for local dev). The file backend writes to `backend/.dev-emails/` and is gitignored. Production must never set `EMAIL_BACKEND=file` — Terraform doesn't pass it through.
-- **Content reads have a local backend** switched by `CONTENT_BACKEND` (`sanity` default, `local` for previewing). `content-local.ts` reads `backend/.dev-content/content.json` + `images/` (gitignored — the repo is public, never commit client photos); `routes/dev-content.ts` serves `local:` photo refs and is only registered when the flag is on. Production must never set it.
+- **Content reads have a local backend** switched by `CONTENT_BACKEND` (`sanity` default, `local` for previewing). `content-local.ts` reads `backend/.dev-content/content.json` + `images/` (gitignored — the repo is public, never commit client photos); `routes/dev-content.ts` serves `local:` photo refs and is only registered when the flag is on. The same flag routes the Sanity order-skeleton functions to `orders-local.ts` (`.dev-content/orders.json`); order PII still goes to DynamoDB/LocalStack. Production must never set it.
 
 ## Testing
 

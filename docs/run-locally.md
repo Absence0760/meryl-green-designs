@@ -351,8 +351,17 @@ pre-size them to about 1600–2400px. Set `CONTENT_DEV_DIR` to use a
 folder other than `.dev-content` (it must be under the backend's working
 directory or the OS tmp dir).
 
-Only content reads are local. Checkout and order lookup still write
-to Sanity, so they fail in this mode. `backend/.dev-content/` is
+Orders work too. In this mode the Sanity order skeleton (orderRef,
+status, paymentMethod, amountZar, paymentId — `createOrder`,
+`getOrderByRef`, `updateOrderPayment`, `deleteOrder` in `sanity.ts`)
+goes to `backend/.dev-content/orders.json` instead (created on first
+write; `backend/src/orders-local.ts`). The PII half still goes to
+DynamoDB, so checkout, `/track` and the admin routes need LocalStack
+running (`pnpm dev:db:up`) — without it `POST /orders` returns 500 and
+the backend log says so. Delete `orders.json` to reset local orders.
+Customer status emails won't fire: in production the Sanity webhook
+sends them, and a local order has no webhook.
+`backend/.dev-content/` is
 gitignored; this repo is public, so client photos must never be
 committed. **Production must never set `CONTENT_BACKEND`**, and
 Terraform doesn't pass it through.

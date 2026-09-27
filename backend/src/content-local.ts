@@ -38,8 +38,7 @@ export function isLocalContent(): boolean {
 	return (process.env.CONTENT_BACKEND ?? 'sanity').toLowerCase() === 'local';
 }
 
-export function resolveContentDir(): string {
-	const dir = resolve(process.env.CONTENT_DEV_DIR ?? '.dev-content');
+function assertSafeDir(dir: string): string {
 	const allowedRoots = [resolve(process.cwd()), resolve(tmpdir())];
 	if (!allowedRoots.some((root) => dir === root || dir.startsWith(root + '/'))) {
 		throw new Error(
@@ -47,6 +46,17 @@ export function resolveContentDir(): string {
 		);
 	}
 	return dir;
+}
+
+// Writable local-dev data dir (CONTENT_DEV_DIR, default .dev-content).
+// Holds the local order-skeleton store (orders-local.ts) and, when
+// present, your own content.json + images/.
+export function resolveLocalDataDir(): string {
+	return assertSafeDir(resolve(process.env.CONTENT_DEV_DIR ?? '.dev-content'));
+}
+
+export function resolveContentDir(): string {
+	return resolveLocalDataDir();
 }
 
 // Re-read on every call so edits to content.json show up on the next
