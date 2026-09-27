@@ -1,6 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { page } from '$app/state';
+	// The store, not `$app/state`: this is a legacy (non-runes) component,
+	// and `$:` statements don't re-run when a `$app/state` value changes —
+	// product → product navigation left the old product on screen.
+	import { page } from '$app/stores';
 	import { PUBLIC_API_URL, PUBLIC_SITE_URL } from '$env/static/public';
 	import { formatPrice, imageUrl, type Product } from '$lib/sanity';
 	import { isScreen, pickRelatedProducts } from '$lib/productGroups';
@@ -19,7 +22,7 @@
 	let error: string | null = null;
 	let activePhotoIndex = 0;
 
-	$: slug = page.params.slug ?? '';
+	$: slug = $page.params.slug ?? '';
 	// Frame/Canvas specs and the 3-week lead time are facts about the
 	// folding screens only.
 	$: screen = product ? isScreen(product) : false;

@@ -2,6 +2,9 @@
 	import '../app.css';
 	import { base } from '$app/paths';
 	import { page } from '$app/state';
+	// `$:` statements in this legacy component don't track `$app/state`, so
+	// the canonical URL reads the store to stay current on client-side nav.
+	import { page as pageStore } from '$app/stores';
 	import { PUBLIC_SITE_URL } from '$env/static/public';
 	import Cart from '$lib/Cart.svelte';
 	import { cart } from '$lib/cartStore.svelte';
@@ -18,7 +21,7 @@
 
 	const siteUrl = PUBLIC_SITE_URL?.replace(/\/$/, '') ?? '';
 	const ogImage = `${siteUrl}/two_trees.JPG`;
-	$: canonicalUrl = `${siteUrl}${page.url.pathname}`;
+	$: canonicalUrl = `${siteUrl}${$pageStore.url.pathname}`;
 
 	// Organization JSON-LD. Included site-wide because automated domain
 	// classifiers (Google Safe Browsing, Cloudflare Gateway, AV reputation
