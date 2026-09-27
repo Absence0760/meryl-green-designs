@@ -394,6 +394,29 @@ Page copy and the closing CTA reflect that — visitors are guided to
   `/shop`; falls back to the static `two_trees-1280.webp` hero photo.
   Hidden (`display: none`, lazy image never loads) on narrower screens.
 
+## Legal pages — "On this page" contents (`/terms`, `/returns`, `/privacy`)
+
+- **Table of contents built from each page's `<h2>` headings**, rendered
+  by the shared `src/lib/LegalToc.svelte` from a `buildToc([...])` list
+  in the page script. Each h2 carries a literal, stable slug `id`
+  (`/terms#payment`, `/returns#how-to-claim`) produced by
+  `src/lib/headingSlug.ts` (`&` → "and", dashes and punctuation
+  collapsed, repeats suffixed `-2`, `-3`). `legalPages.test.ts` fails if
+  a heading is reworded, added or reordered without its id and TOC entry
+  following — update the `buildToc` list and the id together.
+- **Desktop (≥ 1024px)** — a sticky left column (`.legal-layout` in
+  `app.css`) beside the 720px text. The section being read is
+  highlighted and marked `aria-current="location"` (IntersectionObserver
+  on the headings; no highlight, but links still work, where it's
+  unavailable). Smooth scrolling is CSS-only and off under
+  `prefers-reduced-motion`; headings have `scroll-margin-top` so they
+  land clear of the sticky site header.
+- **Mobile** — a collapsed `<details>` "On this page" under the "Last
+  updated" line. Only one variant is displayed at a time, so there's a
+  single `<nav aria-label="On this page">` landmark.
+- Markup only — adding the TOC changed no legal wording, so "Last
+  updated" dates weren't bumped.
+
 ## Privacy policy (`/privacy`)
 
 - **POPIA-first policy** describing the actual data flows of the site

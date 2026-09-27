@@ -112,7 +112,27 @@
 	Update the "Last updated" date whenever the policy text changes.
 -->
 <script lang="ts">
+	import LegalToc from '$lib/LegalToc.svelte';
+	import { buildToc } from '$lib/headingSlug';
+
 	const lastUpdated = '26 September 2026';
+
+	// "On this page" entries — one per <h2> below, same text, same order.
+	// Each h2's literal id must equal the slug buildToc() makes from its
+	// text (legalPages.test.ts enforces both).
+	const sections = buildToc([
+		'Made-to-order — cancellations and change-of-mind',
+		'If your package arrives damaged on the outside',
+		'If your item is defective or arrives broken inside intact packaging',
+		'If you receive the wrong item',
+		'If your order does not arrive',
+		'If your delivery is significantly late',
+		'How to claim',
+		'Refunds, replacements, and shipping costs',
+		'If a replacement also has a problem',
+		'Your statutory rights and dispute resolution',
+		'About Meryl Green Designs'
+	]);
 </script>
 
 <svelte:head>
@@ -129,10 +149,14 @@
 </svelte:head>
 
 <section class="section">
-	<div class="container narrow">
+	<div class="container legal-layout">
+	<LegalToc {sections} />
+	<div class="legal-body">
 		<p class="eyebrow">Legal</p>
 		<h1>Refund &amp; Returns Policy</h1>
 		<p class="muted">Last updated: {lastUpdated}</p>
+
+		<LegalToc {sections} variant="inline" />
 
 		<!-- TODO(Meryl/legal): confirm whether cushion covers are made to order or sold from stock. The lede and the cancellations section below only claim "made to order" for folding screens until this is known. -->
 		<p class="lede">
@@ -144,7 +168,7 @@
 			those happen to your order.
 		</p>
 
-		<h2>Made-to-order &mdash; cancellations and change-of-mind</h2>
+		<h2 id="made-to-order-cancellations-and-change-of-mind">Made-to-order &mdash; cancellations and change-of-mind</h2>
 		<p>
 			Each folding screen is <strong>specially produced for the
 			buyer</strong> &mdash; production begins once full payment
@@ -174,7 +198,7 @@
 			goes wrong with the order itself.
 		</p>
 
-		<h2>If your package arrives damaged on the outside</h2>
+		<h2 id="if-your-package-arrives-damaged-on-the-outside">If your package arrives damaged on the outside</h2>
 		<p>
 			If the box you receive is visibly damaged when the courier
 			delivers it, please email us a photo as soon as you can &mdash;
@@ -192,7 +216,7 @@
 			our workshop.
 		</p>
 
-		<h2>If your item is defective or arrives broken inside intact packaging</h2>
+		<h2 id="if-your-item-is-defective-or-arrives-broken-inside-intact-packaging">If your item is defective or arrives broken inside intact packaging</h2>
 		<p>
 			If the package looks fine but the item itself has a
 			manufacturing flaw (on a folding screen, for example, a
@@ -213,7 +237,7 @@
 			courier collection at no cost to you.
 		</p>
 
-		<h2>If you receive the wrong item</h2>
+		<h2 id="if-you-receive-the-wrong-item">If you receive the wrong item</h2>
 		<p>
 			If we send you something other than what you ordered, please
 			email us within 7 days of delivery. We will arrange a free
@@ -226,7 +250,7 @@
 			mismatch later within that window.
 		</p>
 
-		<h2>If your order does not arrive</h2>
+		<h2 id="if-your-order-does-not-arrive">If your order does not arrive</h2>
 		<p>
 			If 4 weeks have passed since your shipping notification and
 			your order has still not been delivered, please contact us.
@@ -236,7 +260,7 @@
 			where needed) or issue a full refund.
 		</p>
 
-		<h2>If your delivery is significantly late</h2>
+		<h2 id="if-your-delivery-is-significantly-late">If your delivery is significantly late</h2>
 		<p>
 			We aim to ship within the timeframe communicated when you
 			place your order. If delivery is unreasonably delayed beyond
@@ -248,7 +272,7 @@
 			yours regardless.
 		</p>
 
-		<h2>How to claim</h2>
+		<h2 id="how-to-claim">How to claim</h2>
 		<p>
 			To start any of the processes above, email
 			<a href="mailto:zagreenwoman@gmail.com">zagreenwoman@gmail.com</a>
@@ -266,7 +290,7 @@
 			complete within the timelines stated above.
 		</p>
 
-		<h2>Refunds, replacements, and shipping costs</h2>
+		<h2 id="refunds-replacements-and-shipping-costs">Refunds, replacements, and shipping costs</h2>
 		<p>
 			Where you are entitled to a remedy under this policy or
 			under the Consumer Protection Act, <strong>you</strong>
@@ -288,7 +312,7 @@
 			3&ndash;5 business days.
 		</p>
 
-		<h2>If a replacement also has a problem</h2>
+		<h2 id="if-a-replacement-also-has-a-problem">If a replacement also has a problem</h2>
 		<p>
 			Section 56(3) of the Consumer Protection Act gives you the
 			right, after one failed repair or replacement, to escalate
@@ -300,7 +324,7 @@
 			repair attempts.
 		</p>
 
-		<h2>Your statutory rights and dispute resolution</h2>
+		<h2 id="your-statutory-rights-and-dispute-resolution">Your statutory rights and dispute resolution</h2>
 		<p>
 			Nothing in this policy excludes or limits your rights under
 			the South African Consumer Protection Act, 68 of 2008,
@@ -326,7 +350,7 @@
 			them in preference to the others.
 		</p>
 
-		<h2>About Meryl Green Designs</h2>
+		<h2 id="about-meryl-green-designs">About Meryl Green Designs</h2>
 		<p>
 			Meryl Green Designs is a South African studio handcrafting
 			folding screens, cushion covers, and other nature-inspired
@@ -400,13 +424,10 @@
 			email or call using the details above.
 		</p>
 	</div>
+	</div>
 </section>
 
 <style>
-	.narrow {
-		max-width: 720px;
-	}
-
 	.muted {
 		color: var(--color-ink-soft);
 		font-style: italic;
@@ -422,6 +443,8 @@
 
 	h2 {
 		font-size: 1.4rem;
+		/* Clears the sticky site header (~73px) on a TOC / #hash jump. */
+		scroll-margin-top: 6.5rem;
 		margin-top: var(--space-4);
 		margin-bottom: var(--space-2);
 		padding-top: var(--space-2);

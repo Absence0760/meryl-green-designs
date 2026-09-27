@@ -124,6 +124,28 @@ a:hover {
 	padding: 0 var(--space-3);
 }
 
+/* Legal pages (/terms, /returns, /privacy): the text column, plus a
+   sticky "On this page" column (LegalToc.svelte) beside it from 1024px.
+   Below that the TOC is an inline <details> inside .legal-body. */
+.legal-body {
+	max-width: 720px;
+	min-width: 0;
+	margin: 0 auto;
+}
+
+@media (min-width: 1024px) {
+	.legal-layout {
+		display: grid;
+		grid-template-columns: 14rem minmax(0, 720px);
+		justify-content: center;
+		gap: var(--space-5);
+	}
+
+	.legal-layout > .legal-body {
+		margin: 0;
+	}
+}
+
 @media (max-width: 520px) {
 	.container {
 		padding: 0 var(--space-2);

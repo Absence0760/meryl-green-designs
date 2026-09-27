@@ -200,6 +200,29 @@ test.describe('public pages render', () => {
 		}
 	});
 
+	// "On this page" TOC: exactly one visible landmark at a time (sidebar
+	// on desktop, collapsed <details> on mobile), and its links jump to
+	// the h2 ids.
+	test('legal pages expose an "On this page" table of contents', async ({ page }) => {
+		await page.setViewportSize({ width: 1280, height: 900 });
+		await page.goto('/terms');
+		const toc = page.getByRole('navigation', { name: 'On this page' });
+		await expect(toc).toHaveCount(1);
+		await toc.getByRole('link', { name: 'Payment', exact: true }).click();
+		await expect(page).toHaveURL(/#payment$/);
+		await expect(page.locator('h2#payment')).toBeInViewport();
+
+		await page.setViewportSize({ width: 390, height: 844 });
+		await page.goto('/returns');
+		await expect(toc).toHaveCount(0); // collapsed <details> hides its nav
+		await page.locator('summary', { hasText: 'On this page' }).click();
+		await expect(toc).toHaveCount(1);
+		await expect(toc.getByRole('link', { name: 'How to claim' })).toHaveAttribute(
+			'href',
+			'#how-to-claim',
+		);
+	});
+
 	// /returns hosts the ECT Act s43 business-identification disclosure;
 	// silent removal would break SA online-retail compliance, so pin the
 	// stable structural markers here as a regression net.

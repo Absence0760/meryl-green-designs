@@ -79,7 +79,29 @@
 	text change.
 -->
 <script lang="ts">
+	import LegalToc from '$lib/LegalToc.svelte';
+	import { buildToc } from '$lib/headingSlug';
+
 	const lastUpdated = '26 September 2026';
+
+	// "On this page" entries — one per <h2> below, same text, same order.
+	// Each h2's literal id must equal the slug buildToc() makes from its
+	// text (legalPages.test.ts enforces both).
+	const sections = buildToc([
+		'Who we are',
+		'Lawful basis for processing',
+		'What we collect',
+		'Why we collect it',
+		'Who we share it with',
+		'Cross-border transfers',
+		'How long we keep it',
+		'How we protect it',
+		'Cookies and tracking',
+		'Your rights under POPIA',
+		'Children',
+		'Changes to this policy',
+		'Contact us'
+	]);
 </script>
 
 <svelte:head>
@@ -96,10 +118,14 @@
 </svelte:head>
 
 <section class="section">
-	<div class="container narrow">
+	<div class="container legal-layout">
+	<LegalToc {sections} />
+	<div class="legal-body">
 		<p class="eyebrow">Legal</p>
 		<h1>Privacy Policy</h1>
 		<p class="muted">Last updated: {lastUpdated}</p>
+
+		<LegalToc {sections} variant="inline" />
 
 		<p class="lede">
 			This policy explains what personal information Meryl Green Designs
@@ -109,7 +135,7 @@
 			(POPIA).
 		</p>
 
-		<h2>Who we are</h2>
+		<h2 id="who-we-are">Who we are</h2>
 		<p>
 			Meryl Green Designs (&ldquo;we&rdquo;, &ldquo;us&rdquo;, &ldquo;our&rdquo;) is a South African studio that sells
 			handcrafted folding screens, cushion covers, and other designs
@@ -133,7 +159,7 @@
 			<a href="/terms">Terms &amp; Conditions</a>.
 		</p>
 
-		<h2>Lawful basis for processing</h2>
+		<h2 id="lawful-basis-for-processing">Lawful basis for processing</h2>
 		<p>
 			Under section 11 of POPIA, every act of processing must rest
 			on a specific lawful basis. We rely on the following:
@@ -169,7 +195,7 @@
 			collect it explicitly and separately at that point.
 		</p>
 
-		<h2>What we collect</h2>
+		<h2 id="what-we-collect">What we collect</h2>
 		<p>We collect only the information you give us, or that we need to run the site.</p>
 
 		<h3>When you place an order</h3>
@@ -229,7 +255,7 @@
 			behavioural tracking on this site.
 		</p>
 
-		<h2>Why we collect it</h2>
+		<h2 id="why-we-collect-it">Why we collect it</h2>
 		<p>We only use your personal information for the purposes it was given to us:</p>
 		<ul>
 			<li>
@@ -258,7 +284,7 @@
 			specifically ask us to.
 		</p>
 
-		<h2>Who we share it with</h2>
+		<h2 id="who-we-share-it-with">Who we share it with</h2>
 		<p>
 			We only share your information with the service providers we
 			need to run the site and fulfil orders. Each provider listed
@@ -327,7 +353,7 @@
 			while you visit the site.
 		</p>
 
-		<h2>Cross-border transfers</h2>
+		<h2 id="cross-border-transfers">Cross-border transfers</h2>
 		<p>
 			Of the operators above, <strong>Sanity</strong> (United States)
 			and <strong>Resend</strong> (United States) are located outside
@@ -361,7 +387,7 @@
 			</li>
 		</ul>
 
-		<h2>How long we keep it</h2>
+		<h2 id="how-long-we-keep-it">How long we keep it</h2>
 		<p>
 			<strong>Customer details</strong> (your name, email address,
 			phone number, shipping address, items, and any notes you sent
@@ -408,7 +434,7 @@
 			5 years under SARS rules, even after a deletion request.
 		</p>
 
-		<h2>How we protect it</h2>
+		<h2 id="how-we-protect-it">How we protect it</h2>
 		<ul>
 			<li>All traffic to this site is encrypted in transit using HTTPS.</li>
 			<li>
@@ -431,7 +457,7 @@
 			section 22 of POPIA.
 		</p>
 
-		<h2>Cookies and tracking</h2>
+		<h2 id="cookies-and-tracking">Cookies and tracking</h2>
 		<p>
 			This website does <strong>not</strong> use cookies for tracking
 			or advertising. It does not use Google Analytics, Facebook
@@ -441,7 +467,7 @@
 			on your device or on our servers.
 		</p>
 
-		<h2>Your rights under POPIA</h2>
+		<h2 id="your-rights-under-popia">Your rights under POPIA</h2>
 		<p>As a data subject, you have the right to:</p>
 		<ul>
 			<li>
@@ -484,13 +510,13 @@
 			the 30-day window prescribed by the POPIA Regulations.
 		</p>
 
-		<h2>Children</h2>
+		<h2 id="children">Children</h2>
 		<p>
 			This site is not directed at children, and we do not knowingly
 			collect personal information from children under the age of 18.
 		</p>
 
-		<h2>Changes to this policy</h2>
+		<h2 id="changes-to-this-policy">Changes to this policy</h2>
 		<p>
 			We may update this policy from time to time, for example when
 			we add a new service provider or change the way we handle
@@ -499,7 +525,7 @@
 			changes will be flagged on the site.
 		</p>
 
-		<h2>Contact us</h2>
+		<h2 id="contact-us">Contact us</h2>
 		<p>
 			For any questions about this policy, or to exercise your
 			rights, please email
@@ -507,13 +533,10 @@
 				>zagreenwoman@gmail.com</a>.
 		</p>
 	</div>
+	</div>
 </section>
 
 <style>
-	.narrow {
-		max-width: 720px;
-	}
-
 	.muted {
 		color: var(--color-ink-soft);
 		font-style: italic;
@@ -529,6 +552,8 @@
 
 	h2 {
 		font-size: 1.4rem;
+		/* Clears the sticky site header (~73px) on a TOC / #hash jump. */
+		scroll-margin-top: 6.5rem;
 		margin-top: var(--space-4);
 		margin-bottom: var(--space-2);
 		padding-top: var(--space-2);
