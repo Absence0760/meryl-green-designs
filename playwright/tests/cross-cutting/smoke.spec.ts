@@ -75,6 +75,31 @@ test.describe('public pages render', () => {
 		await expect(cushions.getByText('Frame', { exact: true })).toHaveCount(0);
 	});
 
+	// Poem: beside a photo on wide screens (all stanzas, no toggle); on
+	// phones only the first stanza until "Read the full poem" is pressed.
+	test('home poem shows in full on desktop, collapses on phones', async ({ page }) => {
+		const firstLine = page.getByText('When you have acquired a taste for the dust,');
+		const laterLine = page.getByText('When you long to see the elephants');
+		const toggle = page.getByRole('button', { name: 'Read the full poem' });
+
+		await page.setViewportSize({ width: 1280, height: 900 });
+		await page.goto('/');
+		await expect(firstLine).toBeVisible();
+		await expect(laterLine).toBeVisible();
+		await expect(toggle).toBeHidden();
+
+		await page.setViewportSize({ width: 390, height: 844 });
+		await expect(firstLine).toBeVisible();
+		await expect(laterLine).toBeHidden();
+		await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+		await toggle.click();
+		await expect(laterLine).toBeVisible();
+		await expect(page.getByRole('button', { name: 'Show less' })).toHaveAttribute(
+			'aria-expanded',
+			'true',
+		);
+	});
+
 	test('product detail page', async ({ page }) => {
 		await page.goto('/shop/test-screen-small');
 		await expect(page.getByRole('heading', { name: 'Test Screen Small' })).toBeVisible();

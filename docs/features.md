@@ -207,7 +207,13 @@ anything in the repo) — see [`roadmap.md`](./roadmap.md).
   up the text-heavy middle of the home page and previews the gallery.
 - **Poem** section on an alternate background, rendering "Africa" as
   three stanzas with a styled blockquote and leaf-green accent, under an
-  "A poem" eyebrow. No attribution line is shown.
+  "A poem" eyebrow, beside a 4:5 photograph on wide screens. The photo
+  is the first gallery photo not already in the featured band
+  (`pickPoemPhoto` in `src/lib/poemPhoto.ts`, tested), else the hero's
+  portrait crop; nothing loads until the gallery fetch settles. Below
+  800px it stacks (3:2 photo first) and shows only the first stanza
+  with a "Read the full poem" / "Show less" toggle (`aria-expanded`); the
+  collapse only applies once JS has run. No attribution line is shown.
 - **Commission prompt** closes the page — "Have something specific in
   mind?" with an "Enquire about a commission" button to `/contact`,
   mirroring the gallery's closing CTA. (Replaced the image-led Gallery /

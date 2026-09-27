@@ -10,6 +10,7 @@
 		HERO_PORTRAIT_SIZES,
 		HERO_SIZES,
 		heroFallbackSrc,
+		heroPortraitSrc,
 		heroPortraitSrcset,
 		heroSrcset
 	} from '$lib/heroImage';
@@ -18,13 +19,15 @@
 	import SectionDivider from '$lib/SectionDivider.svelte';
 	import { reveal } from '$lib/reveal';
 	import { ORDERING_STEPS } from '$lib/orderingSteps';
+	import { FEATURED_BAND_COUNT, pickPoemPhoto } from '$lib/poemPhoto';
 
 	const heroFallback = heroFallbackSrc(base);
 	const heroWebpSrcset = heroSrcset(base);
 	const heroPortraitWebpSrcset = heroPortraitSrcset(base);
 	const apiUrl = PUBLIC_API_URL;
 
-	let featured: GalleryPhoto[] = [];
+	let galleryPhotos: GalleryPhoto[] = [];
+	$: featured = galleryPhotos.slice(0, FEATURED_BAND_COUNT);
 	let testimonials: Testimonial[] = [];
 	let featuredProducts: Product[] = [];
 
@@ -38,6 +41,9 @@
 
 	onMount(async () => {
 		requestAnimationFrame(() => (heroSettled = true));
+		// Collapse the poem on phones only once JS runs, so it's never
+		// stuck half-hidden without the toggle working.
+		poemCollapsible = true;
 
 		// Fetch gallery + testimonials + products in parallel. All are silent
 		// no-ops on failure — the home page is already complete without them.
@@ -59,11 +65,12 @@
 		if (galleryRes.status === 'fulfilled' && galleryRes.value.ok) {
 			try {
 				const body = (await galleryRes.value.json()) as { photos?: GalleryPhoto[] };
-				featured = (body.photos ?? []).slice(0, 4);
+				galleryPhotos = body.photos ?? [];
 			} catch {
 				/* ignore */
 			}
 		}
+		gallerySettled = true;
 
 		if (testimonialsRes.status === 'fulfilled' && testimonialsRes.value.ok) {
 			try {
@@ -82,6 +89,25 @@
 		'Let the sounds and calls of the African bush envelope your senses and take you on a journey of deep inner reflection, where everything seems right in the world; a meditative state of deep healing, that only nature can provide.',
 		'It all started more than 10 years ago in a very special place in the African bush, where I fell in love with the perfection, simplicity and vibrancy of the natural world. Using my very simple but exceptional camera, I began a journey capturing the \u2018Big 5\u2019, antelope, smaller creatures, beautiful birds, plant life and unforgettable \u2018bush sunsets\u2019.'
 	];
+
+	// Photo beside the poem (desktop) / above it (phones): the next gallery
+	// photo not already in the featured band, else the hero's portrait
+	// crop. Nothing renders until the gallery fetch settles, so the
+	// fallback is never downloaded just to be replaced.
+	let gallerySettled = false;
+	$: poemPhoto = pickPoemPhoto(galleryPhotos);
+	$: poemPhotoSrc = gallerySettled
+		? (poemPhoto && imageUrl(poemPhoto.image, 900)) || heroPortraitSrc(936, base)
+		: null;
+	$: poemPhotoAlt =
+		poemPhoto && imageUrl(poemPhoto.image, 900)
+			? (poemPhoto.image.alt ?? poemPhoto.caption ?? '')
+			: '';
+
+	// Phones show the first stanza with a "Read the full poem" toggle;
+	// wider screens always show it all (the toggle is hidden by CSS).
+	let poemCollapsible = false;
+	let poemExpanded = false;
 
 	const poemTitle = 'Africa';
 	// Verses stored as an array so each one can be rendered as its own
@@ -280,18 +306,41 @@
 	</section>
 {/if}
 
-<section class="section section--alt">
-	<div class="container narrow" use:reveal>
-		<p class="eyebrow">A Poem</p>
-		<h2 class="poem-title">{poemTitle}</h2>
-		<blockquote class="poem">
-			{#each poemStanzas as stanza, i}
-				<p class="poem-stanza">{stanza.join('\n')}</p>
-				{#if i < poemStanzas.length - 1}
-					<span class="poem-break" aria-hidden="true"></span>
-				{/if}
-			{/each}
-		</blockquote>
+<section class="section section--alt" aria-labelledby="poem-title">
+	<div class="container poem-layout" use:reveal>
+		<figure class="poem-photo">
+			{#if poemPhotoSrc}
+				<img src={poemPhotoSrc} alt={poemPhotoAlt} loading="lazy" decoding="async" />
+			{/if}
+		</figure>
+		<div class="poem-text">
+			<p class="eyebrow">A Poem</p>
+			<h2 class="poem-title" id="poem-title">{poemTitle}</h2>
+			<blockquote
+				class="poem"
+				id="poem-stanzas"
+				class:poem--collapsible={poemCollapsible}
+				class:is-expanded={poemExpanded}
+			>
+				{#each poemStanzas as stanza, i}
+					<p class="poem-stanza">{stanza.join('\n')}</p>
+					{#if i < poemStanzas.length - 1}
+						<span class="poem-break" aria-hidden="true"></span>
+					{/if}
+				{/each}
+			</blockquote>
+			{#if poemCollapsible}
+				<button
+					type="button"
+					class="poem-toggle"
+					aria-expanded={poemExpanded}
+					aria-controls="poem-stanzas"
+					on:click={() => (poemExpanded = !poemExpanded)}
+				>
+					{poemExpanded ? 'Show less' : 'Read the full poem'}
+				</button>
+			{/if}
+		</div>
 	</div>
 </section>
 
@@ -440,6 +489,65 @@
 	.poem-break {
 		display: block;
 		height: var(--space-2);
+	}
+
+	/* Photo beside the poem on wide screens; the 4:5 photo is roughly the
+	   poem's height, so the columns line up. Stacks (photo first, 3:2)
+	   below 800px, where the poem also collapses to its first stanza. */
+	.poem-layout {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+		gap: var(--space-5);
+		align-items: center;
+	}
+
+	.poem-photo {
+		margin: 0;
+		aspect-ratio: 4 / 5;
+		overflow: hidden;
+		background: #c8d1b9;
+	}
+
+	.poem-photo img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		display: block;
+	}
+
+	.poem-toggle {
+		display: none;
+	}
+
+	@media (max-width: 799px) {
+		.poem-layout {
+			grid-template-columns: 1fr;
+			gap: var(--space-3);
+		}
+
+		.poem-photo {
+			aspect-ratio: 3 / 2;
+		}
+
+		.poem--collapsible:not(.is-expanded) .poem-stanza:not(:first-of-type),
+		.poem--collapsible:not(.is-expanded) .poem-break {
+			display: none;
+		}
+
+		.poem-toggle {
+			display: inline-block;
+			margin-top: var(--space-2);
+			padding: 0;
+			background: none;
+			border: none;
+			border-bottom: 1px solid currentColor;
+			font: inherit;
+			font-size: 0.9rem;
+			letter-spacing: 0.06em;
+			text-transform: uppercase;
+			color: var(--color-bark);
+			cursor: pointer;
+		}
 	}
 
 	/* ----- featured pieces (products) ----- */
