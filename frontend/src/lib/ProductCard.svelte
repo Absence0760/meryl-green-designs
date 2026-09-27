@@ -30,13 +30,17 @@
 	$: hover = hoverReveal && product.photos?.[1] ? imageUrl(product.photos[1], imageWidth) : null;
 </script>
 
-<a class="card" href="/shop/{product.slug}" aria-label="View {product.name}">
+<!-- Named by its own text (name, dimensions, price) — an aria-label of
+     "View <name>" hid the price from screen readers and failed WCAG 2.5.3
+     label-in-name. The photo is alt="" for the same reason: inside this
+     link it would only repeat the product name before it. -->
+<a class="card" href="/shop/{product.slug}">
 	{#if photo}
 		<div class="card__media">
 			<img
 				class="card__img card__img--primary"
 				src={photo}
-				alt={product.photos?.[0]?.alt ?? product.name}
+				alt=""
 				loading={priority ? 'eager' : 'lazy'}
 				fetchpriority={priority ? 'high' : 'auto'}
 			/>
@@ -49,7 +53,7 @@
 				<img
 					class="card__img card__img--secondary"
 					src={hover}
-					alt={product.photos?.[1]?.alt ?? product.name}
+					alt=""
 					aria-hidden="true"
 				/>
 			{/if}

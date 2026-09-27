@@ -87,6 +87,10 @@ anything in the repo) — see [`roadmap.md`](./roadmap.md).
     order" (`cartButtonLabel` / `cartStatusText` in `cartLogic.ts`).
   - Gallery lightbox uses the same `focusTrap`: focus goes to Close on
     open and back to the photo tile on close.
+  - Product cards are links named by their own text (name, dimensions,
+    price); the photo inside is `alt=""` so it doesn't repeat the name.
+    The header brand link likewise reads "Meryl Green Designs" (WCAG
+    2.5.3 label-in-name).
   - Product page photo thumbnails are toggle buttons (`aria-pressed`,
     "View photo N of M"); the breadcrumb's last item is `aria-current`.
   - Load/lookup error boxes on shop, product, gallery and /track are

@@ -95,7 +95,8 @@ test.describe('public pages render', () => {
 		await expect(names).toHaveText(['Test Screen Large', 'Test Cushion Cover']);
 		// Product → product navigation reuses the page component; the new
 		// product must replace the old one, and the strip must re-pick.
-		await related.getByRole('link', { name: 'View Test Screen Large' }).click();
+		// Cards are named by their text (name, dimensions, price).
+		await related.getByRole('link', { name: 'Test Screen Large' }).click();
 		await expect(page).toHaveURL(/\/shop\/test-screen-large$/);
 		await expect(
 			page.getByRole('heading', { level: 1, name: 'Test Screen Large' }),
