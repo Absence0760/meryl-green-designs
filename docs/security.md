@@ -346,9 +346,12 @@ ends up encrypted with the wrong key.
   gitignored — see `.gitignore`) and ships a project-wide deny-list of
   destructive commands: AWS resource deletion (S3, CloudFront, Lambda,
   IAM, KMS, Route 53, ACM, DynamoDB, CloudWatch Logs, Budgets), force
-  pushes / `--mirror` / remote-branch deletes / pushes naming `main`
-  (ordinary feature-branch pushes are allowed — `main` is sealed by
-  branch protection, so every change still lands via a CI-gated PR),
+  pushes / `--mirror` / `--all` / remote-branch deletes / any push
+  naming or targeting `main` (including `<branch>:main`, `:main`, and
+  flags placed before the remote). Ordinary feature-branch pushes are
+  allowed. The deny-list is prefix/glob matching, so it is
+  defence-in-depth only — `main` is sealed by GitHub branch protection,
+  which is the real gate,
   hard resets, `terraform apply/destroy`, `gh secret set`,
   `gh release create`, `gh workflow run`, and the studio deploy
   variants. Operators using Claude Code in the project inherit the
