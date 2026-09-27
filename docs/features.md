@@ -426,7 +426,8 @@ Page copy and the closing CTA reflect that — visitors are guided to
   in URL) so a forwarded email doesn't leak credentials. Design and
   threat model in `docs/payment-retry.md`.
 - **"Secure checkout" panel** — single reassurance sentence noting
-  PayFast handles payment and the site never sees card details, plus
+  PayFast handles payment and the site never sees card details (and
+  that every piece is made to order, dispatched within 3 weeks), plus
   a row of accepted-method chips (cards, Apple Pay, SnapScan, Instant
   EFT). Replaces the earlier procedural 5-step list.
 
