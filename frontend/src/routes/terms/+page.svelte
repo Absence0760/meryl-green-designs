@@ -14,7 +14,7 @@
 	    is formed under SA contract law + ECT Act
 	  - Pricing in ZAR and right to correct typographical errors
 	  - Made-to-order nature (lead times, customisation, no cooling-off
-	    for specially-produced goods per CPA s20 / ECT Act s44)
+	    for goods made to the consumer's specifications per ECT Act s42(2)(f))
 	  - Risk transfer at delivery to the courier address provided
 	  - Cross-references to Returns + Privacy rather than duplicating
 	  - Intellectual property — Meryl retains all rights in her designs
@@ -77,7 +77,7 @@
 	    sufficient version-locking, or whether a version number /
 	    revision history is advisable to make the "version live at
 	    the time you placed the order" reliably retrievable.
-	  - ECT s43(1)(k) lead-time pre-transaction disclosure —
+	  - ECT s43(1)(l) lead-time pre-transaction disclosure —
 	    cross-referenced to the same question on /returns.
 	    Currently the 6-week bound lives only here in the Terms,
 	    read at clickwrap. Reviewer to confirm clickwrap timing is
@@ -136,8 +136,8 @@
 		<h2>Who you are contracting with</h2>
 		<p>
 			Meryl Green Designs (&ldquo;we&rdquo;, &ldquo;us&rdquo;, &ldquo;our&rdquo;) is a South African studio that
-			designs and hand-makes folding screens to order, as well as
-			cushion covers. Full business
+			designs and hand-makes folding screens, which are made to
+			order, and also sells cushion covers. Full business
 			identification details (registered name, legal status, physical
 			address, registration number) required under section 43 of the
 			Electronic Communications and Transactions Act, 2002 (ECT Act)
@@ -239,7 +239,7 @@
 			Meranti frame, printing the canvas, and assembling the finished
 			screen.
 		</p>
-		<!-- TODO(Meryl/legal): confirm whether cushion covers are made to order or dispatched from stock — the lead time below is stated without a "made to order" claim until then. Counsel to confirm the 3-week bound satisfies ECT s43(1)(k) disclosure. -->
+		<!-- TODO(Meryl/legal): confirm whether cushion covers are made to order or dispatched from stock — the lead time below is stated without a "made to order" claim until then. Counsel to confirm the 3-week bound satisfies ECT s43(1)(l) disclosure. -->
 		<p>
 			<strong>Cushion covers are dispatched within 3 weeks of
 			payment</strong> unless we contact you to agree a longer time,
@@ -252,7 +252,7 @@
 			Because each folding screen is specially produced for you after
 			you order, the 7-day cooling-off right under section 44 of the
 			Electronic Communications and Transactions Act, 2002 does
-			not apply to folding screens &mdash; section 44(3)(c) of that
+			not apply to folding screens &mdash; section 42(2)(f) of that
 			Act exempts goods made to the consumer's specifications.
 			Your statutory rights if something goes wrong with the order
 			are unaffected &mdash; see the

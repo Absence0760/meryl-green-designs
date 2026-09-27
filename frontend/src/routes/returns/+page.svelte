@@ -15,7 +15,8 @@
 	  - Lost-in-transit / non-delivery flow
 	  - Late delivery (CPA s19 right to cancel for unreasonable delay)
 	  - "Specially produced" framing for the cooling-off exemption
-	    (CPA s20 / ECT Act s44 both exclude specially-produced goods)
+	    (ECT Act s42(2)(f) disapplies the s44 cooling-off right for goods
+	    made to the consumer's specifications)
 	  - Explicit repair / replacement / refund choice under CPA s56
 	  - Shipping-cost allocation (who pays for what when)
 	  - Escalation cap when a replacement also fails
@@ -41,8 +42,8 @@
 	  - The 14-business-day refund-back-to-customer timeline is aligned
 	    with CGSO guidance; reviewer to confirm against current CGSO
 	    code-of-conduct expectations.
-	  - The cooling-off section cites ECT s44(3)(c) only (specially-
-	    produced goods exemption) — CPA s20 is not cited because it
+	  - The cooling-off section cites ECT s42(2)(f) only (goods made to
+	    the consumer's specifications) — CPA s20 is not cited because it
 	    applies to direct-marketing transactions only, which this site
 	    does not engage in.
 	  - The consumer's right under CPA s56(2) to CHOOSE between repair /
@@ -67,11 +68,14 @@
 	    right to "access and maintain a full record of the
 	    transaction", or does the statute contemplate a more formal
 	    export / download mechanism?
-	  - ECT s43(1)(k) — lead times currently appear only in the
-	    Terms (read at clickwrap) and not on shop-product pages.
-	    Is clickwrap-time disclosure adequate pre-transaction
-	    disclosure under s43(1)(k), or must the lead-time figure
-	    appear on the shop page itself before "Add to cart"?
+	  - ECT s43(1)(l) — dispatch lead times ("typically 3 weeks from
+	    payment to dispatch") now appear on the shop and product pages
+	    as well as in the Terms. Counsel to confirm this satisfies the
+	    s43(1)(l) pre-transaction disclosure.
+	  - ECT s42(2)(f)(i)/(ii) — does a catalogue-design screen that is
+	    produced after purchase (no per-buyer size/finish choice)
+	    qualify as "made to the consumer's specifications" or "clearly
+	    personalised"? If not, screens carry the 7-day s44 right too.
 	  - ECT s43(1)(d)/(e)/(r) — Meryl is not a member of any
 	    self-regulatory body and the only DR code in play is the
 	    CGSO. Is silence acceptable for a non-member, or should
@@ -152,7 +156,7 @@
 			The 7-day cooling-off right under section 44 of the
 			Electronic Communications and Transactions Act, 2002 (ECT
 			Act) does not apply to goods made to the consumer's
-			specifications (section 44(3)(c)). Because each folding
+			specifications (section 42(2)(f) of that Act). Because each folding
 			screen is specially produced for you after you order, that
 			exemption covers folding screens ordered through this site.
 		</p>

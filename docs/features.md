@@ -374,9 +374,9 @@ Page copy and the closing CTA reflect that — visitors are guided to
   product types have a 3-week dispatch bound, but the cooling-off
   exemption is claimed for screens only.
 - **CPA framing throughout** — explicitly references section 19
-  (unreasonable delay), section 20 (cooling-off exemption for
-  specially-produced goods), and section 56 (six-month implied warranty
-  of quality with repair / replace / refund choice). Closes with a
+  (unreasonable delay) and section 56 (six-month implied warranty
+  of quality with repair / replace / refund choice); the screens'
+  cooling-off exemption cites ECT Act s42(2)(f). Closes with a
   full statutory-rights statement so the no-change-of-mind wording
   can't be read as overriding CPA.
 - **ECT Act section 43 disclosure block** ("About Meryl Green
