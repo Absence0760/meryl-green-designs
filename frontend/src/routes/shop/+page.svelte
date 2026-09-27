@@ -224,8 +224,10 @@
 	   type, so three rows cost ~6 short lines and the first product still
 	   shows above the fold. */
 	@media (max-width: 600px) {
+		/* The global .section padding (6rem) alone would push the grid
+		   ~200px down before the screens heading even starts. */
 		.section--intro {
-			padding-bottom: var(--space-3);
+			padding: var(--space-4) 0 var(--space-3);
 		}
 
 		.category__header {
