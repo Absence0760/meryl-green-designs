@@ -253,7 +253,16 @@ Page copy and the closing CTA reflect that — visitors are guided to
   page block. Cushion covers show "Typically 3 weeks from payment to
   dispatch" (no made-to-order claim) and no materials spec yet
   (`TODO(Meryl)` in the page source).
-- **Slug-routed** — fetches `GET /products/:slug` on mount and
+- **"You may also like"** — up to three other available products
+  below the detail block, rendered with the shared `ProductCard` and
+  a scroll reveal. Same category first, then other categories to fill,
+  each by display `order` (`pickRelatedProducts` in
+  `src/lib/productGroups.ts`, tested). Fetches `GET /products` in
+  parallel with the product; hidden entirely if that fails or nothing
+  qualifies. The page reloads its product whenever the slug changes,
+  because SvelteKit reuses the component on product → product
+  navigation.
+- **Slug-routed** — fetches `GET /products/:slug` for the current slug and
   renders the first matching available product. Unknown or
   unpublished slugs render a "Product not found" state in the same
   branded `ErrorState` block as the site error page (logo emblem,

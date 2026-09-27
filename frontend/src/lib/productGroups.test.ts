@@ -5,6 +5,7 @@ import {
 	groupProductsByCategory,
 	isScreen,
 	pickFeaturedProducts,
+	pickRelatedProducts,
 	productCategory
 } from './productGroups';
 
@@ -106,5 +107,70 @@ describe('pickFeaturedProducts', () => {
 	it('returns nothing for an empty list or a non-positive limit', () => {
 		expect(pickFeaturedProducts([])).toEqual([]);
 		expect(pickFeaturedProducts([makeProduct({ photos: [photo] })], 0)).toEqual([]);
+	});
+});
+
+describe('pickRelatedProducts', () => {
+	const screen = (slug: string, order: number, extra: Partial<Product> = {}) =>
+		makeProduct({ _id: slug, slug, order, category: 'screen', ...extra });
+	const cushion = (slug: string, order: number, extra: Partial<Product> = {}) =>
+		makeProduct({ _id: slug, slug, order, category: 'cushion-cover', ...extra });
+	const slugs = (list: Product[]) => list.map((p) => p.slug);
+
+	it('excludes the current product and fills same-category first', () => {
+		const list = [cushion('c1', 1), screen('s1', 1), screen('current', 2), screen('s2', 3)];
+		expect(slugs(pickRelatedProducts(list, screen('current', 2)))).toEqual(['s1', 's2', 'c1']);
+	});
+
+	it('fills from other categories when the own category runs short', () => {
+		const list = [screen('s1', 5), cushion('c2', 2), cushion('c1', 1), cushion('current', 0)];
+		expect(slugs(pickRelatedProducts(list, cushion('current', 0)))).toEqual(['c1', 'c2', 's1']);
+	});
+
+	it('caps at the limit (default 3)', () => {
+		const list = [screen('a', 1), screen('b', 2), screen('c', 3), screen('d', 4)];
+		expect(slugs(pickRelatedProducts(list, screen('x', 0)))).toEqual(['a', 'b', 'c']);
+		expect(slugs(pickRelatedProducts(list, screen('x', 0), 2))).toEqual(['a', 'b']);
+		expect(pickRelatedProducts(list, screen('x', 0), 0)).toEqual([]);
+		expect(pickRelatedProducts(list, screen('x', 0), -1)).toEqual([]);
+	});
+
+	it('sorts by order within a group, keeping incoming order for ties', () => {
+		const list = [screen('late', 9), screen('tie-a', 1), screen('tie-b', 1), screen('early', 0)];
+		expect(slugs(pickRelatedProducts(list, screen('x', 0), 4))).toEqual([
+			'early',
+			'tie-a',
+			'tie-b',
+			'late'
+		]);
+	});
+
+	it('puts a missing order last instead of scrambling the sort', () => {
+		const list = [screen('none', Number.NaN), screen('b', 2), screen('a', 1)];
+		expect(slugs(pickRelatedProducts(list, screen('x', 0)))).toEqual(['a', 'b', 'none']);
+	});
+
+	it('skips unavailable products', () => {
+		const list = [screen('sold', 1, { available: false }), screen('ok', 2)];
+		expect(slugs(pickRelatedProducts(list, screen('x', 0)))).toEqual(['ok']);
+	});
+
+	it('treats a missing category as screen on both sides', () => {
+		const legacy = screen('legacy', 1);
+		delete (legacy as Partial<Product>).category;
+		const list = [cushion('c1', 0), legacy];
+		const current = { slug: 'x', category: undefined as unknown as Product['category'] };
+		expect(slugs(pickRelatedProducts(list, current))).toEqual(['legacy', 'c1']);
+	});
+
+	it('does not mutate the input list', () => {
+		const list = [screen('b', 2), screen('a', 1)];
+		pickRelatedProducts(list, screen('x', 0));
+		expect(slugs(list)).toEqual(['b', 'a']);
+	});
+
+	it('returns nothing when the only product is the current one', () => {
+		expect(pickRelatedProducts([screen('only', 0)], screen('only', 0))).toEqual([]);
+		expect(pickRelatedProducts([], screen('only', 0))).toEqual([]);
 	});
 });

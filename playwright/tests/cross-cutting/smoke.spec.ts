@@ -71,6 +71,23 @@ test.describe('public pages render', () => {
 		await expect(page.getByText(/typically 3 weeks/i)).toBeVisible();
 	});
 
+	// Same category first (the other screen), then the cushion cover to
+	// fill; never the current product or the sold-out one.
+	test('product detail page shows "You may also like"', async ({ page }) => {
+		await page.goto('/shop/test-screen-small');
+		const related = page.getByRole('region', { name: 'You may also like' });
+		const names = related.getByRole('heading', { level: 3 });
+		await expect(names).toHaveText(['Test Screen Large', 'Test Cushion Cover']);
+		// Product → product navigation reuses the page component; the new
+		// product must replace the old one, and the strip must re-pick.
+		await related.getByRole('link', { name: 'View Test Screen Large' }).click();
+		await expect(page).toHaveURL(/\/shop\/test-screen-large$/);
+		await expect(
+			page.getByRole('heading', { level: 1, name: 'Test Screen Large' }),
+		).toBeVisible();
+		await expect(names).toHaveText(['Test Screen Small', 'Test Cushion Cover']);
+	});
+
 	test('cushion cover detail page has no screen specs', async ({ page }) => {
 		await page.goto('/shop/test-cushion-cover');
 		await expect(page.getByRole('heading', { name: 'Test Cushion Cover' })).toBeVisible();

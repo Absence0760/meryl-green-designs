@@ -50,3 +50,29 @@ function hasPhoto(product: Product): boolean {
 export function pickFeaturedProducts(products: Product[], limit = 4): Product[] {
 	return products.filter(hasPhoto).slice(0, Math.max(0, limit));
 }
+
+// Products for the "You may also like" strip on a product page: other
+// available products, same category first, then the rest to fill up to
+// `limit`. Within each group, display `order` ascending; ties keep the
+// incoming (backend) order, since Array.prototype.sort is stable.
+export function pickRelatedProducts(
+	products: Product[],
+	current: Pick<Product, 'slug' | 'category'>,
+	limit = 3
+): Product[] {
+	const max = Math.max(0, limit);
+	if (max === 0) return [];
+	const category = productCategory(current);
+	const candidates = products
+		.filter((p) => p.slug !== current.slug && p.available !== false)
+		.sort((a, b) => orderKey(a) - orderKey(b));
+	const same = candidates.filter((p) => productCategory(p) === category);
+	const others = candidates.filter((p) => productCategory(p) !== category);
+	return [...same, ...others].slice(0, max);
+}
+
+// A missing/garbled `order` sorts last rather than poisoning the sort
+// with NaN comparisons.
+function orderKey(product: Product): number {
+	return Number.isFinite(product.order) ? product.order : Number.MAX_SAFE_INTEGER;
+}

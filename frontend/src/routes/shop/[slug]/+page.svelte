@@ -3,7 +3,9 @@
 	import { page } from '$app/state';
 	import { PUBLIC_API_URL } from '$env/static/public';
 	import { formatPrice, imageUrl, type Product } from '$lib/sanity';
-	import { isScreen } from '$lib/productGroups';
+	import { isScreen, pickRelatedProducts } from '$lib/productGroups';
+	import ProductCard from '$lib/ProductCard.svelte';
+	import { reveal } from '$lib/reveal';
 	import { cart } from '$lib/cartStore.svelte';
 	import Button from '$lib/Button.svelte';
 	import ErrorState from '$lib/ErrorState.svelte';
@@ -29,9 +31,21 @@
 		cart.add(product);
 	}
 
-	onMount(async () => {
+	// Keyed on the slug rather than run once in onMount: SvelteKit reuses
+	// this component when navigating product → product (e.g. from the
+	// "You may also like" strip), so a mount-only fetch would leave the
+	// previous product on screen. `requestId` drops stale responses.
+	let requestId = 0;
+	async function loadProduct(currentSlug: string) {
+		const id = ++requestId;
+		loading = true;
+		notFound = false;
+		error = null;
+		product = null;
+		activePhotoIndex = 0;
 		try {
-			const res = await fetch(`${apiUrl}/products/${encodeURIComponent(slug)}`);
+			const res = await fetch(`${apiUrl}/products/${encodeURIComponent(currentSlug)}`);
+			if (id !== requestId) return;
 			if (res.status === 404) {
 				notFound = true;
 				return;
@@ -41,13 +55,34 @@
 				return;
 			}
 			const body = (await res.json()) as { product?: Product };
+			if (id !== requestId) return;
 			product = body.product ?? null;
 			if (!product) notFound = true;
 		} catch (e) {
+			if (id !== requestId) return;
 			console.error('Failed to fetch product', e);
 			error = 'Could not reach the server. Please try again.';
 		} finally {
-			loading = false;
+			if (id === requestId) loading = false;
+		}
+	}
+
+	$: loadProduct(slug);
+
+	// "You may also like": the full list is fetched once, in parallel
+	// with the product. Silent no-op on failure, like the home page —
+	// the product page is complete without it.
+	let allProducts: Product[] = [];
+	$: related = product ? pickRelatedProducts(allProducts, product, 3) : [];
+
+	onMount(async () => {
+		try {
+			const res = await fetch(`${apiUrl}/products`);
+			if (!res.ok) return;
+			const body = (await res.json()) as { products?: Product[] };
+			allProducts = body.products ?? [];
+		} catch {
+			/* ignore */
 		}
 	});
 </script>
@@ -198,6 +233,19 @@
 		{/if}
 	</div>
 </section>
+
+{#if product && related.length > 0}
+	<section class="section related" aria-labelledby="related-title">
+		<div class="container" use:reveal>
+			<h2 id="related-title">You may also like</h2>
+			<div class="related__grid">
+				{#each related as item (item._id)}
+					<ProductCard product={item} imageWidth={480} hoverReveal={false} />
+				{/each}
+			</div>
+		</div>
+	</section>
+{/if}
 
 <style>
 	.breadcrumbs {
@@ -451,6 +499,28 @@
 		}
 		100% {
 			background-position: -200% 0;
+		}
+	}
+
+	/* The detail section above already supplies the gap. */
+	.related {
+		padding-top: 0;
+	}
+
+	.related h2 {
+		margin-bottom: var(--space-3);
+	}
+
+	.related__grid {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: var(--space-4) var(--space-3);
+	}
+
+	@media (max-width: 800px) {
+		.related__grid {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+			gap: var(--space-3) var(--space-2);
 		}
 	}
 
