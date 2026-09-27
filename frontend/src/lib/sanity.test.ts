@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('$env/static/public', () => ({
+	PUBLIC_API_URL: 'http://localhost:3001',
 	PUBLIC_SANITY_PROJECT_ID: 'testproj',
 	PUBLIC_SANITY_DATASET: 'production'
 }));
@@ -72,6 +73,18 @@ describe('imageUrl', () => {
 			hotspot: null
 		} as unknown as typeof source;
 		expect(imageUrl(broken, 640)).toBeNull();
+	});
+
+	it('points `local:` refs at the backend dev-content route', () => {
+		const local = { asset: { _ref: 'local:lion screen.jpg' } } as unknown as typeof source;
+		expect(imageUrl(local, 640)).toBe(
+			'http://localhost:3001/dev-content/images/lion%20screen.jpg'
+		);
+	});
+
+	it('returns null for a bare `local:` ref with no file name', () => {
+		const local = { asset: { _ref: 'local:' } } as unknown as typeof source;
+		expect(imageUrl(local)).toBeNull();
 	});
 
 	it('returns null when asset is missing entirely', () => {

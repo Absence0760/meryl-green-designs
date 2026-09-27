@@ -22,7 +22,7 @@ pnpm frontend test    # vitest run
 - **Stay static.** No SSR adapter, no server-side load functions, no `$env/dynamic/private`. The S3 + CloudFront deploy depends on this.
 - **No direct Sanity document queries from the frontend.** The dataset is private; the backend brokers all reads. The frontend uses Sanity only to build image URLs from the public asset CDN with the project ID baked in via `$env/static/public`.
 - **No talking to Resend or other secret-bearing services.** Backend only.
-- **`PUBLIC_*` vars only** in `frontend/.env`. They're build-time inlined, so changing one requires a rebuild.
+- **`PUBLIC_*` vars only** in `frontend/.env.development` (committed, non-sensitive local defaults — loaded by `vite dev` and `svelte-kit sync`/`pnpm check`) and the gitignored `frontend/.env.development.local` (overrides). They're build-time inlined, so changing one requires a rebuild. A production `vite build` doesn't read `.env.development`; `vite.config.ts` fails it early (via `src/lib/build-env.ts`) unless `PUBLIC_API_URL` / `PUBLIC_SITE_URL` / `PUBLIC_SANITY_PROJECT_ID` are in the environment, which deploy-frontend.yml provides.
 
 ## Testing gotchas
 

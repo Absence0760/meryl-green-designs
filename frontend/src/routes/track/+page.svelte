@@ -242,7 +242,7 @@
 		</p>
 
 		{#if error}
-			<div class="alert alert--error">{error}</div>
+			<div class="alert alert--error" role="alert">{error}</div>
 		{/if}
 
 		{#if order}
@@ -263,6 +263,7 @@
 								class="status-step"
 								class:status-step--done={i < current}
 								class:status-step--current={i === current}
+								aria-current={i === current ? 'step' : undefined}
 							>
 								<span class="status-step__marker" aria-hidden="true"></span>
 								<span class="status-step__label">{step.label}</span>
@@ -288,7 +289,7 @@
 								</Button>
 							</form>
 							{#if retryError}
-								<div class="alert alert--error">{retryError}</div>
+								<div class="alert alert--error" role="alert">{retryError}</div>
 							{/if}
 						{/if}
 					</section>

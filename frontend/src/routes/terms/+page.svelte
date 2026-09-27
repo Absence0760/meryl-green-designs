@@ -14,7 +14,7 @@
 	    is formed under SA contract law + ECT Act
 	  - Pricing in ZAR and right to correct typographical errors
 	  - Made-to-order nature (lead times, customisation, no cooling-off
-	    for specially-produced goods per CPA s20 / ECT Act s44)
+	    for goods made to the consumer's specifications per ECT Act s42(2)(f))
 	  - Risk transfer at delivery to the courier address provided
 	  - Cross-references to Returns + Privacy rather than duplicating
 	  - Intellectual property — Meryl retains all rights in her designs
@@ -60,7 +60,7 @@
 	    templates must use exactly those two subject lines; verify in
 	    backend/src/email-templates.ts before launch.
 	  - The IP clause carves out the first-sale doctrine (Copyright
-	    Act s23) so buyers can resell the physical screen they bought.
+	    Act s23) so buyers can resell the physical piece they bought.
 	    Social-media sharing is framed as a limited non-commercial
 	    licence with credit requested. Reviewer to confirm scope.
 	  - Acceptance of terms is framed as clickwrap at checkout (NOT
@@ -77,7 +77,7 @@
 	    sufficient version-locking, or whether a version number /
 	    revision history is advisable to make the "version live at
 	    the time you placed the order" reliably retrievable.
-	  - ECT s43(1)(k) lead-time pre-transaction disclosure —
+	  - ECT s43(1)(l) lead-time pre-transaction disclosure —
 	    cross-referenced to the same question on /returns.
 	    Currently the 6-week bound lives only here in the Terms,
 	    read at clickwrap. Reviewer to confirm clickwrap timing is
@@ -89,10 +89,52 @@
 	    (Returns has the explicit consumer-chooses framing; this
 	    page should not contradict it).
 
+	Product scope (26 September 2026 edit): the shop now sells two
+	product types — three-panel folding screens (Meranti frame, cotton
+	canvas print; made to order, ~3 weeks) and cushion covers. The
+	3-week lead time, the frame/canvas description and the ECT Act
+	cooling-off exemption are scoped to folding screens ONLY; cushion
+	cover lead time and made-to-order status are not yet confirmed.
+	See the TODO(Meryl/legal) comments inline.
+
+	27 September 2026 edit: Meryl confirmed cushion covers are made to
+	order (cotton, printed and made up after payment, dispatched within
+	3 weeks; no insert) and that the lion and elephant screens use a
+	lighter cotton basket weave rather than canvas. The lead-time
+	section now says both product types are made to order. The
+	cooling-off exemption is STILL claimed for folding screens only —
+	see the TODO(legal) inline.
+
 	Update the "Last updated" date whenever the terms text changes.
 -->
 <script lang="ts">
-	const lastUpdated = '15 May 2026';
+	import LegalToc from '$lib/LegalToc.svelte';
+	import { buildToc } from '$lib/headingSlug';
+
+	const lastUpdated = '27 September 2026';
+
+	// "On this page" entries — one per <h2> below, same text, same order.
+	// Each h2's literal id must equal the slug buildToc() makes from its
+	// text (legalPages.test.ts enforces both).
+	const sections = buildToc([
+		'Who you are contracting with',
+		'Acceptance of these terms',
+		'Changes to these terms',
+		'About the website',
+		'Pricing',
+		'Placing an order',
+		'Made-to-order — lead times',
+		'Payment',
+		'Delivery, risk, and ownership',
+		'Cancellations, returns, and refunds',
+		'Personal information',
+		'Intellectual property',
+		'Acceptable use of the website',
+		'Limitation of liability',
+		'Severability',
+		'Governing law and dispute resolution',
+		'Questions about these terms'
+	]);
 </script>
 
 <svelte:head>
@@ -109,10 +151,14 @@
 </svelte:head>
 
 <section class="section">
-	<div class="container narrow">
+	<div class="container legal-layout">
+	<LegalToc {sections} />
+	<div class="legal-body">
 		<p class="eyebrow">Legal</p>
 		<h1>Terms &amp; Conditions</h1>
 		<p class="muted">Last updated: {lastUpdated}</p>
+
+		<LegalToc {sections} variant="inline" />
 
 		<p class="lede">
 			These terms apply when you use this website or place an order with
@@ -125,17 +171,18 @@
 			personal information.
 		</p>
 
-		<h2>Who you are contracting with</h2>
+		<h2 id="who-you-are-contracting-with">Who you are contracting with</h2>
 		<p>
 			Meryl Green Designs (&ldquo;we&rdquo;, &ldquo;us&rdquo;, &ldquo;our&rdquo;) is a South African studio that
-			designs and hand-makes screens to order. Full business
+			designs and hand-makes folding screens, which are made to
+			order, and also sells cushion covers. Full business
 			identification details (registered name, legal status, physical
 			address, registration number) required under section 43 of the
 			Electronic Communications and Transactions Act, 2002 (ECT Act)
 			are set out in the <a href="/returns">Refund &amp; Returns Policy</a>.
 		</p>
 
-		<h2>Acceptance of these terms</h2>
+		<h2 id="acceptance-of-these-terms">Acceptance of these terms</h2>
 		<p>
 			When you place an order you confirm, by ticking the
 			confirmation box at checkout, that you have read and accepted
@@ -150,7 +197,7 @@
 			or legal guardian, to place an order through this site.
 		</p>
 
-		<h2>Changes to these terms</h2>
+		<h2 id="changes-to-these-terms">Changes to these terms</h2>
 		<p>
 			We may update these terms from time to time to reflect changes in
 			how we operate, or to keep them aligned with South African law.
@@ -161,18 +208,19 @@
 			retroactively.
 		</p>
 
-		<h2>About the website</h2>
+		<h2 id="about-the-website">About the website</h2>
 		<p>
 			This site is operated as an online catalogue and order channel
 			for Meryl Green Designs. Product photographs, descriptions, and
 			dimensions are provided in good faith and are accurate to the
-			best of our knowledge. Because each screen is handcrafted, there
+			best of our knowledge. Because each piece is handcrafted, there
 			will be small natural variations between the photo and the piece
-			you receive (grain, finish, hand-printing) &mdash; this is part
-			of the made-to-order character and is not a defect.
+			you receive (on a folding screen, for example, in the wood grain,
+			finish, and hand-printing) &mdash; this is part of the
+			handcrafted character and is not a defect.
 		</p>
 
-		<h2>Pricing</h2>
+		<h2 id="pricing">Pricing</h2>
 		<p>
 			All prices on the site are in <strong>South African Rand
 			(ZAR)</strong>, inclusive of value-added tax where applicable, and
@@ -198,7 +246,7 @@
 			cancelled and refund any amount paid.
 		</p>
 
-		<h2>Placing an order</h2>
+		<h2 id="placing-an-order">Placing an order</h2>
 		<p>
 			When you add items to your cart and submit the order form, you
 			are making us an <strong>offer</strong> to buy those items at
@@ -219,28 +267,45 @@
 			decline, we'll refund any payment in full.
 		</p>
 
-		<h2>Made-to-order &mdash; lead times</h2>
+		<h2 id="made-to-order-lead-times">Made-to-order &mdash; lead times</h2>
 		<p>
-			Production on each screen begins after full payment has been
-			received and the order confirmation has been sent. <strong>Each
-			piece is produced within 3 weeks of payment</strong> unless
-			we contact you to agree a longer time. The 3-week window covers
-			making the Meranti frame, printing the canvas, and assembling the
-			finished screen; we'll keep you updated by email at the major
-			status changes (payment received, in production, shipped).
+			Folding screens and cushion covers are made to order.
+			Production on each piece begins after full payment has been
+			received and the order confirmation has been sent.
+			<strong>Each folding screen is produced within 3 weeks of
+			payment</strong> unless we contact you to agree a longer time.
+			The 3-week window covers making the Meranti frame, printing
+			the fabric, and assembling the finished screen.
+		</p>
+		<!-- TODO(legal): Meryl confirmed on 2026-09-27 that cushion covers are made to order (printed and made up after payment). Counsel to confirm the 3-week bound satisfies ECT s43(1)(l) disclosure. -->
+		<p>
+			Each cushion cover is printed and made up for you after you
+			order. <strong>Cushion covers are dispatched within 3 weeks of
+			payment</strong> unless we contact you to agree a longer
+			time. For every order, we'll keep you updated by email at
+			the major status changes (payment received, in production,
+			shipped).
 		</p>
 		<p>
-			Because each piece is specially produced for you after you
-			order, the 7-day cooling-off right under section 44 of the
+			Because each folding screen is specially produced for you after
+			you order, the 7-day cooling-off right under section 44 of the
 			Electronic Communications and Transactions Act, 2002 does
-			not apply &mdash; section 44(3)(c) of that Act exempts goods
-			made to the consumer's specifications. Your statutory rights
-			if something goes wrong with the order are unaffected &mdash;
-			see the <a href="/returns">Refund &amp; Returns Policy</a> for
-			the full set of remedies.
+			not apply to folding screens &mdash; section 42(2)(f) of that
+			Act exempts goods made to the consumer's specifications.
+			Your statutory rights if something goes wrong with the order
+			are unaffected &mdash; see the
+			<a href="/returns">Refund &amp; Returns Policy</a> for the full
+			set of remedies.
+		</p>
+		<!-- TODO(legal): the cooling-off exemption is claimed for folding screens only. Cushion covers are now confirmed made to order, but they are catalogue designs with no per-buyer choices — whether s42(2)(f) ("made to the consumer's specifications") covers them is the same open question /returns raises for screens. Until counsel answers, these terms must not claim the exemption for cushion covers. -->
+		<p>
+			This exemption is not claimed for cushion covers. Nothing in
+			these terms limits any right you have under section 44 of
+			that Act to cancel an order for a cushion cover within 7 days
+			of receiving it.
 		</p>
 
-		<h2>Payment</h2>
+		<h2 id="payment">Payment</h2>
 		<p>
 			Payment is handled by <a
 				href="https://www.payfast.co.za"
@@ -260,7 +325,7 @@
 			part of the transaction.
 		</p>
 
-		<h2>Delivery, risk, and ownership</h2>
+		<h2 id="delivery-risk-and-ownership">Delivery, risk, and ownership</h2>
 		<p>
 			We deliver to addresses within South Africa using a third-party
 			courier. The estimated delivery date we send you once the piece
@@ -282,19 +347,20 @@
 			<a href="/returns">Refund &amp; Returns Policy</a>.
 		</p>
 
-		<h2>Cancellations, returns, and refunds</h2>
+		<h2 id="cancellations-returns-and-refunds">Cancellations, returns, and refunds</h2>
 		<p>
 			These are covered in detail in the
 			<a href="/returns">Refund &amp; Returns Policy</a>, which forms
 			part of these terms. In short: change-of-mind cancellations are
-			not accepted because each piece is specially produced, but
-			defective items, wrong items, damaged-on-arrival packaging,
+			not accepted on folding screens because each screen is specially
+			produced (the Returns Policy explains how cancellation works for
+			cushion covers), but defective items, wrong items, damaged-on-arrival packaging,
 			lost-in-transit deliveries, and unreasonable delivery delays are
 			all covered by SA statutory remedies that the Returns Policy
 			describes.
 		</p>
 
-		<h2>Personal information</h2>
+		<h2 id="personal-information">Personal information</h2>
 		<p>
 			Information you give us when placing an order, tracking an
 			order, or contacting us is handled in line with the
@@ -305,29 +371,29 @@
 			(POPIA).
 		</p>
 
-		<h2>Intellectual property</h2>
+		<h2 id="intellectual-property">Intellectual property</h2>
 		<p>
 			All designs, illustrations, photographs, product names, and
 			written content on this site are owned by Meryl Green Designs
 			(or licensed to us by the photographers and contributors who
-			created them). When you buy a screen, you buy the physical
+			created them). When you buy a piece, you buy the physical
 			object &mdash; the underlying design remains ours. You may
 			not <strong>reproduce, copy, or manufacture</strong> pieces
 			based on our designs, or sell such reproductions, without
 			our prior written permission. This restriction does not
-			limit your right to resell the physical screen you bought
+			limit your right to resell the physical piece you bought
 			from us &mdash; that right is yours under the first-sale
 			doctrine in section 23 of the Copyright Act, 1978.
 		</p>
 		<p>
-			You may photograph the screen you bought and share those
+			You may photograph the piece you bought and share those
 			photos on social media for personal, non-commercial
 			purposes &mdash; we'd appreciate credit to Meryl Green
 			Designs where you can give it. This permission does not
 			extend to commercial use or merchandising of the photos.
 		</p>
 
-		<h2>Acceptable use of the website</h2>
+		<h2 id="acceptable-use-of-the-website">Acceptable use of the website</h2>
 		<p>
 			Please use the site only for lawful purposes. You agree not to:
 		</p>
@@ -347,7 +413,7 @@
 			rules have been broken.
 		</p>
 
-		<h2>Limitation of liability</h2>
+		<h2 id="limitation-of-liability">Limitation of liability</h2>
 		<p>
 			Nothing in these terms excludes or limits any right or remedy
 			you have under the Consumer Protection Act, 2008 or any other
@@ -379,13 +445,13 @@
 				cannot lawfully be limited or excluded by contract.</li>
 		</ul>
 
-		<h2>Severability</h2>
+		<h2 id="severability">Severability</h2>
 		<p>
 			If any part of these terms is found to be unenforceable by a
 			competent court, the rest of the terms remain in force.
 		</p>
 
-		<h2>Governing law and dispute resolution</h2>
+		<h2 id="governing-law-and-dispute-resolution">Governing law and dispute resolution</h2>
 		<p>
 			These terms, and any contract formed under them, are governed
 			by the laws of the Republic of South Africa.
@@ -422,20 +488,17 @@
 			section 28 of the Magistrates' Courts Act.
 		</p>
 
-		<h2>Questions about these terms</h2>
+		<h2 id="questions-about-these-terms">Questions about these terms</h2>
 		<p>
 			If anything in these terms is unclear, please email
 			<a href="mailto:zagreenwoman@gmail.com">zagreenwoman@gmail.com</a>
 			and we'll do our best to explain.
 		</p>
 	</div>
+	</div>
 </section>
 
 <style>
-	.narrow {
-		max-width: 720px;
-	}
-
 	.muted {
 		color: var(--color-ink-soft);
 		font-style: italic;
@@ -451,6 +514,8 @@
 
 	h2 {
 		font-size: 1.4rem;
+		/* Clears the sticky site header (~73px) on a TOC / #hash jump. */
+		scroll-margin-top: 6.5rem;
 		margin-top: var(--space-4);
 		margin-bottom: var(--space-2);
 		padding-top: var(--space-2);

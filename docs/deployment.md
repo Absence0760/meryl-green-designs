@@ -431,8 +431,8 @@ will skip anything that's already done.
 ### Step 5. First Sanity Studio deploy (interactive, one-time)
 
 ```bash
-cp studio/.env.example studio/.env
-# Fill in SANITY_STUDIO_PROJECT_ID with your project ID
+# studio/.env.development.local (gitignored): SANITY_STUDIO_PROJECT_ID=<your project id>
+# (sanity deploy itself runs in production mode; CI's deploy-studio.yml supplies the env there)
 pnpm studio exec sanity login     # opens browser for Sanity SSO
 pnpm studio deploy                # pick a subdomain when prompted, e.g. "merylgreendesigns"
 ```
@@ -519,6 +519,13 @@ token doesn't have the right scopes to be safely reused.
 
 3. Save the webhook. Test it by editing a product and clicking Publish — a
    **Deploy frontend** workflow run should start within a few seconds.
+
+   This rebuild is what keeps `sitemap.xml` current: the build fetches
+   product slugs from `PUBLIC_API_URL` (the production API), so the
+   `Build frontend` step needs the API reachable to include product
+   URLs. If it isn't, the step logs `[sitemap] product URLs omitted: …`
+   and still succeeds with the static pages only — re-run the workflow
+   once the API is back.
 
 ### Step 8. Trigger the first deploys
 
@@ -616,10 +623,10 @@ in `infra-secrets/bin/sops-init.sh` and its README — see `infra-secrets`'s
 | `../infra-secrets/meryl-green-designs/terraform.tfvars.sops` | yes | Committed in the **private** repo. Contains the AWS + Resend + Sanity secrets Terraform needs. |
 | `infra/terraform.tfvars` | — | Plaintext, gitignored. Created by `bin/setup.sh` as a scratch file (decrypted from the private repo), shredded on exit. |
 | `infra/terraform.tfvars.example` | no | Template with empty placeholder values — safe to commit (a copy also lives in `infra-secrets/meryl-green-designs/`). |
-| `../infra-secrets/meryl-green-designs/.env.sops` | yes | Committed in the **private** repo. Local-dev secrets for `tsx` / `pnpm dev`. |
-| `backend/.env` | — | Plaintext, gitignored. Created by the operator via `sops -d ../infra-secrets/meryl-green-designs/.env.sops > backend/.env`. |
-| `backend/.env.example` | no | Template — safe to commit. |
-| `frontend/.env`, `studio/.env` | no | Only contain `PUBLIC_*` vars / project IDs — non-secret by SvelteKit convention. |
+| `../infra-secrets/meryl-green-designs/.env.sops` | yes | Committed in the **private** repo. Production-parity dev secrets for maintainers (not needed for everyday local dev). |
+| `backend/.env.development.local` | — | Plaintext, gitignored. Created by a maintainer via `sops -d ../infra-secrets/meryl-green-designs/.env.sops > backend/.env.development.local`; overrides the committed defaults key by key. |
+| `backend/.env.development`, `frontend/.env.development`, `studio/.env.development` | no | **Committed** non-sensitive local-dev defaults (localhost URLs, `CONTENT_BACKEND=local`, `EMAIL_BACKEND=file`, PayFast public sandbox, `local-dev-admin-token`). Loaded automatically in dev only; guarded by `backend/src/__tests__/env-development.test.ts`. Never read by production builds or the Lambda. |
+| `frontend/.env.development.local`, `studio/.env.development.local` | no | Gitignored personal overrides (e.g. a real Sanity project ID) — non-secret. |
 
 ### First-time setup
 
@@ -650,7 +657,7 @@ your existing credentials, clone both repos, and `sops
 |---|---|
 | Edit a secret | `sops ../infra-secrets/meryl-green-designs/terraform.tfvars.sops` — sops calls KMS, opens plaintext in `$EDITOR`, re-encrypts on save |
 | Rotate a value | Same as "edit" — change the value, save. Git diff (in the private repo) shows the whole encrypted blob changed; `git log` tells you when. |
-| Read a secret into dev env | `sops -d ../infra-secrets/meryl-green-designs/.env.sops > backend/.env` |
+| Read a secret into dev env | `sops -d ../infra-secrets/meryl-green-designs/.env.sops > backend/.env.development.local` (maintainers only; add `CONTENT_BACKEND=sanity` if absent) |
 | Run Terraform locally | `./bin/setup.sh` — it auto-decrypts the private repo's `terraform.tfvars.sops` into a scratch plaintext file, runs Terraform, and shreds the plaintext on exit |
 | Add a collaborator | Grant their IAM identity `kms:Decrypt` (and optionally `kms:Encrypt`) on the KMS key — either via the key policy in the AWS console or by attaching an IAM policy to their user/role. **No changes to `.sops.yaml` and no re-encryption required.** IAM is the source of truth for access. |
 | Remove a collaborator | Revoke their `kms:Decrypt` permission in the key policy or their IAM policy. Takes effect immediately on the next decrypt attempt. |
@@ -851,9 +858,16 @@ environment live in
 
 ### Local development (not production)
 
-- `frontend/.env` — `PUBLIC_API_URL`, `PUBLIC_SANITY_PROJECT_ID`, `PUBLIC_SANITY_DATASET`
-- `backend/.env` — same as Lambda runtime env above, plus `PORT=3001`
-- `studio/.env` — `SANITY_STUDIO_PROJECT_ID`, `SANITY_STUDIO_DATASET`
+Committed, auto-loaded `.env.development` per workspace (non-sensitive
+defaults; override in a gitignored `.env.development.local`):
+
+- `frontend/.env.development` — `PUBLIC_API_URL`, `PUBLIC_SITE_URL`, `PUBLIC_SANITY_PROJECT_ID` (blank), `PUBLIC_SANITY_DATASET`
+- `backend/.env.development` — same keys as the Lambda runtime env above (secrets blank), plus the dev-only `CONTENT_BACKEND=local`, `EMAIL_BACKEND=file`, `DYNAMODB_ENDPOINT`, `PORT=3001`, PayFast public sandbox creds and `ADMIN_API_TOKEN=local-dev-admin-token`. The Lambda refuses to start if `CONTENT_BACKEND=local`, `EMAIL_BACKEND=file` or that token ever reach its env (`backend/src/runtime-guard.ts`).
+- `studio/.env.development` — `SANITY_STUDIO_PROJECT_ID` (blank — the Studio is optional locally), `SANITY_STUDIO_DATASET`, `SANITY_STUDIO_API_URL`, `SANITY_STUDIO_ADMIN_TOKEN`
+
+Production builds (`vite build`, `sanity build`/`deploy`) run in production
+mode and never read `.env.development`; their values come from the deploy
+workflows.
 
 See [`run-locally.md`](./run-locally.md) for local dev setup.
 
@@ -977,7 +991,7 @@ incident.
 | PR opened or push to `main`/`dev` | Nothing is deployed; CI runs `pnpm check` + `pnpm test` | `ci.yml` |
 | GitHub release is published | Frontend + backend + studio workflows each run a `check` job; only the workspaces whose files changed since the previous release actually deploy | `release: types: [published]` on each deploy workflow, with an early-exit check job |
 | You click "Run workflow" in the Actions tab | That single workflow re-runs against the current `main` | `workflow_dispatch` |
-| Meryl publishes a product or gallery photo in Studio | Frontend rebuild (no release required — content changes shouldn't need a version tag) | Sanity webhook → `repository_dispatch: sanity-publish` → `deploy-frontend.yml` |
+| Meryl publishes a product or gallery photo in Studio | Frontend rebuild (no release required — content changes shouldn't need a version tag). Product pages themselves are live without it; the rebuild is what adds/removes the product in `sitemap.xml` | Sanity webhook → `repository_dispatch: sanity-publish` → `deploy-frontend.yml` |
 | Meryl changes an order's status in Studio | Customer status email sent (payment received / shipped / delivered / cancelled) | Sanity webhook → backend `/webhooks/sanity-order` route → Resend |
 | You edit `infra/terraform.tfvars` (e.g. rotating `RESEND_API_KEY`) | Lambda env vars update in place | `cd infra && terraform apply` |
 
@@ -1330,8 +1344,17 @@ is separate from AWS).
   a Sanity-specific GROQ function; it's not a typo.
 
 **Lambda cold start is slow on first request after idle**
-: Expected. Node 22 Lambda cold starts are ~300–800 ms for our 787 KB
-  bundle at 512 MB (the `memory_size` set in `infra/lambda.tf`). Subsequent
+: Expected. Node 22 Lambda cold starts are ~300–800 ms for our ~2.1 MB
+  `dist/lambda.mjs` bundle (unminified; ~1.1 MB of it is the bundled AWS
+  SDK v3 + Smithy, ~370 KB `rxjs`, ~200 KB `@sanity/client`;
+  `dist/auto-cancel.mjs` is ~0.65 MB, no AWS SDK) at 512 MB (the `memory_size` set in `infra/lambda.tf`).
+  `@sanity/client` v8 → `get-it` v9 statically imports npm `undici` (~1 MB)
+  for proxy support; `backend/scripts/build.mjs` aliases it to
+  `backend/src/shims/undici.ts`, which forwards to Node 22's built-in
+  `fetch` (itself undici). Consequence: `HTTP(S)_PROXY` env vars and an
+  explicit Sanity `proxy` option are not supported in the Lambda bundles.
+  `backend/src/__tests__/bundle.test.ts` enforces the contents and a size
+  budget (2.5 MB / 0.8 MB). Subsequent
   requests are ~5–20 ms. The memory bump was a deliberate trade: AWS scales
   CPU linearly with memory up to ~1792 MB at the same per-ms price, so 512 MB
   roughly halves cold-start time vs. the 128 MB default without meaningfully

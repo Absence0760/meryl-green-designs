@@ -130,9 +130,12 @@ jobs:
       - name: Install Playwright (chromium only)
         run: pnpm --filter @meryl-green-designs/playwright exec playwright install --with-deps chromium
 
-      - name: Seed frontend .env so the dev server boots with the test API URL
+      - name: Seed frontend env so the dev server boots with the test API URL
+        # .env.development.local (not .env): Vite dev mode ranks it above the
+        # committed frontend/.env.development, whose blank Sanity ID would
+        # otherwise win over a plain .env.
         run: |
-          cat > frontend/.env <<EOF
+          cat > frontend/.env.development.local <<EOF
           PUBLIC_API_URL=$API_URL
           PUBLIC_SITE_URL=$SITE_URL
           PUBLIC_SANITY_PROJECT_ID=$SANITY_PROJECT_ID

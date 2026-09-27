@@ -4,6 +4,7 @@ import { ownerNotification } from '../email-templates.js';
 import { getProductsByIds } from '../sanity.js';
 import { createOrder } from '../orders-store.js';
 import { buildPaymentFormData, type PayFastConfig } from '../payfast.js';
+import { isLocalContent } from '../content-local.js';
 import { createRateLimiter } from '../rate-limit.js';
 
 type CartItem = { productId: string; quantity: number };
@@ -177,6 +178,13 @@ export function ordersRouter() {
 			});
 		} catch (err) {
 			console.error('Failed to create Sanity order document', err);
+			if (isLocalContent()) {
+				// Most common local-dev cause: the PII half needs DynamoDB and
+				// LocalStack isn't running.
+				console.error(
+					'Local dev: orders store PII in DynamoDB — is LocalStack up? Run `pnpm dev:db:up` (see docs/run-locally.md).'
+				);
+			}
 			return c.json(
 				{ error: 'Sorry, something went wrong saving your order. Please try again.' },
 				500

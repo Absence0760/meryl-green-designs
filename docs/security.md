@@ -42,7 +42,7 @@ direct financial loss.
 - Banking details are **not** on the shop page.
 - Banking details are **not** in any automated email (neither owner
   notification nor customer confirmation).
-- Banking details are **not** in `backend/.env.example`, `infra/variables.tf`,
+- Banking details are **not** in `backend/.env.development`, `infra/variables.tf`,
   or anywhere else in git.
 - Banking details are sent only as a **direct manual reply** from Meryl to
   the order-confirmation email thread, after she has read the order.
@@ -323,7 +323,11 @@ ends up encrypted with the wrong key.
   rotates the underlying cryptographic material annually while keeping
   the same alias — encrypted files keep working without re-encryption.
 - **Plaintext secrets are gitignored, and so is ciphertext.** `.gitignore`
-  covers `.env`, `.env.*` (exception only for `.env.example`), and `*.tfvars`
+  covers `.env`, `.env.*` (exceptions only for `.env.example` and the
+  committed, non-sensitive `.env.development` local-dev defaults — which
+  `backend/src/__tests__/env-development.test.ts` checks for secret-shaped
+  values, and which the Lambda refuses to run with via
+  `backend/src/runtime-guard.ts`), and `*.tfvars`
   (except `.tfvars.example`). It also blocks `*.sops` outright so an encrypted
   blob can't be re-introduced into this public repo by accident. A stray
   `git add infra/terraform.tfvars` is blocked before it can stage.
@@ -342,7 +346,13 @@ ends up encrypted with the wrong key.
   gitignored — see `.gitignore`) and ships a project-wide deny-list of
   destructive commands: AWS resource deletion (S3, CloudFront, Lambda,
   IAM, KMS, Route 53, ACM, DynamoDB, CloudWatch Logs, Budgets), force
-  pushes, hard resets, `terraform apply/destroy`, `gh secret set`,
+  pushes / `--mirror` / `--all` / remote-branch deletes / any push
+  naming or targeting `main` (including `<branch>:main`, `:main`, and
+  flags placed before the remote). Ordinary feature-branch pushes are
+  allowed. The deny-list is prefix/glob matching, so it is
+  defence-in-depth only — `main` is sealed by GitHub branch protection,
+  which is the real gate,
+  hard resets, `terraform apply/destroy`, `gh secret set`,
   `gh release create`, `gh workflow run`, and the studio deploy
   variants. Operators using Claude Code in the project inherit the
   deny-list automatically.
@@ -413,7 +423,14 @@ client, Resend SDK, esbuild, vitest, etc.) ships a CVE. We pick it up via
 - **Scheduled `pnpm audit`** (`.github/workflows/audit.yml`) runs every
   Monday at 06:00 UTC and on manual dispatch, scanning all workspaces at
   `--audit-level=moderate`. Findings open a `dependency-audit`-labelled
-  GitHub issue; the next clean run auto-closes it.
+  GitHub issue; the next clean run auto-closes every open one.
+- **Audit ignore list** (`pnpm.auditConfig.ignoreGhsas` in the root
+  `package.json`) holds known false positives only. Currently
+  `GHSA-7mvr-c777-76hp`: pnpm mistakes the `playwright/` workspace
+  (version 0.0.1) for the npm `playwright` package; the real dependency is
+  patched. `backend/src/__tests__/audit-config.test.ts` fails if an ignore
+  has no documented reason or the real package drops below the patched
+  version — add both there when ignoring anything new.
 - Dependabot is configured (grouped weekly updates across the pnpm
   workspace, the GitHub Actions workflows and the Terraform providers) —
   see the roadmap.

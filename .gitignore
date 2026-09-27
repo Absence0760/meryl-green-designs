@@ -27,17 +27,26 @@ studio/dist/
 # ---------------------------------------------------------------------------
 # Environment & secrets
 # ---------------------------------------------------------------------------
-# Plaintext env files are always secret and never committed. The ENCRYPTED
-# secrets (*.sops) no longer live in this repo: they were relocated to the
-# sibling PRIVATE repo Absence0760/infra-secrets (under meryl-green-designs/) on
-# 2026-06-24, because this repo is public. Keep it that way — the rules below
-# also block any *.sops blob from being re-committed here by accident.
+# Plaintext env files are secret and never committed — with ONE exception:
+# each workspace's `.env.development` holds non-sensitive local-dev defaults
+# (localhost URLs, dev-only flags, PayFast's public sandbox merchant), is
+# COMMITTED, and is loaded automatically so a fresh clone runs with no setup.
+# Machine-local real values go in `.env.development.local`, which stays
+# ignored (the negation below matches the exact name only). Guarded by
+# backend/src/__tests__/env-development.test.ts.
+#
+# The ENCRYPTED secrets (*.sops) no longer live in this repo: they were
+# relocated to the sibling PRIVATE repo Absence0760/infra-secrets (under
+# meryl-green-designs/) on 2026-06-24, because this repo is public. Keep it
+# that way — the rules below also block any *.sops blob from being
+# re-committed here by accident.
 #
 # See docs/deployment.md § Secrets management for the workflow.
 .env
 .env.*
 .envrc
 !.env.example
+!.env.development
 
 # Never re-introduce encrypted secret blobs into this public repo.
 *.sops
@@ -52,6 +61,9 @@ studio/dist/
 # Local email capture (backend/src/email.ts file backend, dev-only)
 # ---------------------------------------------------------------------------
 .dev-emails/
+
+# Local content preview (backend/src/content-local.ts, CONTENT_BACKEND=local)
+.dev-content/
 
 # ---------------------------------------------------------------------------
 # Logs
@@ -107,3 +119,6 @@ Desktop.ini
 !.claude/settings.json
 !.claude/agents/
 !.claude/commands/
+
+# Raw client photos staged for local editing — never commit
+.tmp-images/

@@ -49,7 +49,12 @@
 	--color-ink-soft: #5a604f;
 	--color-leaf: #4a6b3a;
 	--color-leaf-dark: #2f4a25;
-	--color-bark: #8a6a44;
+	/* Warm brown accent. Was #8a6a44 — 4.52:1 on flat cream but only
+	   ~4.1:1 on the darkest pixels of the linen texture, which fails
+	   WCAG AA for the small uppercase eyebrows / links / prices that use
+	   it. #7d603d is the smallest shift that clears 4.5:1 on the texture
+	   (~4.8:1; 5.3:1 on flat cream, 5.9:1 on white). */
+	--color-bark: #7d603d;
 	--color-rule: #d8d3c2;
 
 	--font-display: 'Fraunces', Georgia, 'Cormorant Garamond', 'Times New Roman', serif;
@@ -66,7 +71,10 @@
 
 	font-family: var(--font-body);
 	color: var(--color-ink);
-	background: var(--color-bg);
+	/* Faint linen weave over the cream — a nod to the cotton canvas the
+	   prints are made on. 8 KB lossless tile (alpha quantised to 0/3/6/9/11
+	   of 255 — 14 KB before, indistinguishable at this opacity), ~4% opacity. */
+	background: var(--color-bg) url('/graphics/canvas-texture.webp') repeat;
 	line-height: 1.6;
 	font-optical-sizing: auto;
 }
@@ -116,10 +124,78 @@ a:hover {
 	border-bottom-color: var(--color-bark);
 }
 
+/* Keyboard focus ring. One consistent, clearly visible ring for every
+   interactive element (browser defaults vary and were near-invisible on
+   the cream + texture). Dark surfaces (hero, footer, lightbox) set
+   --focus-ring to cream. Component rules that already draw their own
+   :focus-visible outline keep it — this only fills the gaps. */
+:root {
+	--focus-ring: var(--color-leaf-dark);
+}
+
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+	outline: 2px solid var(--focus-ring);
+	outline-offset: 3px;
+}
+
+/* Hidden visually, still read by screen readers. */
+.visually-hidden {
+	position: absolute !important;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	white-space: nowrap;
+	border: 0;
+}
+
+/* Skip link (first element in +layout.svelte). Off-screen until focused. */
+.skip-link {
+	position: absolute;
+	left: var(--space-2);
+	top: -100px;
+	z-index: 200;
+	padding: 0.6rem 1rem;
+	background: var(--color-leaf-dark);
+	color: #f6f4ee;
+	font-size: 0.9rem;
+	border-bottom: none;
+}
+
+.skip-link:focus {
+	top: var(--space-1);
+	color: #f6f4ee;
+	outline-color: var(--color-leaf-dark);
+}
+
 .container {
 	max-width: var(--max-width);
 	margin: 0 auto;
 	padding: 0 var(--space-3);
+}
+
+/* Legal pages (/terms, /returns, /privacy): the text column, plus a
+   sticky "On this page" column (LegalToc.svelte) beside it from 1024px.
+   Below that the TOC is an inline <details> inside .legal-body. */
+.legal-body {
+	max-width: 720px;
+	min-width: 0;
+	margin: 0 auto;
+}
+
+@media (min-width: 1024px) {
+	.legal-layout {
+		display: grid;
+		grid-template-columns: 14rem minmax(0, 720px);
+		justify-content: center;
+		gap: var(--space-5);
+	}
+
+	.legal-layout > .legal-body {
+		margin: 0;
+	}
 }
 
 @media (max-width: 520px) {
@@ -147,4 +223,28 @@ a:hover {
 	text-transform: uppercase;
 	color: var(--color-bark);
 	margin-bottom: var(--space-2);
+}
+
+/* ---------------------------------------------------------------------
+   Scroll reveal (src/lib/reveal.ts). The `reveal` class is only added by
+   JS at mount, so without JS nothing is hidden.
+   --------------------------------------------------------------------- */
+.reveal {
+	opacity: 0;
+	transform: translateY(18px);
+	transition:
+		opacity 700ms ease,
+		transform 700ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.reveal.is-visible {
+	opacity: 1;
+	transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.reveal {
+		transform: none;
+		transition: opacity 300ms ease;
+	}
 }

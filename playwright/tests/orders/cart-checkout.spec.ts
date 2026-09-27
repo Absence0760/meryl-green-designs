@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { getOrderPii } from '../../helpers/dynamo-orders.ts';
 import { getSanityOrder } from '../../helpers/seed-sanity.ts';
 import { clearCapturedEmails, waitForEmail } from '../../helpers/read-email.ts';
+import { ADD_BUTTON } from '../../helpers/add-button.ts';
 
 // End-to-end checkout: add a product, fill the form, submit, intercept
 // PayFast redirect. Verifies the full dual-write: DynamoDB PII row +
@@ -15,6 +16,18 @@ import { clearCapturedEmails, waitForEmail } from '../../helpers/read-email.ts';
 test.describe('cart + checkout', () => {
 	test.beforeEach(async () => {
 		await clearCapturedEmails();
+	});
+
+	// Visual confirmation where the visitor clicked: the button reads
+	// "✓ Added" for ~2s, then goes back to "Add to order"; the header
+	// badge shows the new count.
+	test('"Add to order" confirms the add, then resets', async ({ page }) => {
+		await page.goto('/shop/test-screen-small');
+		const button = page.getByRole('button', { name: ADD_BUTTON });
+		await button.click();
+		await expect(button).toHaveAccessibleName('Added');
+		await expect(page.getByRole('button', { name: 'Open cart, 1 item' })).toBeVisible();
+		await expect(button).toHaveAccessibleName('Add to order', { timeout: 5_000 });
 	});
 
 	test('add to cart, check out, dual-write + email + signed form', async ({ page }) => {
@@ -55,8 +68,8 @@ test.describe('cart + checkout', () => {
 		await expect(page.getByText('Test Screen Small')).toBeVisible();
 
 		// Add the small + the large product
-		await page.getByRole('button', { name: /add to order/i }).nth(0).click();
-		await page.getByRole('button', { name: /add to order/i }).nth(1).click();
+		await page.getByRole('button', { name: ADD_BUTTON }).nth(0).click();
+		await page.getByRole('button', { name: ADD_BUTTON }).nth(1).click();
 
 		// Open the cart panel — 'Add to order' adds the item but doesn't
 		// auto-open the slide-out.
@@ -124,7 +137,7 @@ test.describe('cart + checkout', () => {
 	test('cart quantity controls update the total live', async ({ page }) => {
 		await page.goto('/shop');
 		await expect(page.getByText('Test Screen Small')).toBeVisible();
-		await page.getByRole('button', { name: /add to order/i }).first().click();
+		await page.getByRole('button', { name: ADD_BUTTON }).first().click();
 		await page.getByRole('button', { name: 'Open cart' }).click();
 		await expect(page.getByText(/total/i)).toBeVisible();
 		await page.getByRole('button', { name: /increase quantity/i }).click();
@@ -152,7 +165,7 @@ test.describe('cart + checkout', () => {
 
 	test('terms checkbox gates submit', async ({ page }) => {
 		await page.goto('/shop');
-		await page.getByRole('button', { name: /add to order/i }).first().click();
+		await page.getByRole('button', { name: ADD_BUTTON }).first().click();
 		await page.getByRole('button', { name: /open cart/i }).click();
 		await page.fill('#cart-name', 'E2E Customer');
 		await page.fill('#cart-email', 'customer@e2e.local');
@@ -164,7 +177,7 @@ test.describe('cart + checkout', () => {
 
 	test('validation error auto-clears once the form becomes valid', async ({ page }) => {
 		await page.goto('/shop');
-		await page.getByRole('button', { name: /add to order/i }).first().click();
+		await page.getByRole('button', { name: ADD_BUTTON }).first().click();
 		await page.getByRole('button', { name: /open cart/i }).click();
 		// Tick terms first so the Pay button is enabled and clicking it can
 		// reach the inner field-validation branch in handleCheckout. Without
@@ -185,7 +198,7 @@ test.describe('cart + checkout', () => {
 
 	test('emptying the cart resets terms acceptance and clears stale errors', async ({ page }) => {
 		await page.goto('/shop');
-		await page.getByRole('button', { name: /add to order/i }).first().click();
+		await page.getByRole('button', { name: ADD_BUTTON }).first().click();
 		await page.getByRole('button', { name: /open cart/i }).click();
 		// Build up state that ought to be reset: ticked terms + a stale
 		// validation error from a failed submit.
@@ -198,7 +211,7 @@ test.describe('cart + checkout', () => {
 		await expect(page.getByText(/your cart is empty/i)).toBeVisible();
 		// Close the panel, add a new item, reopen the cart.
 		await page.getByRole('button', { name: /close cart/i }).click();
-		await page.getByRole('button', { name: /add to order/i }).first().click();
+		await page.getByRole('button', { name: ADD_BUTTON }).first().click();
 		await page.getByRole('button', { name: /open cart/i }).click();
 		// CPA s49 hygiene: the new "transaction" starts with no accepted
 		// terms and no leftover error from the previous one.
@@ -213,7 +226,7 @@ test.describe('cart + checkout', () => {
 	// (the test above covers handleRemove only).
 	test('decrementing the last item to zero also resets terms + errors', async ({ page }) => {
 		await page.goto('/shop');
-		await page.getByRole('button', { name: /add to order/i }).first().click();
+		await page.getByRole('button', { name: ADD_BUTTON }).first().click();
 		await page.getByRole('button', { name: /open cart/i }).click();
 		await page.check('#cart-terms');
 		await expect(page.locator('#cart-terms')).toBeChecked();
@@ -223,7 +236,7 @@ test.describe('cart + checkout', () => {
 		await page.getByRole('button', { name: /decrease quantity/i }).click();
 		await expect(page.getByText(/your cart is empty/i)).toBeVisible();
 		await page.getByRole('button', { name: /close cart/i }).click();
-		await page.getByRole('button', { name: /add to order/i }).first().click();
+		await page.getByRole('button', { name: ADD_BUTTON }).first().click();
 		await page.getByRole('button', { name: /open cart/i }).click();
 		await expect(page.locator('#cart-terms')).not.toBeChecked();
 		await expect(page.locator('.form-error')).toHaveCount(0);

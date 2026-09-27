@@ -2,22 +2,62 @@
 	import { onMount } from 'svelte';
 	import { base } from '$app/paths';
 	import { PUBLIC_API_URL } from '$env/static/public';
-	import { imageUrl, type GalleryPhoto, type Testimonial } from '$lib/sanity';
+	import { imageUrl, type GalleryPhoto, type Product, type Testimonial } from '$lib/sanity';
+	import { pickFeaturedProducts } from '$lib/productGroups';
+	import {
+		HERO_LANDSCAPE_MEDIA,
+		HERO_PORTRAIT_MEDIA,
+		HERO_PORTRAIT_SIZES,
+		HERO_SIZES,
+		heroFallbackSrc,
+		heroPortraitSrcset,
+		heroSrcset
+	} from '$lib/heroImage';
 	import Button from '$lib/Button.svelte';
+	import ProductCard from '$lib/ProductCard.svelte';
+	import SectionDivider from '$lib/SectionDivider.svelte';
+	import { reveal } from '$lib/reveal';
+	import { ORDERING_STEPS } from '$lib/orderingSteps';
 
-	const heroImage = `${base}/two_trees.JPG`;
+	const heroFallback = heroFallbackSrc(base);
+	const heroWebpSrcset = heroSrcset(base);
+	const heroPortraitWebpSrcset = heroPortraitSrcset(base);
 	const apiUrl = PUBLIC_API_URL;
 
 	let featured: GalleryPhoto[] = [];
 	let testimonials: Testimonial[] = [];
+	let featuredProducts: Product[] = [];
+
+
+	// Hero "settle" (6% zoom easing to rest) starts only after the page has
+	// painted. As a CSS animation that ran from first paint, Chrome held
+	// back first-contentful-paint until it was nearly over (Lighthouse
+	// mobile: observed FCP 8.9s, Speed Index 13s). A transition kicked off
+	// after mount looks identical but lets the first frame count.
+	let heroSettled = false;
 
 	onMount(async () => {
-		// Fetch gallery + testimonials in parallel. Both are silent no-ops on
-		// failure — the home page is already complete without them.
-		const [galleryRes, testimonialsRes] = await Promise.allSettled([
+		requestAnimationFrame(() => (heroSettled = true));
+		// Collapse the poem on phones only once JS runs, so it's never
+		// stuck half-hidden without the toggle working.
+		poemCollapsible = true;
+
+		// Fetch gallery + testimonials + products in parallel. All are silent
+		// no-ops on failure — the home page is already complete without them.
+		const [galleryRes, testimonialsRes, productsRes] = await Promise.allSettled([
 			fetch(`${apiUrl}/gallery`),
-			fetch(`${apiUrl}/testimonials`)
+			fetch(`${apiUrl}/testimonials`),
+			fetch(`${apiUrl}/products`)
 		]);
+
+		if (productsRes.status === 'fulfilled' && productsRes.value.ok) {
+			try {
+				const body = (await productsRes.value.json()) as { products?: Product[] };
+				featuredProducts = pickFeaturedProducts(body.products ?? [], 4);
+			} catch {
+				/* ignore */
+			}
+		}
 
 		if (galleryRes.status === 'fulfilled' && galleryRes.value.ok) {
 			try {
@@ -46,8 +86,12 @@
 		'It all started more than 10 years ago in a very special place in the African bush, where I fell in love with the perfection, simplicity and vibrancy of the natural world. Using my very simple but exceptional camera, I began a journey capturing the \u2018Big 5\u2019, antelope, smaller creatures, beautiful birds, plant life and unforgettable \u2018bush sunsets\u2019.'
 	];
 
+	// Phones show the first stanza with a "Read the full poem" toggle;
+	// wider screens always show it all (the toggle is hidden by CSS).
+	let poemCollapsible = false;
+	let poemExpanded = false;
+
 	const poemTitle = 'Africa';
-	const poemAuthor = 'Author unknown';
 	// Verses stored as an array so each one can be rendered as its own
 	// stanza with blank lines between. Lines inside a stanza are joined
 	// with newlines and rendered via `white-space: pre-line`.
@@ -86,13 +130,36 @@
 	];
 </script>
 
-<section class="hero" style={heroImage ? `background-image: url(${heroImage})` : ''}>
+<section class="hero">
+	<!-- Decorative (alt=""): the H1 and tagline carry the meaning. Phones
+	     get a 3:4 centre crop (480/720/936w), everything else the landscape
+	     WebP at 800/1280/1920w; JPG fallback for browsers without WebP.
+	     See src/lib/heroImage.ts. -->
+	<picture>
+		<source
+			type="image/webp"
+			media={HERO_PORTRAIT_MEDIA}
+			srcset={heroPortraitWebpSrcset}
+			sizes={HERO_PORTRAIT_SIZES}
+		/>
+		<source type="image/webp" srcset={heroWebpSrcset} sizes={HERO_SIZES} />
+		<img
+			class="hero-image"
+			class:is-settled={heroSettled}
+			src={heroFallback}
+			alt=""
+			width="1920"
+			height="1246"
+			fetchpriority="high"
+			decoding="async"
+		/>
+	</picture>
 	<div class="hero-overlay">
 		<div class="container">
 			<h1>Inspired by Nature</h1>
 			<p class="tagline">
-				Photographs of the African bush — printed on cotton canvas,
-				framed in Meranti hardwood.
+				Photographs of the African bush — made into folding screens
+				and cushion covers for your home.
 			</p>
 			<div class="hero-cta">
 				<Button href="/shop" variant="ghost-primary">Shop the collection</Button>
@@ -106,30 +173,101 @@
 	<title>Meryl Green Designs — Inspired by Nature</title>
 	<meta
 		name="description"
-		content="Handcrafted screens and designs from Meryl Green, inspired by the light, colour and stillness of the African bush."
+		content="Handcrafted folding screens and cushion covers from Meryl Green, inspired by the light, colour and stillness of the African bush."
 	/>
 	<meta property="og:title" content="Meryl Green Designs — Inspired by Nature" />
 	<meta
 		property="og:description"
-		content="Handcrafted screens and designs from Meryl Green, inspired by the light, colour and stillness of the African bush."
+		content="Handcrafted folding screens and cushion covers from Meryl Green, inspired by the light, colour and stillness of the African bush."
 	/>
-	<link rel="preload" as="image" href={heroImage} />
+	<!-- Mirror the two <source>s above (media-split so exactly one
+	     matches) so the browser preloads the candidate it will render. -->
+	<link
+		rel="preload"
+		as="image"
+		type="image/webp"
+		media={HERO_PORTRAIT_MEDIA}
+		imagesrcset={heroPortraitWebpSrcset}
+		imagesizes={HERO_PORTRAIT_SIZES}
+		fetchpriority="high"
+	/>
+	<link
+		rel="preload"
+		as="image"
+		type="image/webp"
+		media={HERO_LANDSCAPE_MEDIA}
+		imagesrcset={heroWebpSrcset}
+		imagesizes={HERO_SIZES}
+		fetchpriority="high"
+	/>
 </svelte:head>
 
 <section class="section">
-	<div class="container narrow">
-		<p class="eyebrow">Our story</p>
-		<h2>How it all began</h2>
-		{#each storyParagraphs as paragraph}
-			<p class="story-paragraph">{paragraph}</p>
-		{/each}
+	<div class="container art-layout art-layout--art-right" use:reveal>
+		<div class="art-layout__text">
+			<p class="eyebrow">Our story</p>
+			<h2>How it all began</h2>
+			{#each storyParagraphs as paragraph}
+				<p class="story-paragraph">{paragraph}</p>
+			{/each}
+		</div>
+		<!-- Decorative illustration (golden hour); pairs with the poem's moonrise. -->
+		<div class="art-layout__art" aria-hidden="true">
+			<img
+				src="{base}/graphics/story-golden-hour.svg"
+				alt=""
+				width="400"
+				height="500"
+				loading="lazy"
+			/>
+		</div>
+	</div>
+</section>
+
+<SectionDivider />
+
+{#if featuredProducts.length > 0}
+	<section class="section featured-pieces" aria-labelledby="featured-pieces-title">
+		<div class="container" use:reveal>
+			<div class="featured-pieces__header">
+				<div>
+					<p class="eyebrow">From the shop</p>
+					<h2 id="featured-pieces-title">Featured pieces</h2>
+				</div>
+				<a class="featured-pieces__link" href="/shop">Visit the shop →</a>
+			</div>
+			<div class="featured-pieces__grid">
+				{#each featuredProducts as product (product._id)}
+					<ProductCard {product} imageWidth={480} hoverReveal={false} />
+				{/each}
+			</div>
+		</div>
+	</section>
+{/if}
+
+<section class="section ordering" aria-labelledby="ordering-title">
+	<div class="container" use:reveal>
+		<p class="eyebrow">Ordering</p>
+		<h2 id="ordering-title">How it works</h2>
+		<ol class="ordering__steps">
+			{#each ORDERING_STEPS as step, i (step.title)}
+				<li class="ordering__step">
+					<span class="ordering__num" aria-hidden="true">{i + 1}</span>
+					<h3>{step.title}</h3>
+					<p>
+						{step.body}{#if step.link}
+							{' '}<a href={step.link.href}>{step.link.label}</a>.{/if}
+					</p>
+				</li>
+			{/each}
+		</ol>
 	</div>
 </section>
 
 {#if testimonials.length > 0}
 	<section class="section testimonials" aria-label="What customers are saying">
 		<div class="container">
-			<p class="eyebrow">In their words</p>
+			<p class="eyebrow" use:reveal>In their words</p>
 			<div class="testimonials__grid">
 				{#each testimonials as t (t._id)}
 					<blockquote class="testimonial">
@@ -162,55 +300,99 @@
 	</section>
 {/if}
 
-<section class="section section--alt">
-	<div class="container narrow">
-		<p class="eyebrow">A Poem</p>
-		<h2 class="poem-title">{poemTitle}</h2>
-		<blockquote class="poem">
-			{#each poemStanzas as stanza, i}
-				<p class="poem-stanza">{stanza.join('\n')}</p>
-				{#if i < poemStanzas.length - 1}
-					<span class="poem-break" aria-hidden="true"></span>
-				{/if}
-			{/each}
-		</blockquote>
-		<cite class="poem-author">— {poemAuthor}</cite>
-	</div>
-</section>
-
-<section class="section">
-	<div class="container">
-		<div class="cta-grid">
-			<a class="cta-card" href="/gallery">
-				<h3>Gallery</h3>
-				<p>Browse photographs of screens and design options.</p>
-				<span class="cta-link">View gallery →</span>
-			</a>
-			<a class="cta-card" href="/shop">
-				<h3>Shop</h3>
-				<p>Finished products available for purchase.</p>
-				<span class="cta-link">Visit shop →</span>
-			</a>
+<section class="section section--alt" aria-labelledby="poem-title">
+	<div class="container art-layout" use:reveal>
+		<!-- Decorative illustration (moonrise); pairs with the story's golden hour. -->
+		<div class="art-layout__art" aria-hidden="true">
+			<img
+				src="{base}/graphics/poem-moonrise.svg"
+				alt=""
+				width="400"
+				height="500"
+				loading="lazy"
+			/>
+		</div>
+		<div class="art-layout__text">
+			<p class="eyebrow">A Poem</p>
+			<h2 class="poem-title" id="poem-title">{poemTitle}</h2>
+			<blockquote
+				class="poem"
+				id="poem-stanzas"
+				class:poem--collapsible={poemCollapsible}
+				class:is-expanded={poemExpanded}
+			>
+				{#each poemStanzas as stanza, i}
+					<p class="poem-stanza">{stanza.join('\n')}</p>
+					{#if i < poemStanzas.length - 1}
+						<span class="poem-break" aria-hidden="true"></span>
+					{/if}
+				{/each}
+			</blockquote>
+			{#if poemCollapsible}
+				<button
+					type="button"
+					class="poem-toggle"
+					aria-expanded={poemExpanded}
+					aria-controls="poem-stanzas"
+					on:click={() => (poemExpanded = !poemExpanded)}
+				>
+					{poemExpanded ? 'Show less' : 'Read the full poem'}
+				</button>
+			{/if}
 		</div>
 	</div>
 </section>
 
+<SectionDivider />
+
+<section class="commission-cta" aria-labelledby="commission-title">
+	<div class="container narrow" use:reveal>
+		<p class="eyebrow">Commissions</p>
+		<h2 id="commission-title">Have something specific in mind?</h2>
+		<p>
+			Any photograph in the gallery can be made for your space, in the size,
+			wood or finish you need. Send a quick note and we'll come back with a quote.
+		</p>
+		<Button href="/contact" variant="primary">Enquire about a commission</Button>
+	</div>
+</section>
+
 <style>
+	/* The photo is an <img> (not a CSS background) so the browser can pick
+	   a WebP width from srcset. Sage background-color shows until it loads. */
 	.hero {
 		min-height: 72vh;
 		background-color: #c8d1b9;
-		background-size: cover;
-		background-position: center;
 		display: flex;
 		align-items: flex-end;
 		color: var(--color-bg);
 		position: relative;
+		overflow: hidden;
+		--focus-ring: #f6f4ee;
+	}
+
+	.hero-image {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		object-position: center;
+		/* One slow settle on load — the photo drifts from 6% zoom to rest
+		   once `is-settled` is added after mount (see the script). */
+		transform: scale(1.06);
+		transition: transform 14s cubic-bezier(0.2, 0.6, 0.2, 1);
+	}
+
+	.hero-image.is-settled {
+		transform: none;
 	}
 
 	.hero::before {
 		content: '';
 		position: absolute;
 		inset: 0;
+		z-index: 1;
 		/* Gentle dark vignette that lifts text legibility on top of a real
 		   photograph, without washing the image out. */
 		background: linear-gradient(
@@ -224,9 +406,25 @@
 
 	.hero-overlay {
 		position: relative;
+		z-index: 2;
 		width: 100%;
 		padding: var(--space-5) 0;
-		background: linear-gradient(to top, rgba(20, 30, 15, 0.78), rgba(20, 30, 15, 0));
+		/* Scrim behind the headline. Holds its weight further up than a
+		   plain two-stop fade so the cream H1 + tagline keep WCAG AA
+		   contrast where they sit over the pale, hazy sky of the photo
+		   (measured worst case: H1 >= 3:1 large text, tagline >= 4.5:1). */
+		background: linear-gradient(
+			to top,
+			rgba(20, 30, 15, 0.82) 0%,
+			rgba(20, 30, 15, 0.62) 55%,
+			rgba(20, 30, 15, 0) 100%
+		);
+	}
+
+	.hero :global(h1),
+	.tagline {
+		/* Soft halo for the brightest sky pixels; invisible on dark areas. */
+		text-shadow: 0 1px 14px rgba(20, 30, 15, 0.55);
 	}
 
 	.hero :global(h1) {
@@ -292,13 +490,109 @@
 		height: var(--space-2);
 	}
 
-	.poem-author {
+	/* Text beside a 4:5 illustration on wide screens (the story with its
+	   art on the right, the poem with its art on the left). Below 800px
+	   the columns stack — art above the poem, below the story — and the
+	   art is cropped to 3:2 from the bottom, where the scene is. */
+	.art-layout {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+		gap: var(--space-5);
+		align-items: center;
+	}
+
+	.art-layout--art-right {
+		grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+	}
+
+	.art-layout--art-right .art-layout__art {
+		order: 2;
+	}
+
+	.art-layout__art img {
 		display: block;
-		margin-top: var(--space-2);
-		padding-left: var(--space-3);
+		width: 100%;
+		height: auto;
+		aspect-ratio: 4 / 5;
+		object-fit: cover;
+		object-position: 50% 100%;
+		border-radius: 4px;
+	}
+
+	.poem-toggle {
+		display: none;
+	}
+
+	@media (max-width: 799px) {
+		.art-layout,
+		.art-layout--art-right {
+			grid-template-columns: 1fr;
+			gap: var(--space-3);
+		}
+
+		.art-layout__art img {
+			aspect-ratio: 3 / 2;
+		}
+
+		.poem--collapsible:not(.is-expanded) .poem-stanza:not(:first-of-type),
+		.poem--collapsible:not(.is-expanded) .poem-break {
+			display: none;
+		}
+
+		.poem-toggle {
+			display: inline-block;
+			margin-top: var(--space-2);
+			padding: 0;
+			background: none;
+			border: none;
+			border-bottom: 1px solid currentColor;
+			font: inherit;
+			font-size: 0.9rem;
+			letter-spacing: 0.06em;
+			text-transform: uppercase;
+			color: var(--color-bark);
+			cursor: pointer;
+		}
+	}
+
+	/* ----- featured pieces (products) ----- */
+	.featured-pieces {
+		padding-top: 0;
+	}
+
+	.featured-pieces__header {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: flex-end;
+		justify-content: space-between;
+		gap: var(--space-1) var(--space-3);
+		margin-bottom: var(--space-3);
+	}
+
+	.featured-pieces__header h2 {
+		margin: 0;
+	}
+
+	.featured-pieces__link {
 		font-size: 0.9rem;
-		color: var(--color-ink-soft);
-		font-style: italic;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: var(--color-bark);
+		font-weight: 500;
+		border-bottom: none;
+	}
+
+	.featured-pieces__grid {
+		display: grid;
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		gap: var(--space-4) var(--space-3);
+	}
+
+	@media (max-width: 900px) {
+		.featured-pieces__grid {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+			gap: var(--space-3) var(--space-2);
+		}
 	}
 
 	.testimonials {
@@ -404,45 +698,82 @@
 		font-weight: 500;
 	}
 
-	.cta-grid {
+	@media (prefers-reduced-motion: reduce) {
+		.hero-image {
+			transform: none;
+			transition: none;
+		}
+
+		.featured-band__tile img {
+			transition: none;
+		}
+
+		.featured-band__tile:hover img {
+			transform: none;
+		}
+	}
+
+	.ordering {
+		border-top: 1px solid var(--color-rule);
+	}
+
+	.ordering__steps {
+		list-style: none;
+		margin: var(--space-4) 0 0;
+		padding: 0;
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-		gap: var(--space-3);
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		gap: var(--space-4);
 	}
 
-	.cta-card {
-		display: block;
-		background: var(--color-surface);
-		border: 1px solid var(--color-rule);
-		border-radius: 4px;
-		padding: var(--space-4);
-		color: var(--color-ink);
-		border-bottom: 1px solid var(--color-rule);
-		transition:
-			transform 180ms ease,
-			box-shadow 180ms ease;
+	@media (max-width: 900px) {
+		.ordering__steps {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
 	}
 
-	.cta-card:hover {
-		transform: translateY(-2px);
-		box-shadow: 0 10px 30px rgba(47, 74, 37, 0.12);
-		border-color: var(--color-leaf);
+	@media (max-width: 520px) {
+		.ordering__steps {
+			grid-template-columns: 1fr;
+			gap: var(--space-3);
+		}
 	}
 
-	.cta-card h3 {
+	.ordering__num {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 2rem;
+		height: 2rem;
+		margin-bottom: var(--space-2);
+		border: 1px solid var(--color-bark);
+		border-radius: 50%;
+		color: var(--color-bark);
+		font-family: var(--font-display);
+		font-size: 1rem;
+	}
+
+	.ordering__step h3 {
 		margin: 0 0 var(--space-1);
 	}
 
-	.cta-card p {
-		margin: 0 0 var(--space-2);
+	.ordering__step p {
+		margin: 0;
 		color: var(--color-ink-soft);
 	}
 
-	.cta-link {
-		font-size: 0.9rem;
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
-		color: var(--color-bark);
-		font-weight: 500;
+	.commission-cta {
+		padding: var(--space-5) 0 var(--space-6);
+		text-align: center;
+	}
+
+	.commission-cta h2 {
+		margin: 0 0 var(--space-2);
+	}
+
+	.commission-cta p:not(.eyebrow) {
+		max-width: 50ch;
+		margin: 0 auto var(--space-3);
+		color: var(--color-ink-soft);
 	}
 </style>

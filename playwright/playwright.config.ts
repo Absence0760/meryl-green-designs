@@ -37,6 +37,11 @@ const sharedServerEnv = {
 	NODE_ENV: 'test',
 	PORT: String(BACKEND_PORT),
 
+	// Content + order skeleton from the test-e2e Sanity dataset. Explicit
+	// because the committed backend/.env.development defaults to the local
+	// sample content (CONTENT_BACKEND=local); process env wins over it.
+	CONTENT_BACKEND: 'sanity',
+
 	// Sanity — must be the test-e2e dataset/project, never production
 	SANITY_PROJECT_ID: must('SANITY_PROJECT_ID'),
 	SANITY_DATASET: must('SANITY_DATASET'),

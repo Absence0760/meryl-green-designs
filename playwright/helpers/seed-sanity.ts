@@ -45,6 +45,8 @@ export async function wipeAndSeedSanity(): Promise<void> {
 			_type: 'product',
 			name: p.name,
 			slug: { _type: 'slug', current: p.slug },
+			// Omitted (not null) when unset, like a pre-category document.
+			...(p.category ? { category: p.category } : {}),
 			blurb: p.blurb,
 			description: p.description,
 			priceZar: p.priceZar,

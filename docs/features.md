@@ -10,7 +10,9 @@ anything in the repo) — see [`roadmap.md`](./roadmap.md).
 
 ## Site-wide
 
-- **Sticky header** with brand ("Meryl Green Designs") and navigation. The
+- **Sticky header** with the logo (`static/logo.svg` — a circular emblem of
+  an acacia against a golden-hour sky with the sun half-set) beside a
+  "Meryl Green / Designs" wordmark, and navigation. The
   active route is highlighted. On narrow viewports (< 620px) the inline
   nav is replaced with a hamburger (|||) button that opens a **small
   popup dropdown** anchored below the header on the left — a floating
@@ -35,17 +37,120 @@ anything in the repo) — see [`roadmap.md`](./roadmap.md).
   methods. Same pattern as established-retailer footers, reduces
   abandonment for first-time buyers.
 - **Nature-inspired theme**: muted greens, warm bark/ochre accents
-  (prices, hover states, CTA arrows), cream background, editorial serif
+  (prices, hover states, CTA arrows — `--color-bark: #7d603d`, darkened
+  from `#8a6a44` so small text clears WCAG AA 4.5:1 on the linen
+  texture), cream background, editorial serif
   display type (`Fraunces`, variable, loaded from Google Fonts with
   `preconnect` + `display=swap`; falls back to Georgia / Cormorant
   Garamond) paired with a sans-serif body.
 - **Responsive layout**: grids collapse to single column on narrow viewports.
-- **Footer** with copyright and brand tagline.
-- **Favicon** — brand-colored SVG "M" monogram in `static/favicon.svg`, referenced
-  from `app.html` so it appears on every route, including those with
-  `ssr = false`.
+- **Footer** with copyright and brand tagline, topped by a bushveld
+  skyline (`static/graphics/bushveld-skyline.svg` — acacias on a
+  horizon, same tree as the logo) that the green footer grows out of.
+- **Graphics & motion** — kept deliberately light so the photography
+  stays the focus:
+  - Faint linen/canvas texture over the cream background
+    (`static/graphics/canvas-texture.webp`, 8 KB lossless 192px tile with
+    its alpha quantised to five levels — was 14 KB — set in `app.css`).
+  - `SectionDivider.svelte` — small acacia-on-horizon ornament between
+    home page sections.
+  - Two 4:5 home page illustrations drawn in the same silhouette style
+    (same acacia as the logo): `story-golden-hour.svg` (sunset,
+    giraffes, birds) beside the story and `poem-moonrise.svg` (moonrise,
+    elephant, stars, fish eagle) beside the poem, so the page moves from
+    day to night. Decorative (`aria-hidden`), ~3 KB each;
+    `src/lib/graphics.test.ts` checks every SVG here is decorative,
+    self-contained (no scripts or external refs) and ≤ 6 KB.
+  - Scroll reveal (`src/lib/reveal.ts`, `use:reveal`) — sections and shop
+    tiles fade up once as they enter the viewport; shop tiles stagger in
+    threes. Progressive enhancement: the hiding class is added by JS, so
+    nothing is hidden without JS or IntersectionObserver.
+  - Home hero photo settles from a 6% zoom over ~14s on load (a CSS
+    transition started after mount — as a keyframe animation running
+    from first paint it held back Chrome's first-contentful-paint by
+    ~9s in Lighthouse); product
+    photos push in slightly on hover.
+  - All motion is removed (reveal becomes a plain fade) under
+    `prefers-reduced-motion: reduce` — hero settle, card / CTA / photo-
+    band / gallery-tile hover zooms and lifts, and every skeleton shimmer
+    (shop, product, gallery).
+- **Accessibility** (audited with axe-core at 1440px and 390px on home,
+  shop, product, gallery, track and 404):
+  - "Skip to content" link as the first tab stop, jumping focus to
+    `<main id="main">`.
+  - One visible keyboard focus ring site-wide (`:focus-visible` in
+    `app.css`, `--focus-ring` token; cream on the hero, footer and
+    lightbox).
+  - Primary nav links carry `aria-current="page"` (`src/lib/navActive.ts`,
+    tested).
+  - Mobile nav popup is a plain `<nav>` disclosure (no `role="menu"`):
+    opening it focuses the first link, Escape closes it and returns focus
+    to the hamburger, and tabbing out of it closes it.
+  - Cart panel is a real modal dialog (`role="dialog"`, `aria-modal`):
+    `use:focusTrap` (`src/lib/focusTrap.ts`, tested) moves focus to the
+    close button on open, keeps Tab inside, and returns focus to the cart
+    button on close. The cart button's name includes the item count, and
+    a polite live region announces "N items in your order" after "Add to
+    order" (`cartButtonLabel` / `cartStatusText` in `cartLogic.ts`).
+  - Gallery lightbox uses the same `focusTrap`: focus goes to Close on
+    open and back to the photo tile on close.
+  - Product cards are links named by their own text (name, dimensions,
+    price); the photo inside is `alt=""` so it doesn't repeat the name.
+    The header brand link likewise reads "Meryl Green Designs" (WCAG
+    2.5.3 label-in-name).
+  - Product page photo thumbnails are toggle buttons (`aria-pressed`,
+    "View photo N of M"); the breadcrumb's last item is `aria-current`.
+  - Load/lookup error boxes on shop, product, gallery and /track are
+    `role="alert"` so they are announced; the /track progress list marks
+    the current step with `aria-current="step"`.
+  - Hero scrim is weighted so the cream headline and tagline keep AA
+    contrast over the pale sky of the photo.
+- **Branded error page** (`src/routes/+error.svelte`) — any unknown URL
+  (the 404.html SPA fallback boots and client-side routing finds no
+  match) or error thrown while loading a route renders the logo emblem,
+  a short message and Button links. 404: "This path leads off into the
+  bush…" with **Browse the shop** / **Back to home**. Any other status:
+  "Something went wrong" (status code in the eyebrow) with **Try again**
+  (reloads) / **Back to home**. The raw error message is never shown.
+  Always `<meta name="robots" content="noindex">` — CloudFront serves
+  the fallback with HTTP 200, so the meta is what keeps dead URLs out of
+  search results. Copy lives in `src/lib/errorPage.ts` (tested); the
+  layout block is `src/lib/ErrorState.svelte`, which the product page's
+  "Product not found" state reuses.
+- **Favicon** — the logo scene on a rounded square (no ring, so it stays
+  legible at 16px) in `static/favicon.svg`, plus a 180px
+  `static/apple-touch-icon.png` for iOS home screens (iOS ignores SVG
+  icons). Both are referenced from `app.html` so they appear on every
+  route, including those with `ssr = false`. The JSON-LD `Organization.logo`
+  points at `logo.svg`.
 - **`theme-color` meta** — mobile browsers tint the address bar with the brand
   dark-green (`#2f4a25`).
+- **Structured data (JSON-LD)** — site-wide `Organization` in
+  `+layout.svelte`; product pages add a `Product` (name, description,
+  absolute Sanity image URLs, `sku`/`productID` = slug, brand,
+  category, and a ZAR `Offer` with canonical `url` — omitted when the
+  price is on enquiry) plus a Shop → product `BreadcrumbList`. Builders
+  live in `src/lib/productJsonLd.ts` (tested). Availability is
+  `InStock` when orderable, else `OutOfStock` — `MadeToOrder` exists in
+  schema.org but isn't in Google's supported merchant-listing values.
+  Because product pages render client-side (`ssr = false`), the JSON-LD
+  only exists after hydration; Google renders JS, other crawlers may
+  not see it. All JSON-LD goes through `src/lib/jsonLd.ts`, which
+  escapes `<`, `>`, `&` so CMS text can't close the `<script>` tag.
+- **`sitemap.xml`** (`src/routes/sitemap.xml/+server.ts`, prerendered)
+  — the static indexable pages plus `/shop/<slug>` for every available
+  product. Product slugs are fetched from `${PUBLIC_API_URL}/products`
+  at build time with a 5s timeout; if the API is unreachable, errors or
+  returns junk, the build logs `[sitemap] product URLs omitted: …` and
+  ships the static pages only — it never fails the build. Logic in
+  `src/lib/sitemap.ts` (tested). **Freshness:** the sitemap is baked at
+  build time, so a new (or removed) product appears on the next
+  frontend deploy. The content-rebuild Sanity webhook
+  (`docs/deployment.md` § Step 7) redeploys the frontend on every
+  product create/update/delete, so in practice that's a minute or two
+  after Meryl publishes — provided the webhook (and its GitHub PAT) is
+  set up and current; without it, only on the next release or manual
+  run.
 - **`robots.txt`** — allows all indexable routes, disallows `/track` and
   `/payment` (both per-order and useless to crawlers without query params).
 - **Per-route SEO + Open Graph + Twitter Card tags** — every page has its own
@@ -58,33 +163,70 @@ anything in the repo) — see [`roadmap.md`](./roadmap.md).
 
 ## Home (`/`)
 
-- **Hero** rendered across a full-bleed photograph of the African bush
-  (`static/two_trees.JPG`, compressed to 643 KB at 1920 px wide). The H1
-  reads "Inspired by Nature" followed by a short italic tagline and two
-  CTA buttons: a primary cream-filled "Shop the collection" and a ghost
-  "View gallery" outlined in cream. The hero image is preloaded via
-  `<link rel="preload" as="image">` so the first paint shows the
-  photograph immediately.
+- **Hero** rendered across a full-bleed photograph of the African bush.
+  The photo is a `<picture>` behind the text overlay (`object-fit:
+  cover`): WebP at 800 / 1280 / 1920 px wide (`static/two_trees-*.webp`,
+  66–246 KB) via `srcset` + `sizes`; upright phones (viewport aspect
+  ≤ 27/50) get a centred 3:4 crop instead (`static/two_trees-portrait-
+  480/720/936.webp`, 47–125 KB — the same visible pixels, half the bytes
+  of the 1920w file they used to need), with the original
+  `static/two_trees.JPG` (643 KB) as the fallback for browsers without
+  WebP. Paths and `sizes` live in `src/lib/heroImage.ts` (vitest checks
+  the files exist). The H1 reads "Inspired by Nature" followed by a
+  short italic tagline naming folding screens and cushion covers, and
+  two CTA buttons: a primary cream-filled "Shop the collection" and a
+  ghost "View gallery" outlined in cream. The WebP is preloaded via
+  `<link rel="preload" as="image" imagesrcset imagesizes>` matching the
+  `<source>`, so the browser fetches the same candidate it renders. The
+  og:image stays the JPG (set in `+layout.svelte`).
 - **Story** section with Meryl's three-paragraph introduction to The Green
   Collection, covering where the work comes from and what she's trying to
-  evoke. Materials detail (Meranti hardwood frames, 100% cotton canvas)
+  evoke. Materials detail (Meranti hardwood frames, cotton canvas or basket weave)
   lives on the Shop page as a compact spec block rather than here, so the
-  story stays narrative.
+  story stays narrative. On wide screens the text sits left of the
+  golden-hour illustration; below 800px the illustration follows the
+  text, cropped to 3:2.
+- **Featured pieces strip** directly under the story — up to four
+  products fetched at runtime from `GET /products` (in parallel with the
+  gallery and testimonials fetches), picked by `pickFeaturedProducts` in
+  `src/lib/productGroups.ts` (products with a photo, in shop display
+  order). Rendered with the same `ProductCard` as the shop (4:5 photo,
+  name, price, links to `/shop/<slug>`), four across on desktop and two
+  on narrow viewports, with a "Visit the shop →" link. The section only
+  renders if the fetch returns products with photos, so it silently
+  no-ops when the backend is unreachable.
 - **Testimonials band** — if one or more testimonials are published in
   Sanity (`testimonial` document type: quote, author, optional
   location, visibility toggle, display order), they render above the
   featured-photographs band as a grid of blockquotes with a bark
   quote-mark ornament. The section only renders when there are
   published testimonials — no placeholder, no fake content.
+- **"How it works" strip** directly under the featured pieces — four
+  numbered steps (pay securely via PayFast, made for you, dispatched
+  within 3 weeks, delivered by courier in South Africa with a link to
+  `/track`) in a four-across grid (two-up on tablets, stacked on
+  phones). Always renders; the copy lives in `src/lib/orderingSteps.ts`,
+  whose test pins it to the Terms — both product types are made to
+  order, and the strip never mentions cancellation rights.
 - **Featured photographs band** — a full-bleed four-across grid (two-up on
   narrow viewports) of the first four gallery photos, fetched at runtime
   from `GET /gallery`. Each tile links through to the gallery page and
   has a subtle hover zoom. The band only renders if the fetch returns
   photos, so it silently no-ops when the backend is unreachable. Breaks
   up the text-heavy middle of the home page and previews the gallery.
-- **Poem** section on an alternate background, rendering "Africa" (author
-  unknown) as three stanzas with a styled blockquote and leaf-green accent.
-- **Call-to-action cards** linking to the Gallery and Shop.
+- **Poem** section on an alternate background, rendering "Africa" as
+  three stanzas with a styled blockquote and leaf-green accent, under an
+  "A poem" eyebrow, right of the moonrise illustration on wide screens
+  (mirroring the story). Below 800px it stacks (illustration first,
+  cropped to 3:2) and shows only the first stanza with a "Read the full
+  poem" / "Show less" toggle (`aria-expanded`); the
+  collapse only applies once JS has run. No attribution line is shown
+  (the author is unknown — confirmed by Meryl, 2026-09-27).
+- **Commission prompt** closes the page — "Have something specific in
+  mind?" with an "Enquire about a commission" button to `/contact`,
+  mirroring the gallery's closing CTA. (Replaced the image-led Gallery /
+  Shop cards, which repeated links already in the hero and the featured
+  sections.)
 
 ## Gallery (`/gallery`)
 
@@ -136,12 +278,30 @@ Page copy and the closing CTA reflect that — visitors are guided to
   a static shell with heading, lede, and 6 shimmering skeleton cards. After
   hydration, `onMount` calls `GET /products`, the skeletons swap for real
   cards, and product photos lazy-load from Sanity's CDN (capped at 640 px
-  wide, not the original upload resolution).
-- **Materials spec block** directly below the lede — a compact two-row
-  definition list (`Frame`, `Canvas`) describing the shared construction of
-  every piece. Styled as plain labelled facts rather than prose, so it
-  doesn't compete with the product grid for attention.
-- **Minimal tile layout** — each tile is a square photograph with only
+  wide, not the original upload resolution). The first row of the first
+  category (up to three cards, `ProductCard priority`) loads eagerly with
+  `fetchpriority="high"` instead — its photo is the page's LCP element.
+- **Category sections** — products are grouped by their Sanity `category`
+  into "Folding screens" then "Cushion covers" (`groupProductsByCategory`
+  in `src/lib/productGroups.ts`, vitest-covered). A section with no
+  products is hidden; within a section the backend's display order
+  (order, then name) is kept. A product with no category is treated as
+  a folding screen.
+- **Section spec blocks** in each category header — a compact
+  definition list of the materials shared by every piece in the section
+  plus a `Lead time` row ("Made to order — typically 3 weeks from payment
+  to dispatch"). Screens: `Frame` (Meranti) and `Fabric` (100% cotton
+  canvas, or a lighter basket weave on some designs — the lion and
+  elephant screens; each product's Sanity description names its fabric).
+  Cushion covers: `Fabric` (cotton) and `Insert` (not included). The copy
+  lives in `src/lib/productSpecs.ts` (vitest-covered), shared with the
+  product detail page. Sits beside the section heading on desktop; on
+  narrow viewports it stays one row per fact in smaller type so the
+  first product remains above the fold.
+- **Minimal tile layout** (`src/lib/ProductCard.svelte`, shared with the
+  home page "Featured pieces" strip) — each tile is a 4:5 portrait
+  photograph (portrait rather than square so tall screens keep their
+  legs) with only
   the product name (body font, small caps) and price (display font,
   bark/ochre accent) beneath; the "Add to order" button is a small
   outlined pill in the leaf-dark colour. No card chrome (no border, no
@@ -175,26 +335,46 @@ Page copy and the closing CTA reflect that — visitors are guided to
   Product name) at the top, a two-column layout with the photo
   gallery on the left and product info on the right that stacks on
   narrow viewports.
-- **Photo gallery** — main photo at the top with click-to-switch
-  thumbnails below. Gracefully handles 1, 2, or many photos.
+- **Photo gallery** — main photo at the top (4:5, matching the shop
+  cards, so tall screens aren't cropped; `fetchpriority="high"` as the
+  LCP element) with click-to-switch thumbnails below. Gracefully handles 1, 2, or many photos.
 - **Product info block** — name, blurb, price (bark accent), optional
   dimensions in a labelled key/value block, "Add to order" button +
-  "← Back to shop" link, full description (respects newlines), and a
-  compact materials spec (Frame, Canvas) mirroring the shop page
-  block.
-- **Slug-routed** — fetches `GET /products/:slug` on mount and
+  "← Back to shop" link, an "Ask about this piece" link to
+  `/contact?product=<slug>` (pre-fills the enquiry form — see Contact),
+  full description (respects newlines). For
+  every product, a "Made to order — typically 3 weeks" line under the
+  button and a compact materials spec mirroring the shop page block
+  (Frame + Fabric for screens, Fabric + Insert for cushion covers; from
+  `src/lib/productSpecs.ts`).
+- **"You may also like"** — up to three other available products
+  below the detail block, rendered with the shared `ProductCard` and
+  a scroll reveal. Same category first, then other categories to fill,
+  each by display `order` (`pickRelatedProducts` in
+  `src/lib/productGroups.ts`, tested). Fetches `GET /products` in
+  parallel with the product; hidden entirely if that fails or nothing
+  qualifies. The page reloads its product whenever the slug changes,
+  because SvelteKit reuses the component on product → product
+  navigation.
+- **Slug-routed** — fetches `GET /products/:slug` for the current slug and
   renders the first matching available product. Unknown or
-  unpublished slugs render a "Product not found" state linking back
-  to the shop.
+  unpublished slugs render a "Product not found" state in the same
+  branded `ErrorState` block as the site error page (logo emblem,
+  **Browse the shop** / **Back to home** buttons, `noindex`).
 - **Not prerendered** — static adapter can't enumerate Sanity-driven
   slugs at build time. The page ships a minimal shell with a skeleton
   that swaps for real content after hydration.
 - **Empty state** when no products have been published. **Error state**
   when the backend is unreachable.
 - **"Add to order" button** on each product tile and detail page pushes
-  the product into the shared cart store and opens the cart panel.
-  Multiple clicks on the same product increment its quantity in place
-  rather than creating duplicate line items.
+  the product into the shared cart store (it doesn't open the cart
+  panel). Multiple clicks on the same product increment its quantity in
+  place rather than creating duplicate line items. After a click the
+  button reads "✓ Added" for 2 seconds, then resets
+  (`src/lib/addedFlash.ts`, tested; both labels share one grid cell in
+  `AddToOrderLabel.svelte` so the button's width doesn't jump), and the
+  header cart badge gives a short scale "pop" on every add (not on
+  removals; off under `prefers-reduced-motion`).
 - **Order form (inside the cart panel)** with fields for name, email,
   phone (optional), shipping address, and notes. All inputs have proper
   `name`, `id`, and `autocomplete` attributes so mobile autofill works
@@ -246,7 +426,8 @@ Page copy and the closing CTA reflect that — visitors are guided to
   in URL) so a forwarded email doesn't leak credentials. Design and
   threat model in `docs/payment-retry.md`.
 - **"Secure checkout" panel** — single reassurance sentence noting
-  PayFast handles payment and the site never sees card details, plus
+  PayFast handles payment and the site never sees card details (and
+  that every piece is made to order, dispatched within 3 weeks), plus
   a row of accepted-method chips (cards, Apple Pay, SnapScan, Instant
   EFT). Replaces the earlier procedural 5-step list.
 
@@ -259,11 +440,23 @@ Page copy and the closing CTA reflect that — visitors are guided to
   Studio, Response time) in a two-column layout that stacks on narrow
   viewports. Top and bottom rules give it visual weight without a
   card.
-- **Commission enquiry form** — structured form with fields for name,
-  email, phone (optional), photo reference (optional, pre-filled from
-  `?photo=` query param when arriving from a gallery lightbox CTA),
-  approximate size, wood/finish, where it'll go, and a free-text
-  message. POSTs JSON to `${PUBLIC_API_URL}/enquiries`. The backend
+- **Commission enquiry form** — structured form opening with an optional
+  "Interested in" segmented control (native radios in a
+  `<fieldset>`/`<legend>`: Folding screen / Cushion cover / Something
+  else, sent as `interest` = `screen` | `cushion-cover` | `other`), then
+  fields for name, email, phone (optional), photo reference (optional,
+  pre-filled from `?photo=` query param when arriving from a gallery
+  lightbox CTA), approximate size, wood/finish, where it'll go, and a
+  free-text message. Placeholders are neutral until a choice is made and
+  switch with it (screen examples for a screen, "Wild Amaryllis in
+  bloom" / "60cm × 60cm" for a cushion cover); the wood/finish field is
+  hidden for cushion covers and its value isn't sent. Arriving via a
+  product page's "Ask about this piece" link (`?product=<slug>`) pre-fills
+  "Interested in" from the product's category and the photo reference
+  with its name once `/products` loads — only fields still empty, once —
+  and the desktop image column shows that product's photo; an unknown
+  slug leaves the form blank. The copy and pre-fill logic live in
+  `src/lib/enquiryForm.ts` (tested). POSTs JSON to `${PUBLIC_API_URL}/enquiries`. The backend
   validates, then sends a single email to `OWNER_EMAIL` via Resend with
   `replyTo` set to the visitor's email and a yellow "unverified
   sender" warning rendered at the top of the email body so Meryl
@@ -273,6 +466,35 @@ Page copy and the closing CTA reflect that — visitors are guided to
   and the backend rate-limits to 5 submissions per IP per 15 minutes.
 - **Existing orders block** — links to `/track` for customers who just
   want to check a placed order.
+- **Photo column (≥ 960px only)** — a sticky product photo beside the
+  form, filling the empty space on wide screens: the first product with
+  a usable photo from `GET /products` (fetched client-side, silent no-op
+  on failure), with its alt text, product name as caption and a link to
+  `/shop`; falls back to the static `two_trees-1280.webp` hero photo.
+  Hidden (`display: none`, lazy image never loads) on narrower screens.
+
+## Legal pages — "On this page" contents (`/terms`, `/returns`, `/privacy`)
+
+- **Table of contents built from each page's `<h2>` headings**, rendered
+  by the shared `src/lib/LegalToc.svelte` from a `buildToc([...])` list
+  in the page script. Each h2 carries a literal, stable slug `id`
+  (`/terms#payment`, `/returns#how-to-claim`) produced by
+  `src/lib/headingSlug.ts` (`&` → "and", dashes and punctuation
+  collapsed, repeats suffixed `-2`, `-3`). `legalPages.test.ts` fails if
+  a heading is reworded, added or reordered without its id and TOC entry
+  following — update the `buildToc` list and the id together.
+- **Desktop (≥ 1024px)** — a sticky left column (`.legal-layout` in
+  `app.css`) beside the 720px text. The section being read is
+  highlighted and marked `aria-current="location"` (IntersectionObserver
+  on the headings; no highlight, but links still work, where it's
+  unavailable). Smooth scrolling is CSS-only and off under
+  `prefers-reduced-motion`; headings have `scroll-margin-top` so they
+  land clear of the sticky site header.
+- **Mobile** — a collapsed `<details>` "On this page" under the "Last
+  updated" line. Only one variant is displayed at a time, so there's a
+  single `<nav aria-label="On this page">` landmark.
+- Markup only — adding the TOC changed no legal wording, so "Last
+  updated" dates weren't bumped.
 
 ## Privacy policy (`/privacy`)
 
@@ -302,16 +524,28 @@ Page copy and the closing CTA reflect that — visitors are guided to
   allocation. Originally a two-paragraph client-supplied draft; expanded
   to address customer scenarios that will realistically occur and
   South African consumer-law obligations.
+- **Covers both product types** — folding screens and cushion covers.
+  Screen-specific details (frame, hinges, the 3–4-week replacement
+  production window) are scoped to screens explicitly. The made-to-order
+  cooling-off exemption is claimed for **folding screens only**. Meryl
+  confirmed (2026-09-27) that cushion covers are made to order too, but
+  until counsel confirms whether ECT s42(2)(f) covers made-to-order
+  catalogue designs, the page states that nothing in it limits the ECT
+  Act s44 cancellation right for cushion covers (`TODO(legal)` in the
+  page source). Damaged cushion covers are replaced within 3 weeks of
+  the original arriving back. `/terms` follows the same scoping: both
+  product types have a 3-week dispatch bound, but the cooling-off
+  exemption is claimed for screens only.
 - **CPA framing throughout** — explicitly references section 19
-  (unreasonable delay), section 20 (cooling-off exemption for
-  specially-produced goods), and section 56 (six-month implied warranty
-  of quality with repair / replace / refund choice). Closes with a
+  (unreasonable delay) and section 56 (six-month implied warranty
+  of quality with repair / replace / refund choice); the screens'
+  cooling-off exemption cites ECT Act s42(2)(f). Closes with a
   full statutory-rights statement so the no-change-of-mind wording
   can't be read as overriding CPA.
 - **ECT Act section 43 disclosure block** ("About Meryl Green
-  Designs") — required for online retailers in SA. Currently holds
-  placeholder fields for legal business name, physical address, and
-  registration number that Meryl must fill in before the page goes live.
+  Designs") — required for online retailers in SA. Holds the business
+  name, legal status (sole proprietor, no CIPC registration), physical
+  address, contact details and dispute-resolution forum.
 - **Consumer Goods and Services Ombud (CGSO) referral** — gives
   customers an explicit external dispute-resolution path.
 - **How-to-claim block** — points customers to
@@ -319,21 +553,18 @@ Page copy and the closing CTA reflect that — visitors are guided to
   the order, a description, and photos.
 - **Window defaults** — 48 hours for damage-on-arrival photos, 7 days
   for defective / wrong-item notifications, 4 weeks before treating
-  an order as lost, 30 days for refund processing back to card. All
+  an order as lost, 14 business days for refund processing back to card. All
   defaults; the source comment flags them for legal review.
 - Linked from the site footer between Privacy policy and Contact.
 - **Maintenance note:** the source file's top comment distinguishes
   what was added beyond the client's original wording from items still
-  open for legal review (window defaults, ECT Act s43 placeholders).
+  open for legal review (window defaults, cushion cover TODOs).
   The "Last updated" date must be bumped whenever the wording changes,
   and the page must be reviewed by a South African legal professional
   under the business name before going live.
 
 ## Track order (`/track`)
 
-- **Water page-header** — short 30vh decorative strip using `water2.JPG`
-  with the same overlay treatment as the contact page, framing the
-  lookup form.
 - **Customer-facing order status page.** The customer enters their order
   reference + email and sees the current status, a progress indicator
   (Pending payment → Payment received → Shipped → Delivered), and the
@@ -355,13 +586,34 @@ Page copy and the closing CTA reflect that — visitors are guided to
 
 ## Content management (Sanity Studio)
 
-- **Studio package** (`studio/`) — a standalone Sanity Studio v5 (React 19) app that the
+- **Studio package** (`studio/`) — a standalone Sanity Studio v6 (React 19) app that the
   shop owner logs into to manage products and orders. Runs locally during
   development and is deployed to a free `*.sanity.studio` URL for production
   use.
-- **Product schema** with fields: name, slug (auto-generated), blurb,
-  description, price (ZAR), photos (with alt text and hotspot cropping),
-  availability toggle, and display order.
+- **Product schema** with fields: name, slug (auto-generated), category
+  (radio: "Folding screen" / "Cushion cover", defaults to folding screen,
+  required), blurb, description, price (ZAR), dimensions, photos (with alt
+  text and hotspot cropping), availability toggle, and display order.
+  Products created before the category field existed have no stored
+  value; the backend's GROQ projection coalesces a missing category to
+  `screen`, so they keep showing as folding screens without a migration.
+- **Product desk layout** (`studio/structure.ts`) — the Products entry
+  opens a folder with **All products**, **Folding screens** (includes
+  legacy products with no category) and **Cushion covers**, each ordered
+  by display order. Gallery photos, Orders and Testimonials keep their
+  default lists. Each list's subtitle reads e.g. "Cushion cover · R 450",
+  "No price set" when unpriced, and is prefixed "Hidden · " when the
+  product's availability toggle is off.
+- **New-product presets** — "New folding screen" and "New cushion cover"
+  (pre-fills 60cm x 60cm and R450) initial value templates, offered in
+  the matching list's + button and the global Create menu (the plain
+  "Product" template is still there).
+- **Field help and soft warnings** — each product field explains what it
+  changes on the site (category → shop section and which spec/lead-time
+  lines show; dimensions examples per category; photo tips). Missing
+  photos, a missing price, or dimensions that look like the other
+  category's format ("per panel" on a cushion cover, "60cm x 60cm" on a
+  screen) raise **warnings only** — publishing is never blocked.
 - **Order schema** (Phase 1 skeleton, post-PII-split — live since 2026-05-13):
   order reference (read-only), status (radio: pending payment → payment
   received → shipped → delivered → cancelled / payment failed), payment
@@ -407,7 +659,7 @@ Page copy and the closing CTA reflect that — visitors are guided to
 - **Routes**:
   - `GET /health` — uptime check, returns `{ ok: true }`
   - `GET /products` — list of published, available products from Sanity
-    (called by the shop page on hydration)
+    (called by the shop page and the home "Featured pieces" strip on hydration)
   - `GET /products/:slug` — single product by slug (called by the
     `/shop/[slug]` detail page on hydration); 404 if the slug doesn't
     match a published product
@@ -416,8 +668,9 @@ Page copy and the closing CTA reflect that — visitors are guided to
   - `GET /testimonials` — list of visible testimonials from Sanity
     (called by the home page on hydration; section silently no-ops when
     empty)
-  - `POST /enquiries` — commission enquiry form (`/contact`), validates,
-    sends notification email to the owner, rate-limited per IP
+  - `POST /enquiries` — commission enquiry form (`/contact`), validates
+    (incl. the optional `interest` enum `screen` | `cushion-cover` |
+    `other`), sends notification email to the owner, rate-limited per IP
   - `POST /orders` — create a new order (validates, looks up product
     prices in Sanity, writes the PII row to DynamoDB, creates the Sanity
     skeleton doc, sends owner notification, and returns signed PayFast

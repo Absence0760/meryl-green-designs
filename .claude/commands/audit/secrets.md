@@ -19,12 +19,12 @@ This repo uses SOPS-encrypted `*.sops` files for secrets at rest. The trust boun
    - A SOPS file that's been edited without `sops <file>` (e.g. via `vim` on the encrypted blob) loses encryption integrity — the `mac` won't validate. Flag if you can confirm a recent direct edit.
 
 2. **Plaintext SOPS siblings absent from git.**
-   - `backend/.env`, `infra/terraform.tfvars`: confirmed gitignored.
-   - `git log --all --full-history -- backend/.env infra/terraform.tfvars` should return zero commits ever. If it returns any, the secret is permanently exposed and every value in it needs rotation — flag as Critical.
+   - `backend/.env.development.local`, legacy `backend/.env`, `infra/terraform.tfvars`: confirmed gitignored.
+   - `git log --all --full-history -- backend/.env backend/.env.development.local infra/terraform.tfvars` should return zero commits ever. If it returns any, the secret is permanently exposed and every value in it needs rotation — flag as Critical.
 
 3. **`.env` files at workspace roots.**
-   - `frontend/.env`, `studio/.env`: gitignored. `frontend/.env.example` and `studio/.env.example` are the committed templates (PUBLIC_* / SANITY_STUDIO_* only; no real secrets).
-   - Run `git log --all --full-history -- frontend/.env studio/.env` to confirm neither has ever been committed.
+   - `*/.env`, `*/.env.development.local`: gitignored. `backend/.env.development`, `frontend/.env.development` and `studio/.env.development` are COMMITTED local-dev defaults — confirm every value is non-sensitive (blank secret keys, loopback URLs, PayFast public sandbox, `local-dev-admin-token`); `backend/src/__tests__/env-development.test.ts` guards this.
+   - Run `git log --all --full-history -- frontend/.env studio/.env frontend/.env.development.local studio/.env.development.local` to confirm none has ever been committed.
 
 4. **Client-bundle leakage (frontend).**
    - SvelteKit env vars are split: `$env/static/public` is inlined into the client bundle, `$env/static/private` is server-only. Per `frontend/CLAUDE.md`, the frontend stays static — there's no `$env/dynamic/private` anywhere; if it appears, that's a Critical because it implies an SSR adapter was added.
@@ -37,7 +37,7 @@ This repo uses SOPS-encrypted `*.sops` files for secrets at rest. The trust boun
 6. **Backend env hygiene.**
    - `backend/src/` references `process.env.X` directly (per `backend/CLAUDE.md`, no `dotenv` imports reachable from `lambda.ts`).
    - Grep `backend/src/lambda.ts` and everything it transitively imports for `import 'dotenv'` or `dotenv/config`. Any hit is a finding — dotenv must only live in `server.ts`.
-   - `backend/.env.example` lists the env-var names. Compare against the SOPS-encrypted `../infra-secrets/meryl-green-designs/.env.sops` (run `sops -d ../infra-secrets/meryl-green-designs/.env.sops` if that repo is cloned and you have `kms:Decrypt` — report by name, never by value) — any key in `.env.example` missing from the encrypted file is a Medium; any extra key in the encrypted file is a Low.
+   - `backend/.env.development` lists the env-var names. Compare against the SOPS-encrypted `../infra-secrets/meryl-green-designs/.env.sops` (run `sops -d ../infra-secrets/meryl-green-designs/.env.sops` if that repo is cloned and you have `kms:Decrypt` — report by name, never by value) — any secret key in `.env.development` missing from the encrypted file is a Medium; any extra key in the encrypted file is a Low.
 
 7. **GitHub Actions workflow secrets.**
    - `.github/workflows/*.yml`: every `env:` block should reference `${{ secrets.X }}` or `${{ vars.X }}`, never a literal value.
@@ -52,20 +52,20 @@ This repo uses SOPS-encrypted `*.sops` files for secrets at rest. The trust boun
    - The `-S` "pickaxe" finds commits that added or removed the literal string. A single touch on a real secret means that value is permanently exposed and needs rotation regardless of subsequent removal — flag as Critical with the recommendation "rotate the underlying credential, the value can be recovered from git history."
 
 10. **`.gitignore` covers the right paths.**
-    - Confirm `.gitignore` ignores: `backend/.env`, `frontend/.env`, `studio/.env`, `infra/terraform.tfvars`, `infra/*.tfstate*`, `.envrc`. Any missing → Medium.
+    - Confirm `.gitignore` ignores: `.env`, `.env.*` (except `.env.example` / `.env.development`) — so `*/.env.development.local` stays ignored — `infra/terraform.tfvars`, `infra/*.tfstate*`, `.envrc`. Any missing → Medium.
 
 ## Report
 
 - **Critical** — a real secret in git history, an SSR adapter that exposes server-only env to the client, an AWS access key in a workflow, an unencrypted `*.sops` file committed.
 - **High** — server-only env referenced from a non-server frontend path, dotenv reachable from Lambda bundle, workflow logs an env var, OIDC role's `:sub` condition missing or wildcarded.
-- **Medium** — env var in `.env.example` missing from the encrypted file, key in the encrypted file with no documented purpose, `.gitignore` missing a path.
+- **Medium** — secret env var in `backend/.env.development` missing from the encrypted file, key in the encrypted file with no documented purpose, `.gitignore` missing a path.
 - **Low** — undocumented env intent, missing example entry, overscoped key (e.g. a write-scope Sanity token used only for reads).
 
 For each: the literal env-var name and the file:line, what should change. **Never paste a found key value into the report — identify by name + location only.**
 
 ## Useful starting points
 
-- `backend/.env.example`, `infra/terraform.tfvars.example` — declared env shapes
+- `backend/.env.development`, `infra/terraform.tfvars.example` — declared env shapes
 - `backend/CLAUDE.md § Three entry points` — dotenv-isolation rationale
 - `frontend/CLAUDE.md § Hard rules` — static-only invariant
 - `.github/workflows/deploy-*.yml` — OIDC pattern

@@ -1,10 +1,22 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { page } from '$app/state';
-	import { PUBLIC_API_URL } from '$env/static/public';
+	import { onDestroy, onMount } from 'svelte';
+	// The store, not `$app/state`: this is a legacy (non-runes) component,
+	// and `$:` statements don't re-run when a `$app/state` value changes —
+	// product → product navigation left the old product on screen.
+	import { page } from '$app/stores';
+	import { PUBLIC_API_URL, PUBLIC_SITE_URL } from '$env/static/public';
 	import { formatPrice, imageUrl, type Product } from '$lib/sanity';
+	import { isScreen, pickRelatedProducts } from '$lib/productGroups';
+	import { CUSHION_MATERIALS, LEAD_TIME, SCREEN_MATERIALS } from '$lib/productSpecs';
+	import { productEnquiryHref } from '$lib/enquiryForm';
+	import { createAddedFlash } from '$lib/addedFlash';
+	import AddToOrderLabel from '$lib/AddToOrderLabel.svelte';
+	import ProductCard from '$lib/ProductCard.svelte';
+	import { reveal } from '$lib/reveal';
+	import { productStructuredData } from '$lib/productJsonLd';
 	import { cart } from '$lib/cartStore.svelte';
 	import Button from '$lib/Button.svelte';
+	import ErrorState from '$lib/ErrorState.svelte';
 
 	const apiUrl = PUBLIC_API_URL;
 
@@ -14,16 +26,44 @@
 	let error: string | null = null;
 	let activePhotoIndex = 0;
 
-	$: slug = page.params.slug ?? '';
+	$: slug = $page.params.slug ?? '';
+	$: screen = product ? isScreen(product) : false;
+	$: materials = screen ? SCREEN_MATERIALS : CUSHION_MATERIALS;
+	$: fallbackDescription = product
+		? `${product.name} — ${screen ? 'a handcrafted folding screen' : 'a cushion cover'} by Meryl Green Designs.`
+		: '';
+
+	// Product + BreadcrumbList JSON-LD. productStructuredData escapes `<`
+	// so CMS text can't close the <script> tag rendered via {@html}.
+	$: structuredData = product ? productStructuredData(product, PUBLIC_SITE_URL ?? '') : '';
+
+	// The button reads "✓ Added" for a moment after a click. Keyed on the
+	// product id, so product → product navigation starts fresh.
+	let addedIds = new Set<string>();
+	const addedFlash = createAddedFlash((ids) => (addedIds = ids));
+	onDestroy(addedFlash.destroy);
 
 	function addToCart() {
 		if (!product) return;
 		cart.add(product);
+		addedFlash.mark(product._id);
 	}
 
-	onMount(async () => {
+	// Keyed on the slug rather than run once in onMount: SvelteKit reuses
+	// this component when navigating product → product (e.g. from the
+	// "You may also like" strip), so a mount-only fetch would leave the
+	// previous product on screen. `requestId` drops stale responses.
+	let requestId = 0;
+	async function loadProduct(currentSlug: string) {
+		const id = ++requestId;
+		loading = true;
+		notFound = false;
+		error = null;
+		product = null;
+		activePhotoIndex = 0;
 		try {
-			const res = await fetch(`${apiUrl}/products/${encodeURIComponent(slug)}`);
+			const res = await fetch(`${apiUrl}/products/${encodeURIComponent(currentSlug)}`);
+			if (id !== requestId) return;
 			if (res.status === 404) {
 				notFound = true;
 				return;
@@ -33,13 +73,34 @@
 				return;
 			}
 			const body = (await res.json()) as { product?: Product };
+			if (id !== requestId) return;
 			product = body.product ?? null;
 			if (!product) notFound = true;
 		} catch (e) {
+			if (id !== requestId) return;
 			console.error('Failed to fetch product', e);
 			error = 'Could not reach the server. Please try again.';
 		} finally {
-			loading = false;
+			if (id === requestId) loading = false;
+		}
+	}
+
+	$: loadProduct(slug);
+
+	// "You may also like": the full list is fetched once, in parallel
+	// with the product. Silent no-op on failure, like the home page —
+	// the product page is complete without it.
+	let allProducts: Product[] = [];
+	$: related = product ? pickRelatedProducts(allProducts, product, 3) : [];
+
+	onMount(async () => {
+		try {
+			const res = await fetch(`${apiUrl}/products`);
+			if (!res.ok) return;
+			const body = (await res.json()) as { products?: Product[] };
+			allProducts = body.products ?? [];
+		} catch {
+			/* ignore */
 		}
 	});
 </script>
@@ -47,7 +108,13 @@
 <svelte:head>
 	{#if product}
 		<title>{product.name} — Meryl Green Designs</title>
-		<meta name="description" content={product.blurb ?? `${product.name} — a handcrafted screen by Meryl Green Designs.`} />
+		<meta name="description" content={product.blurb ?? fallbackDescription} />
+		{@html structuredData}
+	{:else if notFound}
+		<title>Product not found — Meryl Green Designs</title>
+		<!-- CloudFront serves this SPA shell with HTTP 200, so keep dead
+		     slugs out of search results the same way +error.svelte does. -->
+		<meta name="robots" content="noindex" />
 	{:else}
 		<title>Shop — Meryl Green Designs</title>
 	{/if}
@@ -58,7 +125,7 @@
 		<nav class="breadcrumbs" aria-label="Breadcrumb">
 			<a href="/shop">Shop</a>
 			<span aria-hidden="true">/</span>
-			<span class="breadcrumbs__current">
+			<span class="breadcrumbs__current" aria-current="page">
 				{#if product}{product.name}{:else}&hellip;{/if}
 			</span>
 		</nav>
@@ -75,25 +142,42 @@
 				</div>
 			</div>
 		{:else if notFound}
-			<div class="alert">
-				<h1>Product not found</h1>
-				<p>
-					This product isn't available — it may have been removed or renamed.
-					<a href="/shop">Browse the shop</a> for what's currently available.
-				</p>
+			<!-- Same branded dead-end block as the root +error.svelte page. -->
+			<div class="not-found">
+				<ErrorState eyebrow="Shop" heading="Product not found">
+					<p>
+						This product isn't available — it may have been removed or renamed.
+						Have a look at what's currently in the shop.
+					</p>
+					{#snippet actions()}
+						<Button href="/shop">Browse the shop</Button>
+						<Button href="/" variant="outlined">Back to home</Button>
+					{/snippet}
+				</ErrorState>
 			</div>
 		{:else if error}
-			<div class="alert alert--error">{error}</div>
+			<div class="alert alert--error" role="alert">{error}</div>
 		{:else if product}
 			<div class="product-detail">
 				<div class="gallery">
 					{#if product.photos && product.photos.length > 0}
 						{@const main = imageUrl(product.photos[activePhotoIndex], 1200)}
 						{#if main}
-							<img class="gallery__main" src={main} alt={product.photos[activePhotoIndex].alt ?? product.name} />
+							<!-- LCP element; width/height give the 4:5 box before CSS
+							     applies (the CSS aspect-ratio wins once it does). -->
+							<img
+								class="gallery__main"
+								src={main}
+								alt={product.photos[activePhotoIndex].alt ?? product.name}
+								width="1200"
+								height="1500"
+								fetchpriority="high"
+							/>
 						{/if}
 						{#if product.photos.length > 1}
-							<div class="gallery__thumbs" role="tablist" aria-label="Product photos">
+							<!-- Toggle buttons (aria-pressed), not tabs: there is no
+							     tabpanel and no arrow-key roving, which role="tab" promises. -->
+							<div class="gallery__thumbs" role="group" aria-label="Product photos">
 								{#each product.photos as p, i (p._key)}
 									{@const thumb = imageUrl(p, 200)}
 									{#if thumb}
@@ -102,9 +186,8 @@
 											class="gallery__thumb"
 											class:is-active={i === activePhotoIndex}
 											on:click={() => (activePhotoIndex = i)}
-											role="tab"
-											aria-selected={i === activePhotoIndex}
-											aria-label={`View photo ${i + 1}`}
+											aria-pressed={i === activePhotoIndex}
+											aria-label={`View photo ${i + 1} of ${product.photos.length}`}
 										>
 											<img src={thumb} alt="" loading="lazy" />
 										</button>
@@ -135,12 +218,14 @@
 
 					<div class="info__cta">
 						<Button variant="primary" on:click={addToCart} disabled={!product.priceZar}>
-							Add to order
+							<AddToOrderLabel added={addedIds.has(product._id)} />
 						</Button>
 						<a class="info__back" href="/shop">← Back to shop</a>
 					</div>
-					<p class="info__lead-time">
-						Made to order — typically 3 weeks from payment to dispatch.
+					<p class="info__lead-time">{LEAD_TIME}.</p>
+					<p class="info__ask">
+						Questions, or a different size?
+						<a href={productEnquiryHref(product.slug)}>Ask about this piece</a>
 					</p>
 
 					{#if product.description?.trim()}
@@ -152,14 +237,12 @@
 
 					<div class="info__materials">
 						<dl>
-							<div class="info__materials-row">
-								<dt>Frame</dt>
-								<dd>Meranti hardwood, finished with a traditional teak stain</dd>
-							</div>
-							<div class="info__materials-row">
-								<dt>Canvas</dt>
-								<dd>100% cotton, digitally printed with a protective colour-fast coating</dd>
-							</div>
+							{#each materials as spec (spec.label)}
+								<div class="info__materials-row">
+									<dt>{spec.label}</dt>
+									<dd>{spec.value}</dd>
+								</div>
+							{/each}
 						</dl>
 					</div>
 				</div>
@@ -167,6 +250,19 @@
 		{/if}
 	</div>
 </section>
+
+{#if product && related.length > 0}
+	<section class="section related" aria-labelledby="related-title">
+		<div class="container" use:reveal>
+			<h2 id="related-title">You may also like</h2>
+			<div class="related__grid">
+				{#each related as item (item._id)}
+					<ProductCard product={item} imageWidth={480} hoverReveal={false} />
+				{/each}
+			</div>
+		</div>
+	</section>
+{/if}
 
 <style>
 	.breadcrumbs {
@@ -209,7 +305,10 @@
 
 	.gallery__main {
 		width: 100%;
-		aspect-ratio: 1 / 1;
+		height: auto;
+		/* 4:5 matches the shop cards and fits tall three-panel screens
+		   (a square crop cut off their legs). */
+		aspect-ratio: 4 / 5;
 		object-fit: cover;
 		background: var(--color-surface);
 		display: block;
@@ -217,7 +316,7 @@
 
 	.gallery__placeholder {
 		width: 100%;
-		aspect-ratio: 1 / 1;
+		aspect-ratio: 4 / 5;
 		background: repeating-linear-gradient(
 			45deg,
 			#e3e6da 0 16px,
@@ -323,6 +422,12 @@
 		color: var(--color-ink-soft);
 	}
 
+	.info__ask {
+		margin: 0 0 var(--space-3);
+		font-size: 0.9rem;
+		color: var(--color-ink-soft);
+	}
+
 	.info__back {
 		font-size: 0.8rem;
 		letter-spacing: 0.08em;
@@ -419,6 +524,40 @@
 		100% {
 			background-position: -200% 0;
 		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.product-detail--skeleton .gallery__main,
+		.skeleton-shimmer,
+		.skeleton-line {
+			animation: none;
+		}
+	}
+
+	/* The detail section above already supplies the gap. */
+	.related {
+		padding-top: 0;
+	}
+
+	.related h2 {
+		margin-bottom: var(--space-3);
+	}
+
+	.related__grid {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: var(--space-4) var(--space-3);
+	}
+
+	@media (max-width: 800px) {
+		.related__grid {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+			gap: var(--space-3) var(--space-2);
+		}
+	}
+
+	.not-found {
+		padding: var(--space-3) 0 var(--space-2);
 	}
 
 	.alert {

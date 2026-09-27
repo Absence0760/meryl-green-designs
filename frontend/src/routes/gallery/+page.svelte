@@ -3,6 +3,7 @@
 	import { PUBLIC_API_URL } from '$env/static/public';
 	import { imageUrl, type GalleryPhoto } from '$lib/sanity';
 	import Button from '$lib/Button.svelte';
+	import { focusTrap } from '$lib/focusTrap';
 
 	const apiUrl = PUBLIC_API_URL;
 
@@ -111,7 +112,7 @@
 				{/each}
 			</div>
 		{:else if photosError}
-			<div class="alert alert--error">{photosError}</div>
+			<div class="alert alert--error" role="alert">{photosError}</div>
 		{:else if photos.length === 0}
 			<div class="empty">
 				<p>No photographs yet.</p>
@@ -172,10 +173,13 @@
 		aria-modal="true"
 		aria-label={current.caption ?? current.image.alt ?? 'Photograph'}
 		tabindex="-1"
+		use:focusTrap
 		on:click|self={closeLightbox}
 		on:keydown|self={(e) => e.key === 'Escape' && closeLightbox()}
 	>
-		<button class="lightbox-close" on:click={closeLightbox} aria-label="Close">×</button>
+		<!-- focusTrap: focus lands here on open, Tab stays inside, and the
+		     tile that opened the lightbox gets focus back on close. -->
+		<button class="lightbox-close" on:click={closeLightbox} aria-label="Close" data-autofocus>×</button>
 		{#if photos.length > 1}
 			<button class="lightbox-nav lightbox-nav--prev" on:click={showPrev} aria-label="Previous photograph">‹</button>
 			<button class="lightbox-nav lightbox-nav--next" on:click={showNext} aria-label="Next photograph">›</button>
@@ -316,6 +320,7 @@
 		position: fixed;
 		inset: 0;
 		background: rgba(12, 18, 10, 0.92);
+		--focus-ring: #f6f4ee;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -453,6 +458,14 @@
 	@media (prefers-reduced-motion: reduce) {
 		.skeleton-shimmer {
 			animation: none;
+		}
+
+		.tile-image {
+			transition: none;
+		}
+
+		.tile-button:hover .tile-image {
+			transform: none;
 		}
 	}
 </style>

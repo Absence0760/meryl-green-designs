@@ -15,7 +15,8 @@
 	  - Lost-in-transit / non-delivery flow
 	  - Late delivery (CPA s19 right to cancel for unreasonable delay)
 	  - "Specially produced" framing for the cooling-off exemption
-	    (CPA s20 / ECT Act s44 both exclude specially-produced goods)
+	    (ECT Act s42(2)(f) disapplies the s44 cooling-off right for goods
+	    made to the consumer's specifications)
 	  - Explicit repair / replacement / refund choice under CPA s56
 	  - Shipping-cost allocation (who pays for what when)
 	  - Escalation cap when a replacement also fails
@@ -41,8 +42,8 @@
 	  - The 14-business-day refund-back-to-customer timeline is aligned
 	    with CGSO guidance; reviewer to confirm against current CGSO
 	    code-of-conduct expectations.
-	  - The cooling-off section cites ECT s44(3)(c) only (specially-
-	    produced goods exemption) — CPA s20 is not cited because it
+	  - The cooling-off section cites ECT s42(2)(f) only (goods made to
+	    the consumer's specifications) — CPA s20 is not cited because it
 	    applies to direct-marketing transactions only, which this site
 	    does not engage in.
 	  - The consumer's right under CPA s56(2) to CHOOSE between repair /
@@ -67,11 +68,14 @@
 	    right to "access and maintain a full record of the
 	    transaction", or does the statute contemplate a more formal
 	    export / download mechanism?
-	  - ECT s43(1)(k) — lead times currently appear only in the
-	    Terms (read at clickwrap) and not on shop-product pages.
-	    Is clickwrap-time disclosure adequate pre-transaction
-	    disclosure under s43(1)(k), or must the lead-time figure
-	    appear on the shop page itself before "Add to cart"?
+	  - ECT s43(1)(l) — dispatch lead times ("typically 3 weeks from
+	    payment to dispatch") now appear on the shop and product pages
+	    as well as in the Terms. Counsel to confirm this satisfies the
+	    s43(1)(l) pre-transaction disclosure.
+	  - ECT s42(2)(f)(i)/(ii) — does a catalogue-design screen that is
+	    produced after purchase (no per-buyer size/finish choice)
+	    qualify as "made to the consumer's specifications" or "clearly
+	    personalised"? If not, screens carry the 7-day s44 right too.
 	  - ECT s43(1)(d)/(e)/(r) — Meryl is not a member of any
 	    self-regulatory body and the only DR code in play is the
 	    CGSO. Is silence acceptable for a non-member, or should
@@ -94,10 +98,47 @@
 	    only requires accessibility. Reviewer to confirm the
 	    distributed approach is acceptable in practice.
 
+	Product scope (26 September 2026 edit): the shop now sells two
+	product types — three-panel folding screens (made to order, ~3
+	weeks) and cushion covers. Every clause is worded to cover both.
+	Screen-specific details (frame, hinges, 3–4-week replacement
+	production) are explicitly scoped to screens. The made-to-order
+	cooling-off exemption is claimed for screens ONLY: we have not
+	confirmed that cushion covers are made to order (vs. sold from
+	stock), so the page must not claim the exemption for them until
+	Meryl confirms the facts and counsel confirms the legal position.
+	See the TODO(Meryl/legal) comments inline.
+
+	27 September 2026 edit: Meryl confirmed cushion covers are made to
+	order (printed and made up after payment). The lede now says every
+	piece is made to order, but the cooling-off exemption is STILL
+	claimed for folding screens only until counsel confirms whether
+	s42(2)(f) reaches catalogue designs — see the TODO(legal) inline.
+
 	Update the "Last updated" date whenever the policy text changes.
 -->
 <script lang="ts">
-	const lastUpdated = '15 May 2026';
+	import LegalToc from '$lib/LegalToc.svelte';
+	import { buildToc } from '$lib/headingSlug';
+
+	const lastUpdated = '27 September 2026';
+
+	// "On this page" entries — one per <h2> below, same text, same order.
+	// Each h2's literal id must equal the slug buildToc() makes from its
+	// text (legalPages.test.ts enforces both).
+	const sections = buildToc([
+		'Made-to-order — cancellations and change-of-mind',
+		'If your package arrives damaged on the outside',
+		'If your item is defective or arrives broken inside intact packaging',
+		'If you receive the wrong item',
+		'If your order does not arrive',
+		'If your delivery is significantly late',
+		'How to claim',
+		'Refunds, replacements, and shipping costs',
+		'If a replacement also has a problem',
+		'Your statutory rights and dispute resolution',
+		'About Meryl Green Designs'
+	]);
 </script>
 
 <svelte:head>
@@ -114,40 +155,54 @@
 </svelte:head>
 
 <section class="section">
-	<div class="container narrow">
+	<div class="container legal-layout">
+	<LegalToc {sections} />
+	<div class="legal-body">
 		<p class="eyebrow">Legal</p>
 		<h1>Refund &amp; Returns Policy</h1>
 		<p class="muted">Last updated: {lastUpdated}</p>
 
+		<LegalToc {sections} variant="inline" />
+
 		<p class="lede">
-			Every screen we make is handcrafted to order. This page
+			Every piece we sell is handcrafted and made to order. This page
 			explains how cancellations, refunds, replacements, damaged
 			goods, defective goods, wrong items, lost deliveries, and
 			late deliveries are handled &mdash; and what to do if any of
 			those happen to your order.
 		</p>
 
-		<h2>Made-to-order &mdash; cancellations and change-of-mind</h2>
+		<h2 id="made-to-order-cancellations-and-change-of-mind">Made-to-order &mdash; cancellations and change-of-mind</h2>
 		<p>
-			Each screen is <strong>specially produced for the buyer</strong>
-			&mdash; production begins once full payment has been received.
-			Because of this we cannot accept change-of-mind cancellations
-			or refunds after payment.
+			Each folding screen is <strong>specially produced for the
+			buyer</strong> &mdash; production begins once full payment
+			has been received. Because of this we cannot accept
+			change-of-mind cancellations or refunds on folding screens
+			after payment.
 		</p>
 		<p>
 			The 7-day cooling-off right under section 44 of the
 			Electronic Communications and Transactions Act, 2002 (ECT
 			Act) does not apply to goods made to the consumer's
-			specifications (section 44(3)(c)). Because each piece is
-			specially produced for you after you order, that exemption
-			covers orders placed through this site.
+			specifications (section 42(2)(f) of that Act). Because each folding
+			screen is specially produced for you after you order, that
+			exemption covers folding screens ordered through this site.
+		</p>
+		<!-- TODO(legal): the ECT Act cooling-off exemption above is claimed for folding screens only. Meryl confirmed on 2026-09-27 that cushion covers are made to order too, but until a South African attorney confirms whether s42(2)(f) covers made-to-order catalogue designs, this page must not refuse change-of-mind cancellations on cushion covers. Attorney to confirm the cushion-cover cancellation terms (window, who pays return costs, refund timing) before this paragraph is replaced. -->
+		<p>
+			The paragraphs above apply to folding screens only.
+			Nothing in this policy limits any right you have under
+			section 44 of the ECT Act to cancel an order for a
+			cushion cover within 7 days of receiving it. If you would
+			like to cancel a cushion cover order, please contact us
+			using the details under &ldquo;How to claim&rdquo;.
 		</p>
 		<p>
 			This does not affect your statutory rights below if something
 			goes wrong with the order itself.
 		</p>
 
-		<h2>If your package arrives damaged on the outside</h2>
+		<h2 id="if-your-package-arrives-damaged-on-the-outside">If your package arrives damaged on the outside</h2>
 		<p>
 			If the box you receive is visibly damaged when the courier
 			delivers it, please email us a photo as soon as you can &mdash;
@@ -157,17 +212,20 @@
 			rights under section 56 of the Consumer Protection Act if
 			you notice the damage later. Once we have your photo we
 			will arrange courier collection of the package at no cost
-			to you, and a replacement will be put into production and
-			shipped within 3&ndash;4 weeks of the original item arriving
-			back at our workshop.
+			to you and send you a replacement. A replacement folding
+			screen will be put into production and shipped within
+			3&ndash;4 weeks of the original item arriving back at our
+			workshop; for a cushion cover, a replacement will be
+			dispatched within 3 weeks of the original arriving back at
+			our workshop.
 		</p>
 
-		<h2>If your item is defective or arrives broken inside intact packaging</h2>
+		<h2 id="if-your-item-is-defective-or-arrives-broken-inside-intact-packaging">If your item is defective or arrives broken inside intact packaging</h2>
 		<p>
-			If the package looks fine but the screen itself has a
-			manufacturing flaw, a broken hinge, the wrong colour or
-			finish, or any defect that prevents it from being used as
-			intended, please tell us as soon as you can &mdash;
+			If the package looks fine but the item itself has a
+			manufacturing flaw (on a folding screen, for example, a
+			broken hinge), the wrong colour or finish, or any defect
+			that prevents it from being used as intended, please tell us as soon as you can &mdash;
 			ideally within 7 days of delivery so we can inspect it
 			promptly with the issue fresh in mind. Your statutory right
 			under section 56 of the Consumer Protection Act to ask for a
@@ -183,7 +241,7 @@
 			courier collection at no cost to you.
 		</p>
 
-		<h2>If you receive the wrong item</h2>
+		<h2 id="if-you-receive-the-wrong-item">If you receive the wrong item</h2>
 		<p>
 			If we send you something other than what you ordered, please
 			email us within 7 days of delivery. We will arrange a free
@@ -196,17 +254,17 @@
 			mismatch later within that window.
 		</p>
 
-		<h2>If your order does not arrive</h2>
+		<h2 id="if-your-order-does-not-arrive">If your order does not arrive</h2>
 		<p>
 			If 4 weeks have passed since your shipping notification and
 			your order has still not been delivered, please contact us.
 			We will work with the courier to trace the parcel. If it
-			cannot be recovered we will, at your choice, either produce
-			and ship a replacement at no cost to you or issue a full
-			refund.
+			cannot be recovered we will, at your choice, either send
+			you a replacement at no cost to you (producing a new piece
+			where needed) or issue a full refund.
 		</p>
 
-		<h2>If your delivery is significantly late</h2>
+		<h2 id="if-your-delivery-is-significantly-late">If your delivery is significantly late</h2>
 		<p>
 			We aim to ship within the timeframe communicated when you
 			place your order. If delivery is unreasonably delayed beyond
@@ -218,7 +276,7 @@
 			yours regardless.
 		</p>
 
-		<h2>How to claim</h2>
+		<h2 id="how-to-claim">How to claim</h2>
 		<p>
 			To start any of the processes above, email
 			<a href="mailto:zagreenwoman@gmail.com">zagreenwoman@gmail.com</a>
@@ -236,7 +294,7 @@
 			complete within the timelines stated above.
 		</p>
 
-		<h2>Refunds, replacements, and shipping costs</h2>
+		<h2 id="refunds-replacements-and-shipping-costs">Refunds, replacements, and shipping costs</h2>
 		<p>
 			Where you are entitled to a remedy under this policy or
 			under the Consumer Protection Act, <strong>you</strong>
@@ -258,7 +316,7 @@
 			3&ndash;5 business days.
 		</p>
 
-		<h2>If a replacement also has a problem</h2>
+		<h2 id="if-a-replacement-also-has-a-problem">If a replacement also has a problem</h2>
 		<p>
 			Section 56(3) of the Consumer Protection Act gives you the
 			right, after one failed repair or replacement, to escalate
@@ -270,7 +328,7 @@
 			repair attempts.
 		</p>
 
-		<h2>Your statutory rights and dispute resolution</h2>
+		<h2 id="your-statutory-rights-and-dispute-resolution">Your statutory rights and dispute resolution</h2>
 		<p>
 			Nothing in this policy excludes or limits your rights under
 			the South African Consumer Protection Act, 68 of 2008,
@@ -296,10 +354,11 @@
 			them in preference to the others.
 		</p>
 
-		<h2>About Meryl Green Designs</h2>
+		<h2 id="about-meryl-green-designs">About Meryl Green Designs</h2>
 		<p>
 			Meryl Green Designs is a South African studio handcrafting
-			screens and nature-inspired designs. The details below are
+			folding screens, cushion covers, and other nature-inspired
+			designs. The details below are
 			published in compliance with section 43 of the Electronic
 			Communications and Transactions Act, 2002.
 		</p>
@@ -348,7 +407,7 @@
 				<a href="https://www.cgso.org.za" target="_blank" rel="noopener noreferrer"
 					>Consumer Goods and Services Ombud (CGSO)</a>
 				is our applicable dispute-resolution forum. See
-				"Your statutory rights and dispute resolution" below
+				"Your statutory rights and dispute resolution" above
 				for the consumer's right to elect between CGSO, the
 				National Consumer Commission, and the courts.
 			</dd>
@@ -369,13 +428,10 @@
 			email or call using the details above.
 		</p>
 	</div>
+	</div>
 </section>
 
 <style>
-	.narrow {
-		max-width: 720px;
-	}
-
 	.muted {
 		color: var(--color-ink-soft);
 		font-style: italic;
@@ -391,6 +447,8 @@
 
 	h2 {
 		font-size: 1.4rem;
+		/* Clears the sticky site header (~73px) on a TOC / #hash jump. */
+		scroll-margin-top: 6.5rem;
 		margin-top: var(--space-4);
 		margin-bottom: var(--space-2);
 		padding-top: var(--space-2);

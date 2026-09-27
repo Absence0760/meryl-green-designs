@@ -440,7 +440,9 @@ Security:
 | `DYNAMODB_ENDPOINT` | no | Local-dev only (`http://localhost:4566` for LocalStack); leave unset in production so the SDK uses real AWS. |
 
 Added to `infra/variables.tf` with `sensitive = true` on the secret ones, and
-to `backend/.env.example` and `backend/.env` for local development.
+to the committed `backend/.env.development` (blank or obviously-dev values;
+real ones in a gitignored `backend/.env.development.local`) for local
+development.
 
 **Banking details are intentionally not environment variables.** They're not
 stored anywhere in the repo, the Lambda, or any automated email — Meryl
@@ -709,7 +711,7 @@ not the repo:
 3. **Generate a webhook secret** with `openssl rand -hex 32`. You'll use it
    in two places: `SANITY_WEBHOOK_SECRET` env var on the backend, and the
    "Secret" field on the Sanity webhook.
-4. **Configure the backend env vars** — locally in `backend/.env`, and in
+4. **Configure the backend env vars** — locally in `backend/.env.development.local` (plus `CONTENT_BACKEND=sanity`), and in
    production via `infra/terraform.tfvars` and `terraform apply`:
    - `SANITY_PROJECT_ID`
    - `SANITY_DATASET`

@@ -1,4 +1,18 @@
 import { createClient, type SanityClient } from '@sanity/client';
+import {
+	getLocalGalleryPhotos,
+	getLocalProductBySlug,
+	getLocalProducts,
+	getLocalProductsByIds,
+	getLocalTestimonials,
+	isLocalContent
+} from './content-local.js';
+import {
+	createLocalOrder,
+	deleteLocalOrder,
+	getLocalOrderByRef,
+	updateLocalOrderPayment
+} from './orders-local.js';
 
 export type OrderStatus =
 	| 'pending_payment'
@@ -31,10 +45,17 @@ export type NewSanityOrderInput = {
 	amountZar?: number;
 };
 
+// Product category. Drives the shop sections and which spec rows the
+// product page shows. Documents created before the field existed carry
+// no value — every projection below coalesces a missing one to
+// 'screen' (the only thing the studio sold before cushion covers).
+export type ProductCategory = 'screen' | 'cushion-cover';
+
 export type SanityProduct = {
 	_id: string;
 	name: string;
 	slug: string;
+	category: ProductCategory;
 	blurb: string | null;
 	description: string | null;
 	priceZar: number | null;
@@ -77,10 +98,13 @@ export type SanityGalleryPhoto = {
 	order: number;
 };
 
-const PRODUCTS_QUERY = `*[_type == "product" && available == true] | order(order asc, name asc) {
+// Shared by every product query so the shape (and the category default)
+// can't drift between the list, by-slug, and by-ids reads.
+export const PRODUCT_PROJECTION = `{
 	_id,
 	name,
 	"slug": slug.current,
+	"category": coalesce(category, "screen"),
 	blurb,
 	description,
 	priceZar,
@@ -95,6 +119,8 @@ const PRODUCTS_QUERY = `*[_type == "product" && available == true] | order(order
 		crop
 	}
 }`;
+
+const PRODUCTS_QUERY = `*[_type == "product" && available == true] | order(order asc, name asc) ${PRODUCT_PROJECTION}`;
 
 const GALLERY_QUERY = `*[_type == "galleryPhoto" && visible == true] | order(order asc, _createdAt desc) {
 	_id,
@@ -123,7 +149,9 @@ function getClient(): SanityClient {
 	const token = process.env.SANITY_API_TOKEN;
 
 	if (!projectId) {
-		throw new Error('SANITY_PROJECT_ID is not configured.');
+		throw new Error(
+			'SANITY_PROJECT_ID is not configured. For local dev without Sanity set CONTENT_BACKEND=local (the backend/.env.development default); otherwise put SANITY_* in backend/.env.development.local.'
+		);
 	}
 	if (!token) {
 		throw new Error('SANITY_API_TOKEN is not configured.');
@@ -152,6 +180,7 @@ export async function createOrder(
 	input: NewSanityOrderInput,
 	options?: { signal?: AbortSignal }
 ): Promise<SanityOrder> {
+	if (isLocalContent()) return createLocalOrder(input);
 	const client = getClient();
 	const created = await client.create(
 		{
@@ -175,6 +204,7 @@ export async function deleteOrder(orderId: string): Promise<void> {
 	// but the Sanity create fails — orders-store.ts catches and reverses
 	// the DynamoDB row; if Sanity itself errors AFTER inserting the doc
 	// (very rare), this is the cleanup hook.
+	if (isLocalContent()) return deleteLocalOrder(orderId);
 	const client = getClient();
 	await client.delete(orderId);
 }
@@ -183,6 +213,7 @@ export async function updateOrderPayment(
 	orderRef: string,
 	updates: { status: OrderStatus; paymentId?: string }
 ): Promise<SanityOrder> {
+	if (isLocalContent()) return updateLocalOrderPayment(orderRef, updates);
 	const client = getClient();
 	const query = `*[_type == "order" && orderRef == $ref][0]._id`;
 	const docId = await client.fetch<string | null>(query, { ref: orderRef });
@@ -200,29 +231,14 @@ export async function updateOrderPayment(
 }
 
 export async function getProductsByIds(ids: string[]): Promise<SanityProduct[]> {
+	if (isLocalContent()) return getLocalProductsByIds(ids);
 	const client = getClient();
-	const query = `*[_type == "product" && _id in $ids && available == true] {
-		_id,
-		name,
-		"slug": slug.current,
-		blurb,
-		description,
-		priceZar,
-		dimensions,
-		available,
-		order,
-		photos[] {
-			_key,
-			alt,
-			asset,
-			hotspot,
-			crop
-		}
-	}`;
+	const query = `*[_type == "product" && _id in $ids && available == true] ${PRODUCT_PROJECTION}`;
 	return client.fetch<SanityProduct[]>(query, { ids });
 }
 
 export async function getOrderByRef(orderRef: string): Promise<SanityOrder | null> {
+	if (isLocalContent()) return getLocalOrderByRef(orderRef);
 	const client = getClient();
 	const query = `*[_type == "order" && orderRef == $ref][0]`;
 	const result = await client.fetch<SanityOrder | null>(query, { ref: orderRef });
@@ -230,43 +246,30 @@ export async function getOrderByRef(orderRef: string): Promise<SanityOrder | nul
 }
 
 export async function getProducts(): Promise<SanityProduct[]> {
+	if (isLocalContent()) return getLocalProducts();
 	const client = getClient();
 	return client.fetch<SanityProduct[]>(PRODUCTS_QUERY);
 }
 
 export async function getProductBySlug(slug: string): Promise<SanityProduct | null> {
+	if (isLocalContent()) return getLocalProductBySlug(slug);
 	const client = getClient();
 	// Same projection as PRODUCTS_QUERY — a single product filtered by slug.
 	// Limited to available products so unpublished/hidden items don't leak
 	// through a direct URL.
-	const query = `*[_type == "product" && slug.current == $slug && available == true][0] {
-		_id,
-		name,
-		"slug": slug.current,
-		blurb,
-		description,
-		priceZar,
-		dimensions,
-		available,
-		order,
-		photos[] {
-			_key,
-			alt,
-			asset,
-			hotspot,
-			crop
-		}
-	}`;
+	const query = `*[_type == "product" && slug.current == $slug && available == true][0] ${PRODUCT_PROJECTION}`;
 	const result = await client.fetch<SanityProduct | null>(query, { slug });
 	return result ?? null;
 }
 
 export async function getGalleryPhotos(): Promise<SanityGalleryPhoto[]> {
+	if (isLocalContent()) return getLocalGalleryPhotos();
 	const client = getClient();
 	return client.fetch<SanityGalleryPhoto[]>(GALLERY_QUERY);
 }
 
 export async function getTestimonials(): Promise<SanityTestimonial[]> {
+	if (isLocalContent()) return getLocalTestimonials();
 	const client = getClient();
 	return client.fetch<SanityTestimonial[]>(TESTIMONIALS_QUERY);
 }

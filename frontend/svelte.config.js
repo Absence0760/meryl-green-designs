@@ -25,7 +25,13 @@ function defineConfig() {
 			paths: {
 				base: process.env.BASE_PATH || '',
 			},
-			inlineStyleThreshold: 0,
+			// Inline every stylesheet under 16 KB into the prerendered HTML
+			// (layout + app.css is ~15 KB raw / ~4 KB gzip, the rest 0.5–6 KB).
+			// Each was a separate render-blocking request before first paint;
+			// Lighthouse mobile put the cost at ~750 ms. Safe with our
+			// headers: there is no CSP (see infra/security_headers.tf), so
+			// inline <style> needs no nonce.
+			inlineStyleThreshold: 16384,
 		},
 	};
 }

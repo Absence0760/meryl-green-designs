@@ -141,7 +141,7 @@ Two best-effort fetches in parallel (e.g. the home page's gallery + testimonials
 - **Don't run `pnpm dev`** in a subprocess. Per the repo CLAUDE.md, visual verification is the operator's job; the agent verifies with type-check + tests only.
 - **Don't soften test assertions** to make a redesigned page pass. The Playwright smoke spec already pins the s43 disclosure block and the s22 commitment. If a test fails because the markup moved, update the selector to match the new contract. If a test fails because functionality regressed, fix the page.
 - **Don't introduce Svelte 4 reactivity** (`let` mutable assignment as reactive state, `$:` reactive statements, `export let` props) in new code. The codebase is mid-migration — older files still use it, new code uses runes (`$state`, `$derived`, `$effect`, `$props`).
-- **Don't `{@html …}` user-supplied or CMS content.** The repo's XSS audit found exactly one safe `{@html}` (the JSON-LD payload in `+layout.svelte`, which is serialized with `<` escaped). Don't add a second.
+- **Don't `{@html …}` user-supplied or CMS content.** The only `{@html}` uses are JSON-LD payloads (`+layout.svelte`, `shop/[slug]/+page.svelte`), all built through `src/lib/jsonLd.ts`, which escapes `<`/`>`/`&`. Don't add any other kind.
 - **Don't strip the file-top HTML comments** on legal pages. They list items the SA attorney needs to confirm.
 - **Don't add narrating comments** (`// loop over the products and render them`). Comment the *why* — a non-obvious constraint, a workaround, a CPA / POPIA hook. No multi-paragraph docstrings.
 

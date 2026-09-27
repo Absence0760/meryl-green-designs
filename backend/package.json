@@ -6,9 +6,9 @@
 	"type": "module",
 	"scripts": {
 		"dev": "tsx watch src/server.ts",
-		"build": "pnpm build:lambda && pnpm build:auto-cancel",
-		"build:lambda": "esbuild src/lambda.ts --bundle --platform=node --target=node22 --format=esm --outfile=dist/lambda.mjs --banner:js=\"import{createRequire}from'module';const require=createRequire(import.meta.url);\"",
-		"build:auto-cancel": "esbuild src/auto-cancel-lambda.ts --bundle --platform=node --target=node22 --format=esm --outfile=dist/auto-cancel.mjs --banner:js=\"import{createRequire}from'module';const require=createRequire(import.meta.url);\"",
+		"build": "node scripts/build.mjs",
+		"build:lambda": "node scripts/build.mjs lambda",
+		"build:auto-cancel": "node scripts/build.mjs auto-cancel",
 		"check": "tsc -p tsconfig.json --noEmit",
 		"test": "vitest run",
 		"test:watch": "vitest",
@@ -23,18 +23,18 @@
 	"dependencies": {
 		"@aws-sdk/client-dynamodb": "^3.1135.0",
 		"@aws-sdk/lib-dynamodb": "^3.1135.0",
-		"@sanity/client": "^7.27.0",
-		"dotenv": "^17.4.2",
+		"@sanity/client": "^8.7.0",
+		"dotenv": "^18.0.4",
 		"hono": "4.13.8"
 	},
 	"devDependencies": {
 		"@hono/node-server": "2.1.1",
 		"@types/aws-lambda": "8.10.163",
-		"@types/node": "25.9.6",
+		"@types/node": "26.6.3",
 		"aws-sdk-client-mock": "^4.1.0",
 		"esbuild": "0.28.2",
 		"tsx": "4.23.13",
 		"typescript": "6.0.3",
-		"vitest": "4.1.11"
+		"vitest": "5.0.2"
 	}
 }

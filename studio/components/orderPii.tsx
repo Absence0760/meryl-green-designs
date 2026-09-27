@@ -173,7 +173,7 @@ function PanelShell({
 	if (state.error) {
 		return (
 			<Card padding={3} radius={2} shadow={1} tone="critical">
-				<Stack space={2}>
+				<Stack gap={2}>
 					<Text weight="medium">Could not load {title.toLowerCase()}</Text>
 					<Text size={1} muted>
 						{state.error}
@@ -194,7 +194,7 @@ function PanelShell({
 	}
 	return (
 		<Card padding={3} radius={2} shadow={1}>
-			<Stack space={4}>
+			<Stack gap={4}>
 				<Text weight="medium">{title}</Text>
 				{children(state.pii)}
 			</Stack>
@@ -204,7 +204,7 @@ function PanelShell({
 
 function DetailRow({ label, value, multiline }: { label: string; value: string | null; multiline?: boolean }) {
 	return (
-		<Stack space={1}>
+		<Stack gap={1}>
 			<Label size={1} muted>
 				{label}
 			</Label>
@@ -218,7 +218,7 @@ export function CustomerDetailsPanel() {
 	return (
 		<PanelShell title="Customer details (from DynamoDB)" state={state}>
 			{(pii) => (
-				<Stack space={3}>
+				<Stack gap={3}>
 					<DetailRow label="Name" value={pii.customerName} />
 					<DetailRow label="Email" value={pii.customerEmail} />
 					<DetailRow label="Phone" value={pii.customerPhone} />
@@ -236,7 +236,7 @@ type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 function SaveIndicator({ state, error }: { state: SaveState; error: string | null }) {
 	if (state === 'saving') {
 		return (
-			<Inline space={2}>
+			<Inline gap={2}>
 				<Spinner muted />
 				<Text size={1} muted>
 					Saving…
@@ -302,7 +302,7 @@ function EditableField({
 	};
 
 	return (
-		<Stack space={2}>
+		<Stack gap={2}>
 			<Flex align="center" justify="space-between">
 				<Label size={1} muted>
 					{label}
@@ -323,7 +323,7 @@ export function TrackingFields() {
 	return (
 		<PanelShell title="Tracking (DynamoDB)" state={state}>
 			{(pii) => (
-				<Stack space={3}>
+				<Stack gap={3}>
 					<EditableField
 						label="Shipping carrier"
 						initial={pii.shippingCarrier ?? ''}
@@ -355,7 +355,7 @@ export function InternalNotesField() {
 	return (
 		<PanelShell title="Internal notes (DynamoDB)" state={state}>
 			{(pii) => (
-				<Stack space={3}>
+				<Stack gap={3}>
 					<EditableField
 						label="Never shown to customer"
 						initial={pii.internalNotes ?? ''}

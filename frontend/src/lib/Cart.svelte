@@ -4,6 +4,7 @@
 	import { PUBLIC_API_URL } from '$env/static/public';
 	import PayFastRedirecting from './PayFastRedirecting.svelte';
 	import Button from './Button.svelte';
+	import { focusTrap } from './focusTrap';
 
 	export let open = false;
 	export let onclose: () => void;
@@ -87,7 +88,7 @@
 	}
 
 	function handleKeydown(e: KeyboardEvent) {
-		if (e.key === 'Escape') onclose();
+		if (open && e.key === 'Escape') onclose();
 	}
 
 	function redirectToPayFast(payfast: { action: string; fields: Record<string, string> }) {
@@ -193,16 +194,26 @@
 {#if open}
 	<!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
 	<div class="backdrop" on:click={handleBackdropClick}>
-		<aside class="panel">
-			<header class="panel-header">
-				<h2>Your order</h2>
-				<button class="close-btn" on:click={onclose} aria-label="Close cart">
+		<!-- Modal dialog: focusTrap moves focus to the close button on open,
+		     keeps Tab inside the panel, and returns focus to the cart button
+		     on close. -->
+		<div
+			class="panel"
+			role="dialog"
+			aria-modal="true"
+			aria-labelledby="cart-title"
+			tabindex="-1"
+			use:focusTrap
+		>
+			<div class="panel-header">
+				<h2 id="cart-title">Your order</h2>
+				<button class="close-btn" on:click={onclose} aria-label="Close cart" data-autofocus>
 					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
 						<line x1="18" y1="6" x2="6" y2="18"></line>
 						<line x1="6" y1="6" x2="18" y2="18"></line>
 					</svg>
 				</button>
-			</header>
+			</div>
 
 			{#if redirecting}
 				<div class="redirecting-wrap">
@@ -231,9 +242,9 @@
 								<span class="item-name">{item.name}</span>
 							</div>
 							<div class="item-controls">
-								<button class="qty-btn" on:click={() => handleDecrement(item.productId)} aria-label="Decrease quantity">&minus;</button>
+								<button class="qty-btn" on:click={() => handleDecrement(item.productId)} aria-label="Decrease quantity of {item.name}">&minus;</button>
 								<span class="qty">{item.quantity}</span>
-								<button class="qty-btn" on:click={() => cart.increment(item.productId)} aria-label="Increase quantity">+</button>
+								<button class="qty-btn" on:click={() => cart.increment(item.productId)} aria-label="Increase quantity of {item.name}">+</button>
 							</div>
 							<span class="item-price">{formatPrice(item.price * item.quantity)}</span>
 							<button class="remove-btn" on:click={() => handleRemove(item.productId)} aria-label="Remove {item.name}">
@@ -248,7 +259,7 @@
 
 				<div class="form">
 					{#if error}
-						<div class="form-error">{error}</div>
+						<div class="form-error" role="alert">{error}</div>
 					{/if}
 
 					<input
@@ -317,7 +328,7 @@
 					</p>
 				</div>
 			{/if}
-		</aside>
+		</div>
 	</div>
 {/if}
 

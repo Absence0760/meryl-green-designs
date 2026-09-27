@@ -27,18 +27,22 @@
 		"studio": "pnpm --filter @meryl-green-designs/studio"
 	},
 	"engines": {
-		"node": ">=22"
+		"node": ">=22.12"
 	},
 	"pnpm": {
 		"overrides": {
-			"js-yaml@<3.14.2": "^3.14.2",
+			"js-yaml@<3.15.2": "^3.15.2",
 			"cookie@<0.7.0": "^0.7.0",
 			"devalue@<5.8.1": "^5.8.1",
 			"@smithy/types": "^4.14.2",
 			"adm-zip@<0.6.1": "^0.6.1",
 			"esbuild@>=0.27.3 <0.28.1": "^0.28.2",
 			"vite@>=7.0.0 <7.3.5": "^7.3.6",
-			"uuid@<11.1.1": "^11.1.1"
+			"uuid@<11.1.1": "^11.1.1",
+			"smol-toml@<1.7.1": "^1.7.1"
+		},
+		"auditConfig": {
+			"ignoreGhsas": ["GHSA-7mvr-c777-76hp"]
 		}
 	}
 }

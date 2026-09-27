@@ -37,7 +37,7 @@ For each, mark **green** / **red** and capture a one-line reason for any red.
 git status --porcelain
 ```
 
-Empty → green. Anything → red ("uncommitted changes in: <files>"). Pay particular attention to plaintext SOPS siblings (`backend/.env`, `infra/terraform.tfvars`) — if they're showing up tracked, that's a separate Critical to flag.
+Empty → green. Anything → red ("uncommitted changes in: <files>"). Pay particular attention to plaintext SOPS siblings (`backend/.env.development.local`, legacy `backend/.env`, `infra/terraform.tfvars`) — if they're showing up tracked, that's a separate Critical to flag.
 
 #### 2b. main is up to date with origin
 
@@ -118,7 +118,7 @@ Non-zero either → amber. Don't block; just surface.
 #### 4b. SOPS plaintext siblings absent
 
 ```
-ls backend/.env infra/terraform.tfvars 2>/dev/null
+ls backend/.env backend/.env.development.local infra/terraform.tfvars 2>/dev/null
 ```
 
 Either present → amber ("plaintext SOPS sibling exists locally — confirm it's gitignored and not staged"). Both absent → green.

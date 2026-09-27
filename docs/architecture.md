@@ -14,7 +14,7 @@ and GitHub Actions workflows for CI/CD:
 - `backend/` — Hono app, written once and deployed two ways: as a local Node HTTP
   server for development and as an AWS Lambda handler for production. Bundled
   with esbuild.
-- `studio/` — Sanity Studio v5 (React 19), a dashboard where the shop owner manages products
+- `studio/` — Sanity Studio v6 (React 19), a dashboard where the shop owner manages products
   (name, price, photos, availability). Runs locally or as a free hosted app at
   `*.sanity.studio`.
 - `infra/` — Terraform module that provisions all AWS resources (S3, CloudFront,
@@ -47,7 +47,7 @@ meryl-green-designs/
 │   ├── package.json
 │   ├── svelte.config.js
 │   ├── vite.config.ts
-│   ├── .env.example          PUBLIC_API_URL, PUBLIC_SANITY_PROJECT_ID, PUBLIC_SANITY_DATASET
+│   ├── .env.development      Committed local-dev defaults (PUBLIC_API_URL, PUBLIC_SANITY_*)
 │   └── src/
 │       ├── app.css           Base styles + theme tokens
 │       ├── app.html
@@ -80,15 +80,21 @@ meryl-green-designs/
 │           ├── returns/+page.svelte  Refund / returns policy
 │           └── contact/+page.svelte
 ├── backend/
-│   ├── package.json          Build script runs esbuild → dist/lambda.mjs
+│   ├── package.json          `build` → scripts/build.mjs
+│   ├── scripts/build.mjs     esbuild config → dist/lambda.mjs + dist/auto-cancel.mjs (aliases undici → src/shims/undici.ts)
 │   ├── tsconfig.json
-│   ├── .env.example          Resend + Sanity + webhook secret env vars
+│   ├── .env.development      Committed local-dev defaults (local content, file email, LocalStack, PayFast sandbox)
+│   ├── dev-content.sample/   Committed generic sample content + images for CONTENT_BACKEND=local
 │   └── src/
 │       ├── app.ts            Hono app factory + CORS + route mounting
 │       ├── server.ts         Local dev entry (runs on :3001)
+│       ├── load-dev-env.ts   Loads .env.development(.local) for server.ts only (never the Lambda)
+│       ├── runtime-guard.ts  Refuses to start on Lambda with local-dev config
 │       ├── lambda.ts         AWS Lambda entry (wraps app with hono/aws-lambda)
 │       ├── auto-cancel-lambda.ts  Daily EventBridge-invoked Lambda: cancels stale pending_payment orders
 │       ├── email.ts          Resend API wrapper + HTML escaping
+│       ├── content-local.ts  Local-dev content backend (CONTENT_BACKEND=local) — reads .dev-content/ or dev-content.sample/
+│       ├── orders-local.ts   Local-dev order-skeleton store (CONTENT_BACKEND=local) — .dev-content/orders.json
 │       ├── email-templates.ts Status-keyed customer email templates
 │       ├── email-match.ts    Constant-time email-equality for track-page lookups
 │       ├── payfast.ts        PayFast signature generation, ITN validation, form-data builder
@@ -107,13 +113,14 @@ meryl-green-designs/
 │           ├── payment-retry.ts    POST /orders/:ref/retry-payment?email= — self-service retry
 │           ├── enquiries.ts        POST /enquiries — commission enquiry form → owner email
 │           ├── admin.ts            GET/PATCH /admin/orders/:ref/* — Studio-only PII routes (bearer token)
+│           ├── dev-content.ts      GET /dev-content/images/:name — local-dev photo server (CONTENT_BACKEND=local only)
 │           ├── payfast-itn.ts      POST /webhooks/payfast-itn — PayFast payment confirmation
 │           └── sanity-webhook.ts   POST /webhooks/sanity-order — verify sig + dispatch email
 ├── studio/
 │   ├── package.json
 │   ├── sanity.config.ts      Studio configuration (project, plugins, schema)
 │   ├── sanity.cli.ts         CLI configuration (used by `sanity deploy`, etc.)
-│   ├── .env.example          SANITY_STUDIO_PROJECT_ID, SANITY_STUDIO_DATASET
+│   ├── .env.development      Committed local-dev defaults (project ID blank — Studio optional locally)
 │   └── schemas/
 │       ├── index.ts          Schema registry
 │       ├── product.ts        Product schema (name, price, photos, availability, order)
@@ -177,6 +184,13 @@ build/
 This is the directory that uploads to S3. CloudFront sits in front for caching and
 TLS termination. No server-side rendering, no runtime, no Node process.
 
+`kit.inlineStyleThreshold: 16384` in `svelte.config.js` inlines each route's
+stylesheets (all under 16 KB) into its prerendered HTML as `<style>`, so first
+paint waits on no CSS requests. SvelteKit rewrites the `url()`s (fonts, linen
+texture) relative to each page, and client-side navigation still loads the
+hashed `.css` files. This relies on there being no CSP — adding one later
+means allowing these inline styles (hash or nonce).
+
 **SPA fallback for dynamic routes.** The product detail route `/shop/[slug]`
 can't be enumerated at build time (slugs come from Sanity), so its
 `+page.ts` sets `prerender = false; ssr = false;` and the static adapter
@@ -185,6 +199,9 @@ SPA shell that boots, reads the URL, and renders the matching product
 page. CloudFront's `custom_error_response` in `infra/s3_cloudfront.tf`
 rewrites 404 and 403 responses to `/404.html` with HTTP 200, so direct
 visits to dynamic routes resolve correctly without leaking a 4xx status.
+A URL that matches no route boots the same shell and renders the root
+`src/routes/+error.svelte` (branded 404, `noindex`) client-side; because
+the HTTP status is 200, the robots meta is what keeps it out of indexes.
 
 The shop page includes client-side JavaScript that submits the order form to the
 backend via `fetch`. The backend URL is baked into the bundle at build time from
@@ -207,9 +224,11 @@ This pattern has three deliberate properties:
    any data or images are requested
 2. **Content is live** — because the fetch runs on every visit, a product
    edit in Sanity Studio is visible within seconds without a frontend
-   rebuild (the "rebuild on publish" webhook still exists but is only
-   strictly needed for content that's baked at build time, which for now
-   is nothing)
+   rebuild (the "rebuild on publish" webhook still exists and is only
+   strictly needed for content that's baked at build time — currently
+   just the product URLs in `sitemap.xml`, fetched from
+   `${PUBLIC_API_URL}/products` during prerender and skipped with a
+   warning if the API is unreachable)
 3. **The site stays fully static** — no server, no SSR at runtime, no
    Node process on the hot path. S3 + CloudFront serves everything; the
    Lambda is only invoked when a browser hits `/orders`, `/products`,
@@ -280,9 +299,12 @@ difference is how requests reach the app.
   custom field components in `studio/components/orderPii.tsx`.
 - `POST /enquiries` — commission enquiry form on `/contact`. Validates
   the body (required name/email/message + length limits, honeypot, valid
-  email regex), then sends a single notification email to `OWNER_EMAIL`
+  email regex, and an optional `interest` enum — `screen` |
+  `cushion-cover` | `other`, anything else is a 400), then sends a single notification email to `OWNER_EMAIL`
   via Resend with `replyTo` set to the visitor's claimed email and a
-  prominent unverified-sender warning rendered in the email body. No
+  prominent unverified-sender warning rendered in the email body. A chosen
+  `interest` appears as an "Interested in" row and in the subject
+  (`Commission enquiry (cushion cover) — <name>`). No
   Sanity document is created — at the current scale, treating enquiries
   as a transient email is simpler than another data store.
 - `POST /webhooks/sanity-order` — receives webhook POSTs from Sanity when an
@@ -351,7 +373,7 @@ bundle.
 
 ## Studio
 
-Sanity Studio v5 (React 19), configured in `studio/sanity.config.ts`. It is a standalone React
+Sanity Studio v6 (React 19), configured in `studio/sanity.config.ts`. It is a standalone React
 application, not part of the SvelteKit app. It runs in one of three places:
 
 - **Locally** via `pnpm studio dev` on `http://localhost:3333`. Used during
@@ -548,7 +570,9 @@ CI/CD lives in `.github/workflows/`:
 - `codeql.yml` — CodeQL SAST on JS/TS + GitHub Actions YAML on every PR,
   push to main, and weekly. Findings surface in the Security tab.
 - `audit.yml` — `pnpm audit` weekly; auto-files a `dependency-audit`
-  issue on findings and auto-closes on next clean run.
+  issue on findings and auto-closes it on the next clean run. Known false
+  positives are ignored via `pnpm.auditConfig.ignoreGhsas` (see
+  `docs/security.md`).
 - `gitleaks.yml` — secret-scan on every PR + push + weekly full-history
   sweep. Catches accidentally-committed tokens.
 - `scorecard.yml` — weekly OpenSSF Scorecard supply-chain posture

@@ -61,6 +61,90 @@ test.describe('POST /enquiries', () => {
 		expect(email.bodyHtml).toContain('commission a screen');
 	});
 
+	test('interest: a cushion-cover enquiry is labelled in the owner email subject + body', async ({
+		request,
+	}) => {
+		const res = await postEnquiry(request, {
+			interest: 'cushion-cover',
+			photoReference: 'Wild Amaryllis in bloom',
+			size: '60cm x 60cm',
+			finish: '',
+		});
+		expect(res.status()).toBe(200);
+
+		const emails = await waitForEmail(
+			(e) => e.to === process.env.OWNER_EMAIL && /commission enquiry/i.test(e.subject),
+		);
+		expect(emails).toHaveLength(1);
+		expect(emails[0].subject).toContain('(cushion cover)');
+		expect(emails[0].bodyHtml).toContain('Cushion cover');
+		expect(emails[0].bodyHtml).toContain('Wild Amaryllis in bloom');
+	});
+
+	test('form: choosing "Cushion cover" hides wood/finish and sends the interest', async ({
+		page,
+	}) => {
+		await page.goto('/contact');
+		const form = page.locator('form.enquiry-form');
+		const interest = form.getByRole('group', { name: /interested in/i });
+		await expect(interest.getByRole('radio')).toHaveCount(3);
+
+		await expect(form.getByLabel(/wood or finish/i)).toBeVisible();
+		await interest.getByLabel('Cushion cover').check();
+		await expect(form.getByLabel(/wood or finish/i)).toHaveCount(0);
+		await expect(form.getByLabel(/approximate size/i)).toHaveAttribute(
+			'placeholder',
+			/60cm/,
+		);
+
+		await form.getByLabel(/your name/i).fill('Pat Visitor');
+		await form.getByLabel(/^email/i).fill('pat@e2e.local');
+		await form.getByLabel(/tell us a little/i).fill('Two cushion covers, please.');
+		await form.getByRole('button', { name: /send enquiry/i }).click();
+		await expect(page.getByText(/your enquiry is on its way/i)).toBeVisible();
+
+		const emails = await waitForEmail(
+			(e) => e.to === process.env.OWNER_EMAIL && /commission enquiry/i.test(e.subject),
+		);
+		expect(emails).toHaveLength(1);
+		expect(emails[0].subject).toContain('(cushion cover)');
+	});
+
+	// A product page's "Ask about this piece" link opens /contact with
+	// ?product=<slug>; the form pre-fills the interest (from the product's
+	// category) and the photo reference (its name). Nothing is submitted.
+	test('form: "Ask about this piece" pre-fills from the product page', async ({ page }) => {
+		await page.goto('/shop/test-cushion-cover');
+		await page.getByRole('link', { name: 'Ask about this piece' }).click();
+		await expect(page).toHaveURL(/\/contact\?product=test-cushion-cover$/);
+
+		const form = page.locator('form.enquiry-form');
+		const interest = form.getByRole('group', { name: /interested in/i });
+		await expect(interest.getByLabel('Cushion cover')).toBeChecked();
+		await expect(form.getByLabel(/which photograph/i)).toHaveValue('Test Cushion Cover');
+		await expect(form.getByLabel(/wood or finish/i)).toHaveCount(0);
+	});
+
+	test('form: an unknown ?product= slug leaves the form blank', async ({ page }) => {
+		await page.goto('/contact?product=no-such-product');
+		const form = page.locator('form.enquiry-form');
+		// Wait for hydration + the /products fetch before asserting nothing changed.
+		await page.waitForLoadState('networkidle');
+		await expect(form.getByRole('radio', { checked: true })).toHaveCount(0);
+		await expect(form.getByLabel(/which photograph/i)).toHaveValue('');
+	});
+
+	test('interest: a value outside the allowed list is rejected with 400', async ({ request }) => {
+		const res = await postEnquiry(request, { interest: 'sofa' });
+		expect(res.status()).toBe(400);
+		const body = (await res.json()) as { error: string };
+		expect(body.error).toMatch(/interested in/i);
+
+		await new Promise((r) => setTimeout(r, 200));
+		const all = await listCapturedEmails();
+		expect(all).toHaveLength(0);
+	});
+
 	test('honeypot: filled `website` field returns success but sends no email', async ({
 		request,
 	}) => {

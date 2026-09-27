@@ -21,7 +21,7 @@ export function assertSafeForRealAws(env: NodeJS.ProcessEnv = process.env): void
 	if (env.AWS_LAMBDA_FUNCTION_NAME) return;
 	if (env.ALLOW_REAL_AWS === '1') return;
 	throw new Error(
-		'Refusing to connect to real AWS DynamoDB: DYNAMODB_ENDPOINT is unset, AWS_LAMBDA_FUNCTION_NAME is unset, and ALLOW_REAL_AWS is not "1". Set DYNAMODB_ENDPOINT in backend/.env (start docker-compose with `pnpm dev:db:up`) for local dev, or set ALLOW_REAL_AWS=1 to acknowledge a prod write.'
+		'Refusing to connect to real AWS DynamoDB: DYNAMODB_ENDPOINT is unset, AWS_LAMBDA_FUNCTION_NAME is unset, and ALLOW_REAL_AWS is not "1". Keep DYNAMODB_ENDPOINT set (the backend/.env.development default; start LocalStack with `pnpm dev:db:up`) for local dev, or set ALLOW_REAL_AWS=1 to acknowledge a prod write.'
 	);
 }
 

@@ -53,6 +53,44 @@ describe('POST /enquiries', () => {
 		expect(call.html).toContain('have not been verified');
 	});
 
+	it('accepts an enquiry with no interest chosen and leaves it out of the email', async () => {
+		const res = await postEnquiry(validBody);
+		expect(res.status).toBe(200);
+		const call = vi.mocked(email.sendEmail).mock.calls[0]![0];
+		expect(call.subject).toBe('Commission enquiry — Jane Smith');
+		expect(call.html).not.toContain('Interested in');
+	});
+
+	it.each([
+		{ interest: 'screen', label: 'Folding screen' },
+		{ interest: 'cushion-cover', label: 'Cushion cover' },
+		{ interest: 'other', label: 'Something else' }
+	] as const)('accepts interest=$interest and names it in the subject + body', async ({ interest, label }) => {
+		const res = await postEnquiry({ ...validBody, interest });
+		expect(res.status).toBe(200);
+		const call = vi.mocked(email.sendEmail).mock.calls[0]![0];
+		expect(call.subject).toBe(`Commission enquiry (${label.toLowerCase()}) — Jane Smith`);
+		expect(call.html).toContain(`<strong>Interested in:</strong> ${label}`);
+	});
+
+	it.each([null, ''])('treats interest=%j as not chosen', async (interest) => {
+		const res = await postEnquiry({ ...validBody, interest });
+		expect(res.status).toBe(200);
+		const call = vi.mocked(email.sendEmail).mock.calls[0]![0];
+		expect(call.html).not.toContain('Interested in');
+	});
+
+	it.each(['sofa', 'Cushion cover', 'SCREEN', '<script>', 42, true, ['screen'], { v: 'screen' }])(
+		'rejects interest=%j with 400 and sends no email',
+		async (interest) => {
+			const res = await postEnquiry({ ...validBody, interest });
+			expect(res.status).toBe(400);
+			const data = (await res.json()) as { error: string };
+			expect(data.error).toMatch(/interested in/i);
+			expect(email.sendEmail).not.toHaveBeenCalled();
+		}
+	);
+
 	it('treats a filled honeypot as a silent skip — no email sent', async () => {
 		const res = await postEnquiry({ ...validBody, website: 'http://spam.example' });
 		expect(res.status).toBe(200);

@@ -7,7 +7,9 @@ import {
 	incrementItem,
 	decrementItem,
 	cartCount,
-	cartTotal
+	cartTotal,
+	cartButtonLabel,
+	cartStatusText
 } from './cartLogic';
 
 function makeProduct(overrides: Partial<Product> = {}): Product {
@@ -15,6 +17,7 @@ function makeProduct(overrides: Partial<Product> = {}): Product {
 		_id: 'prod-1',
 		name: 'Acacia Screen',
 		slug: 'acacia-screen',
+		category: 'screen',
 		blurb: null,
 		description: null,
 		priceZar: 1500,
@@ -134,5 +137,19 @@ describe('cartCount and cartTotal', () => {
 	it('count and total are zero for an empty cart', () => {
 		expect(cartCount([])).toBe(0);
 		expect(cartTotal([])).toBe(0);
+	});
+});
+
+describe('cart accessible labels', () => {
+	it('names the cart button with the item count', () => {
+		expect(cartButtonLabel(0)).toBe('Open cart');
+		expect(cartButtonLabel(1)).toBe('Open cart, 1 item');
+		expect(cartButtonLabel(3)).toBe('Open cart, 3 items');
+	});
+
+	it('announces nothing for an empty cart and the count otherwise', () => {
+		expect(cartStatusText(0)).toBe('');
+		expect(cartStatusText(1)).toBe('1 item in your order');
+		expect(cartStatusText(2)).toBe('2 items in your order');
 	});
 });

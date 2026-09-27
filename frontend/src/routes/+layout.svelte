@@ -1,9 +1,16 @@
 <script lang="ts">
 	import '../app.css';
+	import { base } from '$app/paths';
 	import { page } from '$app/state';
+	// `$:` statements in this legacy component don't track `$app/state`, so
+	// the canonical URL reads the store to stay current on client-side nav.
+	import { page as pageStore } from '$app/stores';
 	import { PUBLIC_SITE_URL } from '$env/static/public';
 	import Cart from '$lib/Cart.svelte';
 	import { cart } from '$lib/cartStore.svelte';
+	import { cartButtonLabel, cartStatusText } from '$lib/cartLogic';
+	import { jsonLdScript } from '$lib/jsonLd';
+	import { isNavActive } from '$lib/navActive';
 
 	const nav = [
 		{ href: '/', label: 'Home' },
@@ -14,38 +21,58 @@
 
 	const siteUrl = PUBLIC_SITE_URL?.replace(/\/$/, '') ?? '';
 	const ogImage = `${siteUrl}/two_trees.JPG`;
-	$: canonicalUrl = `${siteUrl}${page.url.pathname}`;
+	$: canonicalUrl = `${siteUrl}${$pageStore.url.pathname}`;
 
 	// Organization JSON-LD. Included site-wide because automated domain
 	// classifiers (Google Safe Browsing, Cloudflare Gateway, AV reputation
 	// feeds) weigh structured-data presence as a "real business" signal
 	// when deciding whether to flag a new low-traffic domain.
-	// Replacing `<` prevents a payload accidentally terminating the
-	// surrounding <script> tag.
-	const orgJsonLd = JSON.stringify({
+	// `jsonLdScript` escapes `<` (and friends) so a payload can never
+	// terminate the surrounding <script> tag.
+	const orgJsonLd = jsonLdScript({
 		'@context': 'https://schema.org',
 		'@type': 'Organization',
 		name: 'Meryl Green Designs',
 		url: siteUrl,
-		logo: `${siteUrl}/favicon.svg`,
+		logo: `${siteUrl}/logo.svg`,
 		description:
 			'Handcrafted screens and nature-inspired designs from a South African studio.',
 		email: 'zagreenwoman@gmail.com',
 		telephone: '+27823264555',
 		areaServed: { '@type': 'Country', name: 'South Africa' }
-	}).replace(/</g, '\\u003c');
+	});
 
 	let cartOpen = false;
 	let menuOpen = false;
+	let menuButton: HTMLButtonElement;
 
 	function closeMenu() {
 		menuOpen = false;
 	}
 
 	function onKeydown(e: KeyboardEvent) {
-		if (e.key === 'Escape' && menuOpen) closeMenu();
+		if (e.key === 'Escape' && menuOpen) {
+			closeMenu();
+			// Keyboard users land back on the toggle, not at the top of the page.
+			menuButton?.focus();
+		}
 	}
 
+	// Disclosure-pattern nav popup: focus its first link when it opens so
+	// keyboard users don't have to tab past the brand + cart to reach it
+	// (it sits after them in the DOM).
+	function focusFirstLink(node: HTMLElement) {
+		node.querySelector<HTMLElement>('a')?.focus();
+	}
+
+	// Close when focus moves somewhere other than the popup or its toggle,
+	// so a Tab past the last link doesn't leave it hanging open.
+	function onMenuFocusOut(e: FocusEvent) {
+		const next = e.relatedTarget as Node | null;
+		if (!next) return;
+		const popup = e.currentTarget as HTMLElement;
+		if (!popup.contains(next) && !menuButton?.contains(next)) closeMenu();
+	}
 
 </script>
 
@@ -66,13 +93,16 @@
 	<meta name="twitter:card" content="summary_large_image" />
 	<meta name="twitter:image" content={ogImage} />
 
-	{@html `<script type="application/ld+json">${orgJsonLd}</script>`}
+	{@html orgJsonLd}
 </svelte:head>
+
+<a class="skip-link" href="#main">Skip to content</a>
 
 <header class="site-header">
 	<div class="container header-inner">
 		<button
 			class="menu-btn"
+			bind:this={menuButton}
 			on:click={() => (menuOpen = !menuOpen)}
 			aria-label={menuOpen ? 'Close menu' : 'Open menu'}
 			aria-expanded={menuOpen}
@@ -85,17 +115,24 @@
 			</svg>
 		</button>
 
-		<a class="brand" href="/">Meryl Green Designs</a>
+		<!-- Named by its visible text, "Meryl Green Designs" (no aria-label:
+		     a label that differs from the visible wording fails WCAG 2.5.3
+		     label-in-name). The space before "Designs" is invisible in the
+		     flex column but keeps the words apart for assistive tech. -->
+		<a class="brand" href="/">
+			<img class="brand-mark" src="{base}/logo.svg" alt="" width="40" height="40" />
+			<span class="brand-word">Meryl Green<span class="brand-sub"> Designs</span></span>
+		</a>
 
 		<div class="header-right">
-			<nav class="desktop-nav">
+			<nav class="desktop-nav" aria-label="Main">
 				<ul>
 					{#each nav as item}
 						<li>
 							<a
 								href={item.href}
-								class:active={page.url.pathname === item.href ||
-									(item.href !== '/' && page.url.pathname.startsWith(item.href))}
+								class:active={isNavActive(item.href, page.url.pathname)}
+								aria-current={isNavActive(item.href, page.url.pathname) ? 'page' : undefined}
 							>
 								{item.label}
 							</a>
@@ -103,14 +140,22 @@
 					{/each}
 				</ul>
 			</nav>
-			<button class="cart-btn" on:click={() => (cartOpen = true)} aria-label="Open cart">
+			<button
+				class="cart-btn"
+				on:click={() => (cartOpen = true)}
+				aria-label={cartButtonLabel(cart.count)}
+				aria-haspopup="dialog"
+			>
 				<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 					<circle cx="9" cy="21" r="1"></circle>
 					<circle cx="20" cy="21" r="1"></circle>
 					<path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
 				</svg>
 				{#if cart.count > 0}
-					<span class="cart-badge">{cart.count}</span>
+					<!-- Re-keyed on every add so the pop replays; removals don't pop. -->
+					{#key cart.adds}
+						<span class="cart-badge" aria-hidden="true">{cart.count}</span>
+					{/key}
 				{/if}
 			</button>
 		</div>
@@ -123,29 +168,21 @@
 	     header element, which means it stays pinned correctly as the
 	     page scrolls. -->
 	{#if menuOpen}
-		<div
-			class="mobile-nav-backdrop"
-			on:click={closeMenu}
-			on:keydown={(e) => e.key === 'Escape' && closeMenu()}
-			role="button"
-			tabindex="-1"
-			aria-label="Close menu"
-		></div>
-		<div
-			class="mobile-nav"
-			id="mobile-nav"
-			role="menu"
-			aria-label="Main menu"
-		>
-			<nav>
+		<!-- Pointer-only tap-to-close layer; keyboard users close with Escape
+		     or the toggle, so it is hidden from assistive tech. -->
+		<!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+		<div class="mobile-nav-backdrop" on:click={closeMenu} aria-hidden="true"></div>
+		<!-- A plain nav disclosure (not role="menu": these are page links,
+		     and the ARIA menu pattern would demand arrow-key handling). -->
+		<div class="mobile-nav" id="mobile-nav" on:focusout={onMenuFocusOut}>
+			<nav aria-label="Main" use:focusFirstLink>
 				<ul>
 					{#each nav as item}
 						<li>
 							<a
 								href={item.href}
-								role="menuitem"
-								class:active={page.url.pathname === item.href ||
-									(item.href !== '/' && page.url.pathname.startsWith(item.href))}
+								class:active={isNavActive(item.href, page.url.pathname)}
+								aria-current={isNavActive(item.href, page.url.pathname) ? 'page' : undefined}
 								on:click={closeMenu}
 							>
 								{item.label}
@@ -158,12 +195,23 @@
 	{/if}
 </header>
 
-<main>
+<!-- tabindex=-1 so the skip link moves focus (not just scroll) here. -->
+<main id="main" tabindex="-1">
 	<slot />
 </main>
 
 <Cart open={cartOpen} onclose={() => (cartOpen = false)} />
 
+<!-- Announces cart changes ("Add to order" gives no other non-visual
+     feedback). Polite, so it never interrupts. -->
+<p class="visually-hidden" aria-live="polite">{cartStatusText(cart.count)}</p>
+
+<!-- Bushveld skyline (acacias on a horizon, same tree as the logo) that
+     the green footer grows out of. Decorative; `slice` keeps the trees
+     undistorted and crops the scene's edges on narrow screens. -->
+<div class="footer-skyline" aria-hidden="true">
+	<img src="{base}/graphics/bushveld-skyline.svg" alt="" />
+</div>
 <footer class="site-footer">
 	<div class="container">
 		<ul class="footer-trust" aria-label="Shipping and checkout">
@@ -209,10 +257,35 @@
 	}
 
 	.brand {
+		display: inline-flex;
+		align-items: center;
+		gap: 10px;
 		font-family: var(--font-display);
 		font-size: 1.35rem;
+		line-height: 1;
 		color: var(--color-leaf-dark);
 		border-bottom: none;
+	}
+
+	.brand-mark {
+		width: 40px;
+		height: 40px;
+		flex-shrink: 0;
+	}
+
+	.brand-word {
+		display: flex;
+		flex-direction: column;
+	}
+
+	.brand-sub {
+		margin-top: 4px;
+		font-family: var(--font-body);
+		font-size: 0.56rem;
+		font-weight: 500;
+		letter-spacing: 0.42em;
+		text-transform: uppercase;
+		color: var(--color-bark);
 	}
 
 	.desktop-nav ul {
@@ -249,6 +322,11 @@
 		}
 		.brand {
 			font-size: 1.15rem;
+			gap: 8px;
+		}
+		.brand-mark {
+			width: 32px;
+			height: 32px;
 		}
 	}
 
@@ -357,17 +435,57 @@
 		align-items: center;
 		justify-content: center;
 		padding: 0 4px;
+		animation: cart-badge-pop 320ms ease-out;
+	}
+
+	@keyframes cart-badge-pop {
+		0% {
+			transform: scale(1);
+		}
+		40% {
+			transform: scale(1.45);
+		}
+		100% {
+			transform: scale(1);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.cart-badge {
+			animation: none;
+		}
 	}
 
 	main {
 		flex: 1;
 	}
 
+	/* Programmatic focus target only (skip link) — no ring on the whole page. */
+	main:focus {
+		outline: none;
+	}
+
+	.footer-skyline {
+		margin-top: var(--space-6);
+		height: clamp(64px, 8vw, 120px);
+		line-height: 0;
+	}
+
+	.footer-skyline img {
+		display: block;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		object-position: center bottom;
+	}
+
 	.site-footer {
 		background: var(--color-leaf-dark);
 		color: #e8ece1;
+		--focus-ring: #f6f4ee;
 		padding: var(--space-4) 0;
-		margin-top: var(--space-6);
+		/* The skyline above supplies the gap and meets the footer flush. */
+		margin-top: -1px;
 		text-align: center;
 		font-size: 0.9rem;
 	}

@@ -316,7 +316,8 @@ None are blocking; pick the ones that match observed pain.
 - [ ] Lambda alias for cleaner one-command rollback (right now rollback is
       via "re-run the previous workflow"; works but an alias is tidier)
 - [x] Sitemap.xml generator — `frontend/src/routes/sitemap.xml/+server.ts`
-      renders the discoverable routes at build time.
+      renders the discoverable routes, plus product pages fetched from the
+      backend, at build time.
 
 ## Longer-term / speculative
 

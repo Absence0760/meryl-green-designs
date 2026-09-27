@@ -1,10 +1,21 @@
 import { Hono } from 'hono';
 import { sendEmail } from '../email.js';
-import { commissionEnquiry, type CommissionEnquiryInput } from '../email-templates.js';
+import {
+	commissionEnquiry,
+	ENQUIRY_INTERESTS,
+	type CommissionEnquiryInput,
+	type EnquiryInterest
+} from '../email-templates.js';
 import { createRateLimiter } from '../rate-limit.js';
 
 type EnquiryFields = CommissionEnquiryInput;
+type EnquiryBody = Partial<Omit<EnquiryFields, 'interest'>> & { interest?: unknown; website?: string };
 
+function isInterest(value: unknown): value is EnquiryInterest {
+	return typeof value === 'string' && (ENQUIRY_INTERESTS as readonly string[]).includes(value);
+}
+
+// Keys of the free-text fields — `interest` is an enum, checked separately.
 const MAX_LEN = {
 	name: 120,
 	email: 200,
@@ -23,7 +34,8 @@ function validate(data: EnquiryFields): string | null {
 	if (!data.message.trim()) return 'Please tell us a little about what you have in mind.';
 
 	for (const [key, limit] of Object.entries(MAX_LEN) as [keyof typeof MAX_LEN, number][]) {
-		if (data[key] && data[key].length > limit) {
+		const value = data[key];
+		if (value && value.length > limit) {
 			return `${key} is too long (max ${limit} characters).`;
 		}
 	}
@@ -38,7 +50,7 @@ export function enquiriesRouter() {
 	const enquiryLimiter = createRateLimiter({ windowMs: 15 * 60_000, max: 5 });
 
 	enquiries.post('/', enquiryLimiter, async (c) => {
-		let body: Partial<EnquiryFields & { website?: string }>;
+		let body: EnquiryBody;
 		try {
 			body = await c.req.json();
 		} catch {
@@ -51,7 +63,16 @@ export function enquiriesRouter() {
 			return c.json({ success: true });
 		}
 
+		// `interest` is optional: absent / null / '' means "not chosen".
+		// Anything else must be one of ENQUIRY_INTERESTS.
+		const rawInterest = body.interest;
+		const interestGiven = rawInterest !== undefined && rawInterest !== null && rawInterest !== '';
+		if (interestGiven && !isInterest(rawInterest)) {
+			return c.json({ error: 'Please choose what you are interested in from the list.' }, 400);
+		}
+
 		const data: EnquiryFields = {
+			interest: interestGiven ? (rawInterest as EnquiryInterest) : undefined,
 			name: (body.name ?? '').trim(),
 			email: (body.email ?? '').trim(),
 			phone: (body.phone ?? '').trim(),

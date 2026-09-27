@@ -19,6 +19,19 @@ test.describe('public pages render', () => {
 		await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 		// Testimonial seed fixture should land in the home page testimonials band
 		await expect(page.getByText('E2E Test Customer')).toBeVisible();
+		// "How it works" strip: four ordered steps, the last linking to /track.
+		const ordering = page.getByRole('region', { name: 'How it works' });
+		await expect(ordering.getByRole('listitem')).toHaveCount(4);
+		await expect(ordering.getByRole('link', { name: 'order tracking page' })).toHaveAttribute(
+			'href',
+			'/track',
+		);
+		// The page ends on a commission prompt, not repeat Shop/Gallery cards.
+		await expect(
+			page
+				.getByRole('region', { name: 'Have something specific in mind?' })
+				.getByRole('link', { name: 'Enquire about a commission' }),
+		).toHaveAttribute('href', '/contact');
 		expect(errs).toEqual([]);
 	});
 
@@ -48,11 +61,122 @@ test.describe('public pages render', () => {
 		expect(errs).toEqual([]);
 	});
 
+	// Screens (seeded without a category → backend coalesces to 'screen')
+	// and the cushion cover land in separate sections, each with its own
+	// materials list — Frame belongs to the screens section only.
+	test('shop groups products into category sections', async ({ page }) => {
+		await page.goto('/shop');
+		const screens = page.getByRole('region', { name: 'Folding screens' });
+		const cushions = page.getByRole('region', { name: 'Cushion covers' });
+		await expect(screens.getByText('Test Screen Small')).toBeVisible();
+		await expect(screens.getByText('Test Screen Large')).toBeVisible();
+		await expect(screens.getByText('Frame', { exact: true })).toBeVisible();
+		await expect(cushions.getByText('Test Cushion Cover')).toBeVisible();
+		await expect(cushions.getByText('Frame', { exact: true })).toHaveCount(0);
+		await expect(cushions.getByText('Insert', { exact: true })).toBeVisible();
+	});
+
+	// Poem: beside a photo on wide screens (all stanzas, no toggle); on
+	// phones only the first stanza until "Read the full poem" is pressed.
+	test('home poem shows in full on desktop, collapses on phones', async ({ page }) => {
+		const firstLine = page.getByText('When you have acquired a taste for the dust,');
+		const laterLine = page.getByText('When you long to see the elephants');
+		const toggle = page.getByRole('button', { name: 'Read the full poem' });
+
+		await page.setViewportSize({ width: 1280, height: 900 });
+		await page.goto('/');
+		await expect(firstLine).toBeVisible();
+		await expect(laterLine).toBeVisible();
+		await expect(toggle).toBeHidden();
+
+		await page.setViewportSize({ width: 390, height: 844 });
+		await expect(firstLine).toBeVisible();
+		await expect(laterLine).toBeHidden();
+		await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+		await toggle.click();
+		await expect(laterLine).toBeVisible();
+		await expect(page.getByRole('button', { name: 'Show less' })).toHaveAttribute(
+			'aria-expanded',
+			'true',
+		);
+	});
+
 	test('product detail page', async ({ page }) => {
 		await page.goto('/shop/test-screen-small');
 		await expect(page.getByRole('heading', { name: 'Test Screen Small' })).toBeVisible();
 		// 'Add to order' is rendered on the detail page (and elsewhere)
 		await expect(page.getByRole('button', { name: /add to order/i }).first()).toBeVisible();
+		await expect(page.getByText('Frame', { exact: true })).toBeVisible();
+		await expect(page.getByText(/typically 3 weeks/i)).toBeVisible();
+	});
+
+	test('product detail page emits Product + BreadcrumbList JSON-LD', async ({ page }) => {
+		await page.goto('/shop/test-screen-small');
+		await expect(page.getByRole('heading', { name: 'Test Screen Small' })).toBeVisible();
+		const payloads = (
+			await page.locator('script[type="application/ld+json"]').allTextContents()
+		).map((t) => JSON.parse(t));
+		const product = payloads.find((p) => p['@type'] === 'Product');
+		expect(product).toMatchObject({
+			name: 'Test Screen Small',
+			sku: 'test-screen-small',
+			offers: { priceCurrency: 'ZAR', price: 1200 },
+		});
+		expect(payloads.map((p) => p['@type'])).toContain('BreadcrumbList');
+	});
+
+	// Same category first (the other screen), then the cushion cover to
+	// fill; never the current product or the sold-out one.
+	test('product detail page shows "You may also like"', async ({ page }) => {
+		await page.goto('/shop/test-screen-small');
+		const related = page.getByRole('region', { name: 'You may also like' });
+		const names = related.getByRole('heading', { level: 3 });
+		await expect(names).toHaveText(['Test Screen Large', 'Test Cushion Cover']);
+		// Product → product navigation reuses the page component; the new
+		// product must replace the old one, and the strip must re-pick.
+		// Cards are named by their text (name, dimensions, price).
+		await related.getByRole('link', { name: 'Test Screen Large' }).click();
+		await expect(page).toHaveURL(/\/shop\/test-screen-large$/);
+		await expect(
+			page.getByRole('heading', { level: 1, name: 'Test Screen Large' }),
+		).toBeVisible();
+		await expect(names).toHaveText(['Test Screen Small', 'Test Cushion Cover']);
+	});
+
+	test('cushion cover detail page shows cushion specs, not screen specs', async ({ page }) => {
+		await page.goto('/shop/test-cushion-cover');
+		await expect(page.getByRole('heading', { name: 'Test Cushion Cover' })).toBeVisible();
+		await expect(page.getByText('Frame', { exact: true })).toHaveCount(0);
+		await expect(page.getByText('Insert', { exact: true })).toBeVisible();
+		// Made to order with the same 3-week lead time as screens.
+		await expect(page.getByText(/made to order — typically 3 weeks/i)).toBeVisible();
+	});
+
+	// Unknown URLs render the branded root +error.svelte (in prod via the
+	// 404.html SPA fallback, which CloudFront serves with HTTP 200 — hence
+	// the noindex pin). No console-error check: the dev server answers
+	// the document request with a 404, which the browser logs.
+	test('unknown URL renders the branded 404 page', async ({ page }) => {
+		await page.goto('/this-path-does-not-exist');
+		await expect(
+			page.getByRole('heading', { level: 1, name: /this path leads off into the bush/i }),
+		).toBeVisible();
+		await expect(page.getByRole('link', { name: 'Browse the shop' })).toHaveAttribute(
+			'href',
+			'/shop',
+		);
+		await expect(page.getByRole('link', { name: 'Back to home' })).toHaveAttribute('href', '/');
+		await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex');
+	});
+
+	test('unknown product slug renders the branded not-found state', async ({ page }) => {
+		await page.goto('/shop/no-such-product');
+		await expect(page.getByRole('heading', { level: 1, name: 'Product not found' })).toBeVisible();
+		await expect(page.getByRole('link', { name: 'Browse the shop' })).toHaveAttribute(
+			'href',
+			'/shop',
+		);
+		await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex');
 	});
 
 	test('contact page', async ({ page }) => {
@@ -114,6 +238,29 @@ test.describe('public pages render', () => {
 			await page.goto(route);
 			await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 		}
+	});
+
+	// "On this page" TOC: exactly one visible landmark at a time (sidebar
+	// on desktop, collapsed <details> on mobile), and its links jump to
+	// the h2 ids.
+	test('legal pages expose an "On this page" table of contents', async ({ page }) => {
+		await page.setViewportSize({ width: 1280, height: 900 });
+		await page.goto('/terms');
+		const toc = page.getByRole('navigation', { name: 'On this page' });
+		await expect(toc).toHaveCount(1);
+		await toc.getByRole('link', { name: 'Payment', exact: true }).click();
+		await expect(page).toHaveURL(/#payment$/);
+		await expect(page.locator('h2#payment')).toBeInViewport();
+
+		await page.setViewportSize({ width: 390, height: 844 });
+		await page.goto('/returns');
+		await expect(toc).toHaveCount(0); // collapsed <details> hides its nav
+		await page.locator('summary', { hasText: 'On this page' }).click();
+		await expect(toc).toHaveCount(1);
+		await expect(toc.getByRole('link', { name: 'How to claim' })).toHaveAttribute(
+			'href',
+			'#how-to-claim',
+		);
 	});
 
 	// /returns hosts the ECT Act s43 business-identification disclosure;

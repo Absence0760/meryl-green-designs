@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { placeOrder } from '../../helpers/place-order.ts';
+import { ADD_BUTTON } from '../../helpers/add-button.ts';
 
 // Browser-level UX assertion: after the retry POST resolves, the
 // three retry-payment surfaces (cart-checkout, /payment/cancelled,
@@ -48,7 +49,7 @@ test.describe('redirecting indicator on retry surfaces', () => {
 	}) => {
 		await page.goto('/shop');
 		await expect(page.getByText('Test Screen Small')).toBeVisible();
-		await page.getByRole('button', { name: /add to order/i }).first().click();
+		await page.getByRole('button', { name: ADD_BUTTON }).first().click();
 		await page.getByRole('button', { name: 'Open cart' }).click();
 
 		await page.fill('#cart-name', 'Spinner Customer');
