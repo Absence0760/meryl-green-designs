@@ -328,7 +328,22 @@
 		z-index: 2;
 		width: 100%;
 		padding: var(--space-5) 0;
-		background: linear-gradient(to top, rgba(20, 30, 15, 0.78), rgba(20, 30, 15, 0));
+		/* Scrim behind the headline. Holds its weight further up than a
+		   plain two-stop fade so the cream H1 + tagline keep WCAG AA
+		   contrast where they sit over the pale, hazy sky of the photo
+		   (measured worst case: H1 >= 3:1 large text, tagline >= 4.5:1). */
+		background: linear-gradient(
+			to top,
+			rgba(20, 30, 15, 0.82) 0%,
+			rgba(20, 30, 15, 0.62) 55%,
+			rgba(20, 30, 15, 0) 100%
+		);
+	}
+
+	.hero :global(h1),
+	.tagline {
+		/* Soft halo for the brightest sky pixels; invisible on dark areas. */
+		text-shadow: 0 1px 14px rgba(20, 30, 15, 0.55);
 	}
 
 	.hero :global(h1) {
