@@ -17,7 +17,7 @@
 		"@aws-sdk/lib-dynamodb": "^3.1135.0",
 		"@playwright/test": "1.63.0",
 		"@sanity/client": "^8.7.0",
-		"@types/node": "25.9.6",
+		"@types/node": "26.6.3",
 		"dotenv": "^18.0.4",
 		"tsx": "4.23.13",
 		"typescript": "6.0.3"
