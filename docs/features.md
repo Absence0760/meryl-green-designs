@@ -366,11 +366,18 @@ Page copy and the closing CTA reflect that — visitors are guided to
   Studio, Response time) in a two-column layout that stacks on narrow
   viewports. Top and bottom rules give it visual weight without a
   card.
-- **Commission enquiry form** — structured form with fields for name,
-  email, phone (optional), photo reference (optional, pre-filled from
-  `?photo=` query param when arriving from a gallery lightbox CTA),
-  approximate size, wood/finish, where it'll go, and a free-text
-  message. POSTs JSON to `${PUBLIC_API_URL}/enquiries`. The backend
+- **Commission enquiry form** — structured form opening with an optional
+  "Interested in" segmented control (native radios in a
+  `<fieldset>`/`<legend>`: Folding screen / Cushion cover / Something
+  else, sent as `interest` = `screen` | `cushion-cover` | `other`), then
+  fields for name, email, phone (optional), photo reference (optional,
+  pre-filled from `?photo=` query param when arriving from a gallery
+  lightbox CTA), approximate size, wood/finish, where it'll go, and a
+  free-text message. Placeholders are neutral until a choice is made and
+  switch with it (screen examples for a screen, "Wild Amaryllis in
+  bloom" / "60cm × 60cm" for a cushion cover); the wood/finish field is
+  hidden for cushion covers and its value isn't sent. The copy lives in
+  `src/lib/enquiryForm.ts` (tested). POSTs JSON to `${PUBLIC_API_URL}/enquiries`. The backend
   validates, then sends a single email to `OWNER_EMAIL` via Resend with
   `replyTo` set to the visitor's email and a yellow "unverified
   sender" warning rendered at the top of the email body so Meryl
@@ -380,6 +387,12 @@ Page copy and the closing CTA reflect that — visitors are guided to
   and the backend rate-limits to 5 submissions per IP per 15 minutes.
 - **Existing orders block** — links to `/track` for customers who just
   want to check a placed order.
+- **Photo column (≥ 960px only)** — a sticky product photo beside the
+  form, filling the empty space on wide screens: the first product with
+  a usable photo from `GET /products` (fetched client-side, silent no-op
+  on failure), with its alt text, product name as caption and a link to
+  `/shop`; falls back to the static `two_trees-1280.webp` hero photo.
+  Hidden (`display: none`, lazy image never loads) on narrower screens.
 
 ## Privacy policy (`/privacy`)
 

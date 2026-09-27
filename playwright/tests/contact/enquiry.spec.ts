@@ -81,6 +81,35 @@ test.describe('POST /enquiries', () => {
 		expect(emails[0].bodyHtml).toContain('Wild Amaryllis in bloom');
 	});
 
+	test('form: choosing "Cushion cover" hides wood/finish and sends the interest', async ({
+		page,
+	}) => {
+		await page.goto('/contact');
+		const form = page.locator('form.enquiry-form');
+		const interest = form.getByRole('group', { name: /interested in/i });
+		await expect(interest.getByRole('radio')).toHaveCount(3);
+
+		await expect(form.getByLabel(/wood or finish/i)).toBeVisible();
+		await interest.getByLabel('Cushion cover').check();
+		await expect(form.getByLabel(/wood or finish/i)).toHaveCount(0);
+		await expect(form.getByLabel(/approximate size/i)).toHaveAttribute(
+			'placeholder',
+			/60cm/,
+		);
+
+		await form.getByLabel(/your name/i).fill('Pat Visitor');
+		await form.getByLabel(/^email/i).fill('pat@e2e.local');
+		await form.getByLabel(/tell us a little/i).fill('Two cushion covers, please.');
+		await form.getByRole('button', { name: /send enquiry/i }).click();
+		await expect(page.getByText(/your enquiry is on its way/i)).toBeVisible();
+
+		const emails = await waitForEmail(
+			(e) => e.to === process.env.OWNER_EMAIL && /commission enquiry/i.test(e.subject),
+		);
+		expect(emails).toHaveLength(1);
+		expect(emails[0].subject).toContain('(cushion cover)');
+	});
+
 	test('interest: a value outside the allowed list is rejected with 400', async ({ request }) => {
 		const res = await postEnquiry(request, { interest: 'sofa' });
 		expect(res.status()).toBe(400);
