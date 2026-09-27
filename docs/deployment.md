@@ -1330,8 +1330,9 @@ is separate from AWS).
   a Sanity-specific GROQ function; it's not a typo.
 
 **Lambda cold start is slow on first request after idle**
-: Expected. Node 22 Lambda cold starts are ~300–800 ms for our 787 KB
-  bundle at 512 MB (the `memory_size` set in `infra/lambda.tf`). Subsequent
+: Expected. Node 22 Lambda cold starts are ~300–800 ms for our ~3 MB
+  `dist/lambda.mjs` bundle (unminified; ~1 MB of it is `undici`, which
+  `@sanity/client` v8 pulls in via `get-it` v9's fetch transport) at 512 MB (the `memory_size` set in `infra/lambda.tf`). Subsequent
   requests are ~5–20 ms. The memory bump was a deliberate trade: AWS scales
   CPU linearly with memory up to ~1792 MB at the same per-ms price, so 512 MB
   roughly halves cold-start time vs. the 128 MB default without meaningfully
