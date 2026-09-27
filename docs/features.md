@@ -331,9 +331,6 @@ Page copy and the closing CTA reflect that — visitors are guided to
 
 ## Track order (`/track`)
 
-- **Water page-header** — short 30vh decorative strip using `water2.JPG`
-  with the same overlay treatment as the contact page, framing the
-  lookup form.
 - **Customer-facing order status page.** The customer enters their order
   reference + email and sees the current status, a progress indicator
   (Pending payment → Payment received → Shipped → Delivered), and the
