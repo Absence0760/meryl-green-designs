@@ -1,7 +1,8 @@
-// Load .env for local development. This import is only reached via server.ts
-// (the local Node entry point) — the Lambda entry in lambda.ts never imports
-// server.ts, so esbuild tree-shakes dotenv out of the deployment bundle.
-import 'dotenv/config';
+// Local Node entry point. load-dev-env must stay the first import: it
+// populates process.env from .env.development(.local) before app.ts and
+// its dependencies evaluate. The Lambda entry in lambda.ts never imports
+// this file, so esbuild tree-shakes dotenv out of the deployment bundle.
+import './load-dev-env.js';
 
 import { serve } from '@hono/node-server';
 import { createApp } from './app.js';

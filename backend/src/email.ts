@@ -47,7 +47,7 @@ async function sendViaResend(params: SendEmailParams): Promise<void> {
 
 // Local-dev capture backend. Writes the rendered email to disk so it
 // can be previewed in a browser without sending anything. Activated by
-// setting EMAIL_BACKEND=file in backend/.env. Strictly dev-only; not
+// setting EMAIL_BACKEND=file (the backend/.env.development default). Strictly dev-only; not
 // reachable from the deployed Lambda (the env var stays unset there).
 async function sendViaFile(params: SendEmailParams): Promise<void> {
 	const dir = resolveDevDir();

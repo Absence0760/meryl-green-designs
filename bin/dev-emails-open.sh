@@ -9,7 +9,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIR="$REPO_ROOT/backend/.dev-emails"
 
 if [ ! -d "$DIR" ]; then
-	echo "No captured emails yet. Set EMAIL_BACKEND=file in backend/.env and trigger an email-sending flow." >&2
+	echo "No captured emails yet. EMAIL_BACKEND=file is the backend/.env.development default; trigger an email-sending flow." >&2
 	exit 0
 fi
 

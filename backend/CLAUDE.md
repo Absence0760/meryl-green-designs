@@ -21,9 +21,11 @@ pnpm backend test     # vitest run
 ## Four entry points (the most important thing on this page)
 
 - `src/app.ts` — `createApp()` builds the Hono app + middleware + routes. Pure logic.
-- `src/server.ts` — local dev entry. Imports `dotenv/config` and runs `@hono/node-server`.
+- `src/server.ts` — local dev entry. Imports `load-dev-env.ts` first (dotenv: gitignored `.env.development.local`, then the committed `.env.development` — non-sensitive defaults so a fresh clone runs offline; `backend/.env` is no longer read) and runs `@hono/node-server`.
 - `src/lambda.ts` — AWS Lambda entry for the HTTP API. Wraps `createApp()` with `hono/aws-lambda`. **Deliberately does not import `server.ts`** so esbuild tree-shakes `dotenv` out of the Lambda bundle.
 - `src/auto-cancel-lambda.ts` — separate Lambda invoked daily by EventBridge to cancel stale `pending_payment` orders past `AUTO_CANCEL_DAYS`. Bundled to `dist/auto-cancel.mjs`. Shares the orders-store layer with the HTTP app but has no Hono surface.
+
+**The committed `backend/.env.development` is public.** Non-sensitive values only (secret keys stay blank; `env-development.test.ts` enforces it). `runtime-guard.ts` makes `createApp()` throw on Lambda if `CONTENT_BACKEND=local`, `EMAIL_BACKEND=file` or the dev admin token is present.
 
 **Never add `dotenv` imports to any module reachable from `lambda.ts` or `auto-cancel-lambda.ts`.** It will end up in the deployment bundle and bloat cold starts. If you need an env var, read it from `process.env` directly inside the handler — `app.ts` and everything it imports must stay dotenv-free.
 

@@ -42,7 +42,7 @@ direct financial loss.
 - Banking details are **not** on the shop page.
 - Banking details are **not** in any automated email (neither owner
   notification nor customer confirmation).
-- Banking details are **not** in `backend/.env.example`, `infra/variables.tf`,
+- Banking details are **not** in `backend/.env.development`, `infra/variables.tf`,
   or anywhere else in git.
 - Banking details are sent only as a **direct manual reply** from Meryl to
   the order-confirmation email thread, after she has read the order.
@@ -323,7 +323,11 @@ ends up encrypted with the wrong key.
   rotates the underlying cryptographic material annually while keeping
   the same alias — encrypted files keep working without re-encryption.
 - **Plaintext secrets are gitignored, and so is ciphertext.** `.gitignore`
-  covers `.env`, `.env.*` (exception only for `.env.example`), and `*.tfvars`
+  covers `.env`, `.env.*` (exceptions only for `.env.example` and the
+  committed, non-sensitive `.env.development` local-dev defaults — which
+  `backend/src/__tests__/env-development.test.ts` checks for secret-shaped
+  values, and which the Lambda refuses to run with via
+  `backend/src/runtime-guard.ts`), and `*.tfvars`
   (except `.tfvars.example`). It also blocks `*.sops` outright so an encrypted
   blob can't be re-introduced into this public repo by accident. A stray
   `git add infra/terraform.tfvars` is blocked before it can stage.

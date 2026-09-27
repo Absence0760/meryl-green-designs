@@ -110,8 +110,8 @@ function buildSanityClient(): SanityClient {
 	const projectId = process.env.SANITY_PROJECT_ID;
 	const dataset = process.env.SANITY_DATASET ?? 'production';
 	const token = process.env.SANITY_API_TOKEN;
-	if (!projectId) throw new Error('SANITY_PROJECT_ID is not set');
-	if (!token) throw new Error('SANITY_API_TOKEN is not set');
+	if (!projectId) throw new Error('SANITY_PROJECT_ID is not set (put it in backend/.env.development.local)');
+	if (!token) throw new Error('SANITY_API_TOKEN is not set (put it in backend/.env.development.local)');
 	return createClient({
 		projectId,
 		dataset,
@@ -166,7 +166,11 @@ async function scrub(args: Args, sanity: SanityClient): Promise<Counters> {
 }
 
 async function main(): Promise<void> {
-	loadDotenv();
+	// Same env files as the dev server (src/load-dev-env.ts): the committed
+	// .env.development defaults (DYNAMODB_ENDPOINT → LocalStack) plus your
+	// gitignored .env.development.local, which carries the real SANITY_*
+	// values and wins key by key.
+	loadDotenv({ path: ['.env.development.local', '.env.development'], quiet: true });
 	const args = parseArgs(process.argv.slice(2));
 
 	console.log('--- scrub-sanity-pii ---');

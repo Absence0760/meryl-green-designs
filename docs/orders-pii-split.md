@@ -601,7 +601,8 @@ Three components, all using `@sanity/ui` so they match Studio styling:
 
 Single static token, baked into the Studio bundle at build time:
 
-- New env var: `SANITY_STUDIO_ADMIN_TOKEN` in `studio/.env` (not secret —
+- New env var: `SANITY_STUDIO_ADMIN_TOKEN` (locally the committed
+  `local-dev-admin-token` in `studio/.env.development`; not secret —
   Studio is published to a known subdomain, CORS-locked).
 - Backend admin routes check `Authorization: Bearer <token>` against
   `ADMIN_API_TOKEN` in `../infra-secrets/meryl-green-designs/.env.sops`.

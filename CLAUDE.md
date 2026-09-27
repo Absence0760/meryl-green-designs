@@ -58,18 +58,21 @@ If the current scripts block predates this format, migrate it the next time a ch
 
 ## First-time setup
 
+Zero secrets, zero copying — each workspace's committed `.env.development` (non-sensitive defaults: `CONTENT_BACKEND=local` sample content, `EMAIL_BACKEND=file`, LocalStack endpoint, PayFast public sandbox, `local-dev-admin-token`) loads automatically:
+
 1. `pnpm install`
-2. Clone the sibling private secrets repo next to this one: `git clone git@github.com:Absence0760/infra-secrets.git ../infra-secrets`. The project's encrypted secrets live in `infra-secrets/meryl-green-designs/` (the KMS key `alias/meryl-green-designs-sops` in `af-south-1` already exists). Need `kms:Decrypt` on that key (`aws sso login --profile mgd-jaredhoward`).
-3. `sops -d ../infra-secrets/meryl-green-designs/.env.sops > backend/.env` for local dev (edit the source with `sops ../infra-secrets/meryl-green-designs/.env.sops`).
-4. `cp frontend/.env.example frontend/.env` and same for `studio/` (no secrets — `PUBLIC_*` only).
-5. `pnpm dev:db:up` — starts the LocalStack container (DynamoDB emulator on `:4566`) and creates the orders table. Required for the order dual-write and the Studio's PII panels; without it the order create still succeeds but logs a shadow-write error and the Studio panels are inert.
-6. `pnpm dev` (or `pnpm dev:all`).
+2. *(optional)* `pnpm dev:db:up` — LocalStack (DynamoDB on `:4566`, needs Docker) + the orders table. Needed for checkout, `/track` and the Studio PII panels; the rest of the site works without it.
+3. `pnpm dev` — frontend :7777 + backend :3001, on the committed sample content in `backend/dev-content.sample/`.
+
+Personal overrides and real secrets go in gitignored `<workspace>/.env.development.local` (wins key by key). `backend/.env` is no longer read. The Studio is optional and needs a real (free, personal) Sanity project ID in `studio/.env.development.local` — without it `pnpm studio dev` / `dev:all` stop with a pointer to `docs/run-locally.md § Sanity Studio (optional)`.
+
+**Maintainers (production parity / deploying):** clone the sibling private repo `Absence0760/infra-secrets` to `../infra-secrets` (KMS key `alias/meryl-green-designs-sops`, `af-south-1`; needs `kms:Decrypt` via `aws sso login --profile mgd-jaredhoward`), then `sops -d ../infra-secrets/meryl-green-designs/.env.sops > backend/.env.development.local` and add `CONTENT_BACKEND=sanity` if it isn't in there. Details: `docs/run-locally.md § Maintainers`.
 
 `bin/setup.sh` is the **production bootstrap** (Terraform state backend, apply, GitHub Actions vars, Sanity webhook). Decrypts tfvars to a scratch file at start and shreds it on exit. Don't run it for local dev.
 
 ## Cross-cutting policies
 
-**Secrets.** All secrets live in the repo as SOPS-encrypted `*.sops` files; decryption needs `kms:Decrypt` on the project KMS key. Plaintext siblings are gitignored and exist transiently. Never `git add -f` a plaintext secrets file. Never add a SOPS recipient other than the project KMS key without discussing — that changes who can decrypt. Full workflow: `docs/deployment.md § Secrets management`.
+**Secrets.** All secrets live SOPS-encrypted in the sibling private `infra-secrets` repo (never in this public repo); decryption needs `kms:Decrypt` on the project KMS key. Plaintext copies are gitignored and exist transiently. Never `git add -f` a plaintext secrets file. The committed `*/.env.development` files hold non-sensitive local defaults only — never put a real secret there (`backend/src/__tests__/env-development.test.ts` guards it; use `.env.development.local`). Never add a SOPS recipient other than the project KMS key without discussing — that changes who can decrypt. Full workflow: `docs/deployment.md § Secrets management`.
 
 **Every code change updates tests + docs in the same change.**
 

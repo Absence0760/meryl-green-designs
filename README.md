@@ -34,27 +34,22 @@ meryl-green-designs/
 
 ## Quick start
 
+No secrets, cloud accounts or env-file copying needed — each workspace's
+committed `.env.development` holds safe local defaults (local sample content,
+emails captured to disk, PayFast's public sandbox, LocalStack for DynamoDB):
+
 ```bash
 pnpm install
-
-# Secrets live in the sibling PRIVATE repo Absence0760/infra-secrets. Clone it
-# next to this repo (first time only). Needs kms:Decrypt on the project key.
-# See docs/deployment.md § Secrets management for the full workflow.
-git clone git@github.com:Absence0760/infra-secrets.git ../infra-secrets
-
-# Decrypt the backend secrets into a local .env for pnpm dev:
-sops -d ../infra-secrets/meryl-green-designs/.env.sops > backend/.env
-
-# Frontend and studio have public, non-secret env vars — plain copy is fine:
-cp frontend/.env.example frontend/.env
-cp studio/.env.example studio/.env
-
+pnpm dev:db:up              # optional: LocalStack (Docker) so checkout / order tracking work
 pnpm dev                    # frontend (:7777) + backend (:3001)
-pnpm studio dev             # Sanity Studio (:3333) — run separately when needed
 ```
 
-See [`docs/run-locally.md`](./docs/run-locally.md) for the full setup walkthrough
-and [`docs/deployment.md`](./docs/deployment.md) for the SOPS workflow.
+Sanity Studio is optional for local dev; it needs a (free, personal) Sanity
+project — see [`docs/run-locally.md § Sanity Studio (optional)`](./docs/run-locally.md#sanity-studio-optional).
+Maintainers working against production Sanity or deploying decrypt the real
+secrets from the sibling private `infra-secrets` repo — see
+[`docs/run-locally.md § Maintainers`](./docs/run-locally.md#maintainers-production-parity-and-deploying)
+and [`docs/deployment.md § Secrets management`](./docs/deployment.md#secrets-management).
 
 ## One-command production deploy
 

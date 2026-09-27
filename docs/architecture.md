@@ -47,7 +47,7 @@ meryl-green-designs/
 │   ├── package.json
 │   ├── svelte.config.js
 │   ├── vite.config.ts
-│   ├── .env.example          PUBLIC_API_URL, PUBLIC_SANITY_PROJECT_ID, PUBLIC_SANITY_DATASET
+│   ├── .env.development      Committed local-dev defaults (PUBLIC_API_URL, PUBLIC_SANITY_*)
 │   └── src/
 │       ├── app.css           Base styles + theme tokens
 │       ├── app.html
@@ -82,14 +82,18 @@ meryl-green-designs/
 ├── backend/
 │   ├── package.json          Build script runs esbuild → dist/lambda.mjs
 │   ├── tsconfig.json
-│   ├── .env.example          Resend + Sanity + webhook secret env vars
+│   ├── .env.development      Committed local-dev defaults (local content, file email, LocalStack, PayFast sandbox)
+│   ├── dev-content.sample/   Committed generic sample content + images for CONTENT_BACKEND=local
 │   └── src/
 │       ├── app.ts            Hono app factory + CORS + route mounting
 │       ├── server.ts         Local dev entry (runs on :3001)
+│       ├── load-dev-env.ts   Loads .env.development(.local) for server.ts only (never the Lambda)
+│       ├── runtime-guard.ts  Refuses to start on Lambda with local-dev config
 │       ├── lambda.ts         AWS Lambda entry (wraps app with hono/aws-lambda)
 │       ├── auto-cancel-lambda.ts  Daily EventBridge-invoked Lambda: cancels stale pending_payment orders
 │       ├── email.ts          Resend API wrapper + HTML escaping
-│       ├── content-local.ts  Local-dev content backend (CONTENT_BACKEND=local) — reads .dev-content/
+│       ├── content-local.ts  Local-dev content backend (CONTENT_BACKEND=local) — reads .dev-content/ or dev-content.sample/
+│       ├── orders-local.ts   Local-dev order-skeleton store (CONTENT_BACKEND=local) — .dev-content/orders.json
 │       ├── email-templates.ts Status-keyed customer email templates
 │       ├── email-match.ts    Constant-time email-equality for track-page lookups
 │       ├── payfast.ts        PayFast signature generation, ITN validation, form-data builder
@@ -115,7 +119,7 @@ meryl-green-designs/
 │   ├── package.json
 │   ├── sanity.config.ts      Studio configuration (project, plugins, schema)
 │   ├── sanity.cli.ts         CLI configuration (used by `sanity deploy`, etc.)
-│   ├── .env.example          SANITY_STUDIO_PROJECT_ID, SANITY_STUDIO_DATASET
+│   ├── .env.development      Committed local-dev defaults (project ID blank — Studio optional locally)
 │   └── schemas/
 │       ├── index.ts          Schema registry
 │       ├── product.ts        Product schema (name, price, photos, availability, order)

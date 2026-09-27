@@ -431,8 +431,8 @@ will skip anything that's already done.
 ### Step 5. First Sanity Studio deploy (interactive, one-time)
 
 ```bash
-cp studio/.env.example studio/.env
-# Fill in SANITY_STUDIO_PROJECT_ID with your project ID
+# studio/.env.development.local (gitignored): SANITY_STUDIO_PROJECT_ID=<your project id>
+# (sanity deploy itself runs in production mode; CI's deploy-studio.yml supplies the env there)
 pnpm studio exec sanity login     # opens browser for Sanity SSO
 pnpm studio deploy                # pick a subdomain when prompted, e.g. "merylgreendesigns"
 ```
@@ -616,10 +616,10 @@ in `infra-secrets/bin/sops-init.sh` and its README — see `infra-secrets`'s
 | `../infra-secrets/meryl-green-designs/terraform.tfvars.sops` | yes | Committed in the **private** repo. Contains the AWS + Resend + Sanity secrets Terraform needs. |
 | `infra/terraform.tfvars` | — | Plaintext, gitignored. Created by `bin/setup.sh` as a scratch file (decrypted from the private repo), shredded on exit. |
 | `infra/terraform.tfvars.example` | no | Template with empty placeholder values — safe to commit (a copy also lives in `infra-secrets/meryl-green-designs/`). |
-| `../infra-secrets/meryl-green-designs/.env.sops` | yes | Committed in the **private** repo. Local-dev secrets for `tsx` / `pnpm dev`. |
-| `backend/.env` | — | Plaintext, gitignored. Created by the operator via `sops -d ../infra-secrets/meryl-green-designs/.env.sops > backend/.env`. |
-| `backend/.env.example` | no | Template — safe to commit. |
-| `frontend/.env`, `studio/.env` | no | Only contain `PUBLIC_*` vars / project IDs — non-secret by SvelteKit convention. |
+| `../infra-secrets/meryl-green-designs/.env.sops` | yes | Committed in the **private** repo. Production-parity dev secrets for maintainers (not needed for everyday local dev). |
+| `backend/.env.development.local` | — | Plaintext, gitignored. Created by a maintainer via `sops -d ../infra-secrets/meryl-green-designs/.env.sops > backend/.env.development.local`; overrides the committed defaults key by key. |
+| `backend/.env.development`, `frontend/.env.development`, `studio/.env.development` | no | **Committed** non-sensitive local-dev defaults (localhost URLs, `CONTENT_BACKEND=local`, `EMAIL_BACKEND=file`, PayFast public sandbox, `local-dev-admin-token`). Loaded automatically in dev only; guarded by `backend/src/__tests__/env-development.test.ts`. Never read by production builds or the Lambda. |
+| `frontend/.env.development.local`, `studio/.env.development.local` | no | Gitignored personal overrides (e.g. a real Sanity project ID) — non-secret. |
 
 ### First-time setup
 
@@ -650,7 +650,7 @@ your existing credentials, clone both repos, and `sops
 |---|---|
 | Edit a secret | `sops ../infra-secrets/meryl-green-designs/terraform.tfvars.sops` — sops calls KMS, opens plaintext in `$EDITOR`, re-encrypts on save |
 | Rotate a value | Same as "edit" — change the value, save. Git diff (in the private repo) shows the whole encrypted blob changed; `git log` tells you when. |
-| Read a secret into dev env | `sops -d ../infra-secrets/meryl-green-designs/.env.sops > backend/.env` |
+| Read a secret into dev env | `sops -d ../infra-secrets/meryl-green-designs/.env.sops > backend/.env.development.local` (maintainers only; add `CONTENT_BACKEND=sanity` if absent) |
 | Run Terraform locally | `./bin/setup.sh` — it auto-decrypts the private repo's `terraform.tfvars.sops` into a scratch plaintext file, runs Terraform, and shreds the plaintext on exit |
 | Add a collaborator | Grant their IAM identity `kms:Decrypt` (and optionally `kms:Encrypt`) on the KMS key — either via the key policy in the AWS console or by attaching an IAM policy to their user/role. **No changes to `.sops.yaml` and no re-encryption required.** IAM is the source of truth for access. |
 | Remove a collaborator | Revoke their `kms:Decrypt` permission in the key policy or their IAM policy. Takes effect immediately on the next decrypt attempt. |
@@ -851,9 +851,16 @@ environment live in
 
 ### Local development (not production)
 
-- `frontend/.env` — `PUBLIC_API_URL`, `PUBLIC_SANITY_PROJECT_ID`, `PUBLIC_SANITY_DATASET`
-- `backend/.env` — same as Lambda runtime env above, plus `PORT=3001`
-- `studio/.env` — `SANITY_STUDIO_PROJECT_ID`, `SANITY_STUDIO_DATASET`
+Committed, auto-loaded `.env.development` per workspace (non-sensitive
+defaults; override in a gitignored `.env.development.local`):
+
+- `frontend/.env.development` — `PUBLIC_API_URL`, `PUBLIC_SITE_URL`, `PUBLIC_SANITY_PROJECT_ID` (blank), `PUBLIC_SANITY_DATASET`
+- `backend/.env.development` — same keys as the Lambda runtime env above (secrets blank), plus the dev-only `CONTENT_BACKEND=local`, `EMAIL_BACKEND=file`, `DYNAMODB_ENDPOINT`, `PORT=3001`, PayFast public sandbox creds and `ADMIN_API_TOKEN=local-dev-admin-token`. The Lambda refuses to start if `CONTENT_BACKEND=local`, `EMAIL_BACKEND=file` or that token ever reach its env (`backend/src/runtime-guard.ts`).
+- `studio/.env.development` — `SANITY_STUDIO_PROJECT_ID` (blank — the Studio is optional locally), `SANITY_STUDIO_DATASET`, `SANITY_STUDIO_API_URL`, `SANITY_STUDIO_ADMIN_TOKEN`
+
+Production builds (`vite build`, `sanity build`/`deploy`) run in production
+mode and never read `.env.development`; their values come from the deploy
+workflows.
 
 See [`run-locally.md`](./run-locally.md) for local dev setup.
 

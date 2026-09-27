@@ -149,7 +149,9 @@ function getClient(): SanityClient {
 	const token = process.env.SANITY_API_TOKEN;
 
 	if (!projectId) {
-		throw new Error('SANITY_PROJECT_ID is not configured.');
+		throw new Error(
+			'SANITY_PROJECT_ID is not configured. For local dev without Sanity set CONTENT_BACKEND=local (the backend/.env.development default); otherwise put SANITY_* in backend/.env.development.local.'
+		);
 	}
 	if (!token) {
 		throw new Error('SANITY_API_TOKEN is not configured.');
