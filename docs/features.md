@@ -154,7 +154,10 @@ anything in the repo) — see [`roadmap.md`](./roadmap.md).
 - **Hero** rendered across a full-bleed photograph of the African bush.
   The photo is a `<picture>` behind the text overlay (`object-fit:
   cover`): WebP at 800 / 1280 / 1920 px wide (`static/two_trees-*.webp`,
-  66–246 KB) via `srcset` + `sizes`, with the original
+  66–246 KB) via `srcset` + `sizes`; upright phones (viewport aspect
+  ≤ 27/50) get a centred 3:4 crop instead (`static/two_trees-portrait-
+  480/720/936.webp`, 47–125 KB — the same visible pixels, half the bytes
+  of the 1920w file they used to need), with the original
   `static/two_trees.JPG` (643 KB) as the fallback for browsers without
   WebP. Paths and `sizes` live in `src/lib/heroImage.ts` (vitest checks
   the files exist). The H1 reads "Inspired by Nature" followed by a
@@ -196,8 +199,9 @@ anything in the repo) — see [`roadmap.md`](./roadmap.md).
 - **Call-to-action cards** linking to the Gallery and Shop — image-led
   (3:2 photo over a text panel). The Shop card uses the first featured
   product's photo and the Gallery card the first gallery photo, once
-  those fetches land; until then (or if they fail) both show the 800 px
-  hero WebP.
+  those fetches land; if they fail both show the 800 px hero WebP. No
+  image is rendered until the fetches settle (the sage media box holds
+  the space), so the fallback is never downloaded just to be replaced.
 
 ## Gallery (`/gallery`)
 

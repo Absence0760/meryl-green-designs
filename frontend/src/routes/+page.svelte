@@ -4,7 +4,16 @@
 	import { PUBLIC_API_URL } from '$env/static/public';
 	import { imageUrl, type GalleryPhoto, type Product, type Testimonial } from '$lib/sanity';
 	import { pickFeaturedProducts } from '$lib/productGroups';
-	import { HERO_SIZES, heroFallbackSrc, heroSrc, heroSrcset } from '$lib/heroImage';
+	import {
+		HERO_LANDSCAPE_MEDIA,
+		HERO_PORTRAIT_MEDIA,
+		HERO_PORTRAIT_SIZES,
+		HERO_SIZES,
+		heroFallbackSrc,
+		heroPortraitSrcset,
+		heroSrc,
+		heroSrcset
+	} from '$lib/heroImage';
 	import Button from '$lib/Button.svelte';
 	import ProductCard from '$lib/ProductCard.svelte';
 	import SectionDivider from '$lib/SectionDivider.svelte';
@@ -12,6 +21,7 @@
 
 	const heroFallback = heroFallbackSrc(base);
 	const heroWebpSrcset = heroSrcset(base);
+	const heroPortraitWebpSrcset = heroPortraitSrcset(base);
 	const apiUrl = PUBLIC_API_URL;
 
 	let featured: GalleryPhoto[] = [];
@@ -19,12 +29,20 @@
 	let featuredProducts: Product[] = [];
 
 	// Image-led CTA cards: a real product / gallery photo once the fetches
-	// land, the hero photograph until then (or if they fail).
+	// land, the hero photograph if they fail. Nothing is rendered until the
+	// fetches settle — in the short pre-fetch page the cards sit inside the
+	// lazy-load distance, so a placeholder <img> downloaded the 64 KB hero
+	// crop only to be swapped out a moment later. The sage media box holds
+	// the space meanwhile.
 	const ctaFallback = heroSrc(800, base);
-	$: shopCtaImage =
-		(featuredProducts[0]?.photos?.[0] && imageUrl(featuredProducts[0].photos[0], 800)) ||
-		ctaFallback;
-	$: galleryCtaImage = (featured[0] && imageUrl(featured[0].image, 800)) || ctaFallback;
+	let contentSettled = false;
+	$: shopCtaImage = contentSettled
+		? (featuredProducts[0]?.photos?.[0] && imageUrl(featuredProducts[0].photos[0], 800)) ||
+			ctaFallback
+		: null;
+	$: galleryCtaImage = contentSettled
+		? (featured[0] && imageUrl(featured[0].image, 800)) || ctaFallback
+		: null;
 
 	// Hero "settle" (6% zoom easing to rest) starts only after the page has
 	// painted. As a CSS animation that ran from first paint, Chrome held
@@ -72,6 +90,8 @@
 				/* ignore */
 			}
 		}
+
+		contentSettled = true;
 	});
 
 	const storyParagraphs: string[] = [
@@ -120,9 +140,17 @@
 </script>
 
 <section class="hero">
-	<!-- Decorative (alt=""): the H1 and tagline carry the meaning. WebP at
-	     800/1280/1920w, JPG fallback for browsers without WebP. -->
+	<!-- Decorative (alt=""): the H1 and tagline carry the meaning. Phones
+	     get a 3:4 centre crop (480/720/936w), everything else the landscape
+	     WebP at 800/1280/1920w; JPG fallback for browsers without WebP.
+	     See src/lib/heroImage.ts. -->
 	<picture>
+		<source
+			type="image/webp"
+			media={HERO_PORTRAIT_MEDIA}
+			srcset={heroPortraitWebpSrcset}
+			sizes={HERO_PORTRAIT_SIZES}
+		/>
 		<source type="image/webp" srcset={heroWebpSrcset} sizes={HERO_SIZES} />
 		<img
 			class="hero-image"
@@ -161,12 +189,22 @@
 		property="og:description"
 		content="Handcrafted folding screens and cushion covers from Meryl Green, inspired by the light, colour and stillness of the African bush."
 	/>
-	<!-- Mirrors the <source> above so the browser preloads the same
-	     candidate it will pick for the hero. -->
+	<!-- Mirror the two <source>s above (media-split so exactly one
+	     matches) so the browser preloads the candidate it will render. -->
 	<link
 		rel="preload"
 		as="image"
 		type="image/webp"
+		media={HERO_PORTRAIT_MEDIA}
+		imagesrcset={heroPortraitWebpSrcset}
+		imagesizes={HERO_PORTRAIT_SIZES}
+		fetchpriority="high"
+	/>
+	<link
+		rel="preload"
+		as="image"
+		type="image/webp"
+		media={HERO_LANDSCAPE_MEDIA}
 		imagesrcset={heroWebpSrcset}
 		imagesizes={HERO_SIZES}
 		fetchpriority="high"
@@ -262,7 +300,9 @@
 		<div class="cta-grid">
 			<a class="cta-card" href="/gallery">
 				<div class="cta-card__media">
-					<img src={galleryCtaImage} alt="" loading="lazy" />
+					{#if galleryCtaImage}
+						<img src={galleryCtaImage} alt="" loading="lazy" width="800" height="533" />
+					{/if}
 				</div>
 				<div class="cta-card__body">
 					<h3>Gallery</h3>
@@ -272,7 +312,9 @@
 			</a>
 			<a class="cta-card" href="/shop">
 				<div class="cta-card__media">
-					<img src={shopCtaImage} alt="" loading="lazy" />
+					{#if shopCtaImage}
+						<img src={shopCtaImage} alt="" loading="lazy" width="800" height="533" />
+					{/if}
 				</div>
 				<div class="cta-card__body">
 					<h3>Shop</h3>
