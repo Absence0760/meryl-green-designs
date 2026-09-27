@@ -1,0 +1,81 @@
+name: Deploy demo (GitHub Pages)
+
+# Builds the frontend as a static client preview and publishes it to GitHub
+# Pages whenever the `demo` branch is updated. Completely independent of
+# the production deploy pipeline — no AWS, no OIDC, no secrets. The live
+# site on S3 + CloudFront is unaffected by this workflow.
+#
+# Lives only on the `demo` branch (with frontend/static/demo-api/, the
+# static API snapshot + preview photos, and the fetch shim in app.html).
+# Push-triggered workflows use the workflow file from the ref that was
+# pushed, so nothing here needs to exist on main. Delete the branch when
+# the review is done.
+
+on:
+  push:
+    branches: [demo]
+  workflow_dispatch:
+
+concurrency:
+  group: pages-demo
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: 10
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build frontend (static preview)
+        working-directory: frontend
+        env:
+          # adapter-static serves the site from a subpath on GitHub Pages;
+          # svelte.config.js wires BASE_PATH into kit.paths.base.
+          BASE_PATH: /meryl-green-designs
+          # The app.html shim maps this prefix to static JSON under
+          # static/demo-api; photos are real files at the same paths.
+          PUBLIC_API_URL: https://absence0760.github.io/meryl-green-designs/demo-api
+          PUBLIC_SITE_URL: https://absence0760.github.io/meryl-green-designs
+          PUBLIC_SANITY_PROJECT_ID: demo
+          PUBLIC_SANITY_DATASET: production
+        run: pnpm build
+
+      - name: Bypass Jekyll
+        run: touch frontend/build/.nojekyll
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: frontend/build
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

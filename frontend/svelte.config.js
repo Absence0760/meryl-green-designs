@@ -32,6 +32,14 @@ function defineConfig() {
 			// headers: there is no CSP (see infra/security_headers.tf), so
 			// inline <style> needs no nonce.
 			inlineStyleThreshold: 16384,
+			// DEMO BRANCH ONLY: under the GitHub Pages subpath, the site's
+			// root-relative links (href="/shop") don't begin with `base`, so
+			// the prerender crawler would fail on them. Every static route is
+			// still prerendered via the default `entries: ['*']`; the app.html
+			// shim prefixes those links with the base path in the browser.
+			prerender: {
+				handleHttpError: process.env.BASE_PATH ? 'warn' : 'fail',
+			},
 		},
 	};
 }

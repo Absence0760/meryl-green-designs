@@ -20,9 +20,71 @@
 			type="font/woff2"
 			crossorigin
 		/>
+		<!-- DEMO BRANCH ONLY: GitHub Pages preview for client review. Keeps
+		     search engines out, serves the API from static JSON under
+		     /demo-api, and switches off checkout + enquiries. -->
+		<meta name="robots" content="noindex, nofollow" />
+		<script>
+			(function () {
+				var api = location.origin + '/meryl-green-designs/demo-api';
+				var json = function (body, status) {
+					return new Response(JSON.stringify(body), {
+						status: status || 200,
+						headers: { 'Content-Type': 'application/json' }
+					});
+				};
+				var off =
+					'This is a preview, so checkout and the enquiry form are switched off. On the live site this would go through.';
+				// Root-relative links (href="/shop") would leave the /meryl-green-designs
+				// subpath, so prefix them as they appear or change.
+				var base = '/meryl-green-designs';
+				var fix = function (a) {
+					var h = a.getAttribute('href');
+					if (h && h.charAt(0) === '/' && h.charAt(1) !== '/' && h !== base && h.indexOf(base + '/') !== 0) {
+						a.setAttribute('href', base + h);
+					}
+				};
+				new MutationObserver(function (records) {
+					records.forEach(function (r) {
+						if (r.type === 'attributes') {
+							if (r.target.tagName === 'A') fix(r.target);
+							return;
+						}
+						r.addedNodes.forEach(function (n) {
+							if (n.nodeType !== 1) return;
+							if (n.tagName === 'A') fix(n);
+							if (n.querySelectorAll) n.querySelectorAll('a[href^="/"]').forEach(fix);
+						});
+					});
+				}).observe(document.documentElement, {
+					subtree: true,
+					childList: true,
+					attributes: true,
+					attributeFilter: ['href']
+				});
+				var realFetch = window.fetch.bind(window);
+				window.fetch = function (input, init) {
+					var url = typeof input === 'string' ? input : input.url;
+					if (url.indexOf(api) !== 0) return realFetch(input, init);
+					var path = url.slice(api.length).split('?')[0];
+					var method = ((init && init.method) || 'GET').toUpperCase();
+					if (method !== 'GET') return Promise.resolve(json({ success: false, error: off }));
+					if (path.indexOf('/dev-content/') === 0) return realFetch(input, init);
+					if (/^\/(products|gallery|testimonials)(\/[a-z0-9-]+)?$/.test(path)) {
+						return realFetch(api + path + '.json');
+					}
+					return Promise.resolve(json({ error: 'Not available in the preview.' }, 404));
+				};
+			})();
+		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">
+		<div
+			style="background: #7d603d; color: #fff; text-align: center; font: 14px/1.4 system-ui, sans-serif; padding: 6px 12px"
+		>
+			Preview for review — not the live site. Checkout and the enquiry form are switched off.
+		</div>
 		<div style="display: contents">%sveltekit.body%</div>
 	</body>
 </html>
