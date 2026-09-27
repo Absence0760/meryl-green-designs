@@ -509,6 +509,14 @@
 		}
 	}
 
+	@media (prefers-reduced-motion: reduce) {
+		.product-detail--skeleton .gallery__main,
+		.skeleton-shimmer,
+		.skeleton-line {
+			animation: none;
+		}
+	}
+
 	/* The detail section above already supplies the gap. */
 	.related {
 		padding-top: 0;

@@ -621,6 +621,18 @@
 		.cta-card:hover .cta-card__media img {
 			transform: none;
 		}
+
+		.cta-card:hover {
+			transform: none;
+		}
+
+		.featured-band__tile img {
+			transition: none;
+		}
+
+		.featured-band__tile:hover img {
+			transform: none;
+		}
 	}
 
 	.cta-card h3 {

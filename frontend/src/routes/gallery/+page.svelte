@@ -459,5 +459,13 @@
 		.skeleton-shimmer {
 			animation: none;
 		}
+
+		.tile-image {
+			transition: none;
+		}
+
+		.tile-button:hover .tile-image {
+			transform: none;
+		}
 	}
 </style>

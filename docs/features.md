@@ -60,7 +60,9 @@ anything in the repo) — see [`roadmap.md`](./roadmap.md).
   - Home hero photo settles from a 6% zoom over ~14s on load; product
     photos push in slightly on hover.
   - All motion is removed (reveal becomes a plain fade) under
-    `prefers-reduced-motion: reduce`.
+    `prefers-reduced-motion: reduce` — hero settle, card / CTA / photo-
+    band / gallery-tile hover zooms and lifts, and every skeleton shimmer
+    (shop, product, gallery).
 - **Accessibility** (audited with axe-core at 1440px and 390px on home,
   shop, product, gallery, track and 404):
   - "Skip to content" link as the first tab stop, jumping focus to
