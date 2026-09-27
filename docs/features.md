@@ -91,6 +91,20 @@ anything in the repo) — see [`roadmap.md`](./roadmap.md).
   only exists after hydration; Google renders JS, other crawlers may
   not see it. All JSON-LD goes through `src/lib/jsonLd.ts`, which
   escapes `<`, `>`, `&` so CMS text can't close the `<script>` tag.
+- **`sitemap.xml`** (`src/routes/sitemap.xml/+server.ts`, prerendered)
+  — the static indexable pages plus `/shop/<slug>` for every available
+  product. Product slugs are fetched from `${PUBLIC_API_URL}/products`
+  at build time with a 5s timeout; if the API is unreachable, errors or
+  returns junk, the build logs `[sitemap] product URLs omitted: …` and
+  ships the static pages only — it never fails the build. Logic in
+  `src/lib/sitemap.ts` (tested). **Freshness:** the sitemap is baked at
+  build time, so a new (or removed) product appears on the next
+  frontend deploy. The content-rebuild Sanity webhook
+  (`docs/deployment.md` § Step 7) redeploys the frontend on every
+  product create/update/delete, so in practice that's a minute or two
+  after Meryl publishes — provided the webhook (and its GitHub PAT) is
+  set up and current; without it, only on the next release or manual
+  run.
 - **`robots.txt`** — allows all indexable routes, disallows `/track` and
   `/payment` (both per-order and useless to crawlers without query params).
 - **Per-route SEO + Open Graph + Twitter Card tags** — every page has its own

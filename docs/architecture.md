@@ -216,9 +216,11 @@ This pattern has three deliberate properties:
    any data or images are requested
 2. **Content is live** — because the fetch runs on every visit, a product
    edit in Sanity Studio is visible within seconds without a frontend
-   rebuild (the "rebuild on publish" webhook still exists but is only
-   strictly needed for content that's baked at build time, which for now
-   is nothing)
+   rebuild (the "rebuild on publish" webhook still exists and is only
+   strictly needed for content that's baked at build time — currently
+   just the product URLs in `sitemap.xml`, fetched from
+   `${PUBLIC_API_URL}/products` during prerender and skipped with a
+   warning if the API is unreachable)
 3. **The site stays fully static** — no server, no SSR at runtime, no
    Node process on the hot path. S3 + CloudFront serves everything; the
    Lambda is only invoked when a browser hits `/orders`, `/products`,

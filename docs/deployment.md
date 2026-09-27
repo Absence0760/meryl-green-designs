@@ -520,6 +520,13 @@ token doesn't have the right scopes to be safely reused.
 3. Save the webhook. Test it by editing a product and clicking Publish — a
    **Deploy frontend** workflow run should start within a few seconds.
 
+   This rebuild is what keeps `sitemap.xml` current: the build fetches
+   product slugs from `PUBLIC_API_URL` (the production API), so the
+   `Build frontend` step needs the API reachable to include product
+   URLs. If it isn't, the step logs `[sitemap] product URLs omitted: …`
+   and still succeeds with the static pages only — re-run the workflow
+   once the API is back.
+
 ### Step 8. Trigger the first deploys
 
 Now that everything is configured, kick off the first runs of each workflow:
@@ -984,7 +991,7 @@ incident.
 | PR opened or push to `main`/`dev` | Nothing is deployed; CI runs `pnpm check` + `pnpm test` | `ci.yml` |
 | GitHub release is published | Frontend + backend + studio workflows each run a `check` job; only the workspaces whose files changed since the previous release actually deploy | `release: types: [published]` on each deploy workflow, with an early-exit check job |
 | You click "Run workflow" in the Actions tab | That single workflow re-runs against the current `main` | `workflow_dispatch` |
-| Meryl publishes a product or gallery photo in Studio | Frontend rebuild (no release required — content changes shouldn't need a version tag) | Sanity webhook → `repository_dispatch: sanity-publish` → `deploy-frontend.yml` |
+| Meryl publishes a product or gallery photo in Studio | Frontend rebuild (no release required — content changes shouldn't need a version tag). Product pages themselves are live without it; the rebuild is what adds/removes the product in `sitemap.xml` | Sanity webhook → `repository_dispatch: sanity-publish` → `deploy-frontend.yml` |
 | Meryl changes an order's status in Studio | Customer status email sent (payment received / shipped / delivered / cancelled) | Sanity webhook → backend `/webhooks/sanity-order` route → Resend |
 | You edit `infra/terraform.tfvars` (e.g. rotating `RESEND_API_KEY`) | Lambda env vars update in place | `cd infra && terraform apply` |
 

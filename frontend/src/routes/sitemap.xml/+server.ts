@@ -1,21 +1,16 @@
-import { PUBLIC_SITE_URL } from '$env/static/public';
+import { PUBLIC_API_URL, PUBLIC_SITE_URL } from '$env/static/public';
+import { STATIC_ROUTES, buildSitemapXml, fetchProductPaths } from '$lib/sitemap';
 
+// Prerendered at build time. Product URLs are fetched from the backend
+// then; a failed fetch logs a warning and emits the static pages only
+// (see src/lib/sitemap.ts). New products therefore appear after the next
+// frontend build — the Sanity publish webhook triggers one
+// (docs/deployment.md § Step 7).
 export const prerender = true;
 
-// Top-level routes that should be in the sitemap. /shop/[slug] is deliberately
-// omitted: product slugs come from Sanity and would need a build-time fetch to
-// enumerate. Crawlers discover them by following links from /shop.
-// /track and /payment/* are noindex (per-order or post-checkout only).
-const ROUTES = ['/', '/shop', '/gallery', '/contact', '/privacy', '/returns', '/terms'];
-
-export function GET() {
-	const base = (PUBLIC_SITE_URL ?? '').replace(/\/$/, '');
-	const urls = ROUTES.map((path) => `\t<url><loc>${base}${path}</loc></url>`).join('\n');
-	const body = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${urls}
-</urlset>
-`;
+export async function GET() {
+	const products = await fetchProductPaths(PUBLIC_API_URL);
+	const body = buildSitemapXml(PUBLIC_SITE_URL ?? '', [...STATIC_ROUTES, ...products]);
 	return new Response(body, {
 		headers: { 'Content-Type': 'application/xml' }
 	});
