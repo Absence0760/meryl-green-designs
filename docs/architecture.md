@@ -184,6 +184,13 @@ build/
 This is the directory that uploads to S3. CloudFront sits in front for caching and
 TLS termination. No server-side rendering, no runtime, no Node process.
 
+`kit.inlineStyleThreshold: 16384` in `svelte.config.js` inlines each route's
+stylesheets (all under 16 KB) into its prerendered HTML as `<style>`, so first
+paint waits on no CSS requests. SvelteKit rewrites the `url()`s (fonts, linen
+texture) relative to each page, and client-side navigation still loads the
+hashed `.css` files. This relies on there being no CSP — adding one later
+means allowing these inline styles (hash or nonce).
+
 **SPA fallback for dynamic routes.** The product detail route `/shop/[slug]`
 can't be enumerated at build time (slugs come from Sanity), so its
 `+page.ts` sets `prerender = false; ssr = false;` and the static adapter
