@@ -97,13 +97,21 @@
 	cover lead time and made-to-order status are not yet confirmed.
 	See the TODO(Meryl/legal) comments inline.
 
+	27 September 2026 edit: Meryl confirmed cushion covers are made to
+	order (cotton, printed and made up after payment, dispatched within
+	3 weeks; no insert) and that the lion and elephant screens use a
+	lighter cotton basket weave rather than canvas. The lead-time
+	section now says both product types are made to order. The
+	cooling-off exemption is STILL claimed for folding screens only —
+	see the TODO(legal) inline.
+
 	Update the "Last updated" date whenever the terms text changes.
 -->
 <script lang="ts">
 	import LegalToc from '$lib/LegalToc.svelte';
 	import { buildToc } from '$lib/headingSlug';
 
-	const lastUpdated = '26 September 2026';
+	const lastUpdated = '27 September 2026';
 
 	// "On this page" entries — one per <h2> below, same text, same order.
 	// Each h2's literal id must equal the slug buildToc() makes from its
@@ -261,20 +269,20 @@
 
 		<h2 id="made-to-order-lead-times">Made-to-order &mdash; lead times</h2>
 		<p>
-			Folding screens are made to order. Production on each screen
-			begins after full payment has been received and the order
-			confirmation has been sent. <strong>Each folding screen is
-			produced within 3 weeks of payment</strong> unless we contact
-			you to agree a longer time. The 3-week window covers making the
-			Meranti frame, printing the canvas, and assembling the finished
-			screen.
+			Folding screens and cushion covers are made to order.
+			Production on each piece begins after full payment has been
+			received and the order confirmation has been sent.
+			<strong>Each folding screen is produced within 3 weeks of
+			payment</strong> unless we contact you to agree a longer time.
+			The 3-week window covers making the Meranti frame, printing
+			the fabric, and assembling the finished screen.
 		</p>
-		<!-- TODO(Meryl/legal): confirm whether cushion covers are made to order or dispatched from stock — the lead time below is stated without a "made to order" claim until then. Counsel to confirm the 3-week bound satisfies ECT s43(1)(l) disclosure. -->
+		<!-- TODO(legal): Meryl confirmed on 2026-09-27 that cushion covers are made to order (printed and made up after payment). Counsel to confirm the 3-week bound satisfies ECT s43(1)(l) disclosure. -->
 		<p>
-			<strong>Cushion covers are dispatched within 3 weeks of
-			payment</strong> unless we contact you to agree a longer time,
-			after full payment has been received and the order
-			confirmation has been sent. For every order, we'll keep you updated by email at
+			Each cushion cover is printed and made up for you after you
+			order. <strong>Cushion covers are dispatched within 3 weeks of
+			payment</strong> unless we contact you to agree a longer
+			time. For every order, we'll keep you updated by email at
 			the major status changes (payment received, in production,
 			shipped).
 		</p>
@@ -289,7 +297,7 @@
 			<a href="/returns">Refund &amp; Returns Policy</a> for the full
 			set of remedies.
 		</p>
-		<!-- TODO(Meryl/legal): the cooling-off exemption is claimed for folding screens only. Until Meryl confirms whether cushion covers are made to order and counsel confirms whether the exemption applies, these terms must not claim it for cushion covers. -->
+		<!-- TODO(legal): the cooling-off exemption is claimed for folding screens only. Cushion covers are now confirmed made to order, but they are catalogue designs with no per-buyer choices — whether s42(2)(f) ("made to the consumer's specifications") covers them is the same open question /returns raises for screens. Until counsel answers, these terms must not claim the exemption for cushion covers. -->
 		<p>
 			This exemption is not claimed for cushion covers. Nothing in
 			these terms limits any right you have under section 44 of

@@ -13,16 +13,18 @@ describe('ORDERING_STEPS', () => {
 		}
 	});
 
-	// Legal guard: the Terms claim "made to order" (and the cooling-off
-	// exemption that rests on it) for folding screens only.
-	it('claims "made to order" only for folding screens', () => {
-		for (const step of ORDERING_STEPS) {
-			const t = text(step);
-			if (t.includes('made to order')) {
-				expect(t).toContain('folding screens');
-				expect(t).not.toContain('cushion');
-			}
-		}
+	it('says both product types are made to order', () => {
+		const all = ORDERING_STEPS.map(text).join(' ');
+		expect(all).toContain('made to order');
+		expect(all).toContain('folding screen');
+		expect(all).toContain('cushion cover');
+	});
+
+	// Legal guard: the cooling-off exemption is scoped in the Terms and
+	// Returns pages (screens only, pending counsel) — never restated here.
+	it('never mentions cancellation or cooling-off rights', () => {
+		const all = ORDERING_STEPS.map(text).join(' ');
+		expect(all).not.toMatch(/cooling|cancel|refund|section 44/);
 	});
 
 	it('states the 3-week lead time and South Africa-only delivery, like the Terms', () => {

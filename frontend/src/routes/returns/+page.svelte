@@ -109,13 +109,19 @@
 	Meryl confirms the facts and counsel confirms the legal position.
 	See the TODO(Meryl/legal) comments inline.
 
+	27 September 2026 edit: Meryl confirmed cushion covers are made to
+	order (printed and made up after payment). The lede now says every
+	piece is made to order, but the cooling-off exemption is STILL
+	claimed for folding screens only until counsel confirms whether
+	s42(2)(f) reaches catalogue designs — see the TODO(legal) inline.
+
 	Update the "Last updated" date whenever the policy text changes.
 -->
 <script lang="ts">
 	import LegalToc from '$lib/LegalToc.svelte';
 	import { buildToc } from '$lib/headingSlug';
 
-	const lastUpdated = '26 September 2026';
+	const lastUpdated = '27 September 2026';
 
 	// "On this page" entries — one per <h2> below, same text, same order.
 	// Each h2's literal id must equal the slug buildToc() makes from its
@@ -158,10 +164,8 @@
 
 		<LegalToc {sections} variant="inline" />
 
-		<!-- TODO(Meryl/legal): confirm whether cushion covers are made to order or sold from stock. The lede and the cancellations section below only claim "made to order" for folding screens until this is known. -->
 		<p class="lede">
-			Every piece we sell is handcrafted, and our folding screens
-			are made to order. This page
+			Every piece we sell is handcrafted and made to order. This page
 			explains how cancellations, refunds, replacements, damaged
 			goods, defective goods, wrong items, lost deliveries, and
 			late deliveries are handled &mdash; and what to do if any of
@@ -184,7 +188,7 @@
 			screen is specially produced for you after you order, that
 			exemption covers folding screens ordered through this site.
 		</p>
-		<!-- TODO(Meryl/legal): the ECT Act cooling-off exemption above is claimed for folding screens only. We do not yet know whether cushion covers are made to order; until Meryl confirms that and a South African attorney confirms whether the exemption applies to them, this page must not refuse change-of-mind cancellations on cushion covers. Attorney to confirm the cushion-cover cancellation terms (window, who pays return costs, refund timing) before this paragraph is replaced. -->
+		<!-- TODO(legal): the ECT Act cooling-off exemption above is claimed for folding screens only. Meryl confirmed on 2026-09-27 that cushion covers are made to order too, but until a South African attorney confirms whether s42(2)(f) covers made-to-order catalogue designs, this page must not refuse change-of-mind cancellations on cushion covers. Attorney to confirm the cushion-cover cancellation terms (window, who pays return costs, refund timing) before this paragraph is replaced. -->
 		<p>
 			The paragraphs above apply to folding screens only.
 			Nothing in this policy limits any right you have under

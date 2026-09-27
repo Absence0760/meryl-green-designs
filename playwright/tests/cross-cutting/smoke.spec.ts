@@ -62,8 +62,8 @@ test.describe('public pages render', () => {
 	});
 
 	// Screens (seeded without a category → backend coalesces to 'screen')
-	// and the cushion cover land in separate sections; the Frame/Canvas/
-	// Lead time spec list belongs to the screens section only.
+	// and the cushion cover land in separate sections, each with its own
+	// materials list — Frame belongs to the screens section only.
 	test('shop groups products into category sections', async ({ page }) => {
 		await page.goto('/shop');
 		const screens = page.getByRole('region', { name: 'Folding screens' });
@@ -73,6 +73,7 @@ test.describe('public pages render', () => {
 		await expect(screens.getByText('Frame', { exact: true })).toBeVisible();
 		await expect(cushions.getByText('Test Cushion Cover')).toBeVisible();
 		await expect(cushions.getByText('Frame', { exact: true })).toHaveCount(0);
+		await expect(cushions.getByText('Insert', { exact: true })).toBeVisible();
 	});
 
 	// Poem: beside a photo on wide screens (all stanzas, no toggle); on
@@ -87,6 +88,7 @@ test.describe('public pages render', () => {
 		await expect(firstLine).toBeVisible();
 		await expect(laterLine).toBeVisible();
 		await expect(toggle).toBeHidden();
+		await expect(page.getByText('— Author unknown')).toBeVisible();
 
 		await page.setViewportSize({ width: 390, height: 844 });
 		await expect(firstLine).toBeVisible();
@@ -142,13 +144,13 @@ test.describe('public pages render', () => {
 		await expect(names).toHaveText(['Test Screen Small', 'Test Cushion Cover']);
 	});
 
-	test('cushion cover detail page has no screen specs', async ({ page }) => {
+	test('cushion cover detail page shows cushion specs, not screen specs', async ({ page }) => {
 		await page.goto('/shop/test-cushion-cover');
 		await expect(page.getByRole('heading', { name: 'Test Cushion Cover' })).toBeVisible();
 		await expect(page.getByText('Frame', { exact: true })).toHaveCount(0);
-		// Same 3-week lead time as screens, but no "made to order" claim.
-		await expect(page.getByText(/typically 3 weeks/i)).toBeVisible();
-		await expect(page.getByText(/made to order/i)).toHaveCount(0);
+		await expect(page.getByText('Insert', { exact: true })).toBeVisible();
+		// Made to order with the same 3-week lead time as screens.
+		await expect(page.getByText(/made to order — typically 3 weeks/i)).toBeVisible();
 	});
 
 	// Unknown URLs render the branded root +error.svelte (in prod via the

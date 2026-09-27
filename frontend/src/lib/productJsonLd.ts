@@ -16,7 +16,7 @@ const CATEGORY_LABEL: Record<ProductCategory, string> = {
 	'cushion-cover': 'Cushion cover'
 };
 
-// Screens are made to order, but schema.org/MadeToOrder isn't in
+// Every product is made to order, but schema.org/MadeToOrder isn't in
 // Google's supported availability values for merchant listings, so an
 // orderable product is InStock (it can be bought now).
 export const IN_STOCK = `${SCHEMA}/InStock`;

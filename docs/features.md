@@ -181,7 +181,7 @@ anything in the repo) — see [`roadmap.md`](./roadmap.md).
   og:image stays the JPG (set in `+layout.svelte`).
 - **Story** section with Meryl's three-paragraph introduction to The Green
   Collection, covering where the work comes from and what she's trying to
-  evoke. Materials detail (Meranti hardwood frames, 100% cotton canvas)
+  evoke. Materials detail (Meranti hardwood frames, cotton canvas or basket weave)
   lives on the Shop page as a compact spec block rather than here, so the
   story stays narrative. On wide screens the text sits left of the
   golden-hour illustration; below 800px the illustration follows the
@@ -206,8 +206,8 @@ anything in the repo) — see [`roadmap.md`](./roadmap.md).
   within 3 weeks, delivered by courier in South Africa with a link to
   `/track`) in a four-across grid (two-up on tablets, stacked on
   phones). Always renders; the copy lives in `src/lib/orderingSteps.ts`,
-  whose test pins it to the Terms — "made to order" is claimed for
-  folding screens only.
+  whose test pins it to the Terms — both product types are made to
+  order, and the strip never mentions cancellation rights.
 - **Featured photographs band** — a full-bleed four-across grid (two-up on
   narrow viewports) of the first four gallery photos, fetched at runtime
   from `GET /gallery`. Each tile links through to the gallery page and
@@ -220,7 +220,8 @@ anything in the repo) — see [`roadmap.md`](./roadmap.md).
   (mirroring the story). Below 800px it stacks (illustration first,
   cropped to 3:2) and shows only the first stanza with a "Read the full
   poem" / "Show less" toggle (`aria-expanded`); the
-  collapse only applies once JS has run. No attribution line is shown.
+  collapse only applies once JS has run. An italic "— Author unknown"
+  credit sits under the verse (Meryl confirmed the author isn't known).
 - **Commission prompt** closes the page — "Have something specific in
   mind?" with an "Enquire about a commission" button to `/contact`,
   mirroring the gallery's closing CTA. (Replaced the image-led Gallery /
@@ -286,15 +287,17 @@ Page copy and the closing CTA reflect that — visitors are guided to
   products is hidden; within a section the backend's display order
   (order, then name) is kept. A product with no category is treated as
   a folding screen.
-- **Screen spec block** in the "Folding screens" section header — a
-  compact three-row definition list (`Frame`, `Canvas`, `Lead time`)
-  describing the shared construction of every screen. Sits beside the
-  section heading on desktop; on narrow viewports it stays one row per
-  fact in smaller type so the first product remains above the fold. The
-  "Cushion covers" section shows a single `Lead time` row ("Typically 3
-  weeks from payment to dispatch") — deliberately without the "made to
-  order" claim until Meryl confirms it, since that affects the ECT Act
-  s44 exemption. Fabric and insert are still `TODO(Meryl)`.
+- **Section spec blocks** in each category header — a compact
+  definition list of the materials shared by every piece in the section
+  plus a `Lead time` row ("Made to order — typically 3 weeks from payment
+  to dispatch"). Screens: `Frame` (Meranti) and `Fabric` (100% cotton
+  canvas, or a lighter basket weave on some designs — the lion and
+  elephant screens; each product's Sanity description names its fabric).
+  Cushion covers: `Fabric` (cotton) and `Insert` (not included). The copy
+  lives in `src/lib/productSpecs.ts` (vitest-covered), shared with the
+  product detail page. Sits beside the section heading on desktop; on
+  narrow viewports it stays one row per fact in smaller type so the
+  first product remains above the fold.
 - **Minimal tile layout** (`src/lib/ProductCard.svelte`, shared with the
   home page "Featured pieces" strip) — each tile is a 4:5 portrait
   photograph (portrait rather than square so tall screens keep their
@@ -340,11 +343,10 @@ Page copy and the closing CTA reflect that — visitors are guided to
   "← Back to shop" link, an "Ask about this piece" link to
   `/contact?product=<slug>` (pre-fills the enquiry form — see Contact),
   full description (respects newlines). For
-  folding screens, a "Made to order — typically 3 weeks" line under the
-  button and a compact materials spec (Frame, Canvas) mirroring the shop
-  page block. Cushion covers show "Typically 3 weeks from payment to
-  dispatch" (no made-to-order claim) and no materials spec yet
-  (`TODO(Meryl)` in the page source).
+  every product, a "Made to order — typically 3 weeks" line under the
+  button and a compact materials spec mirroring the shop page block
+  (Frame + Fabric for screens, Fabric + Insert for cushion covers; from
+  `src/lib/productSpecs.ts`).
 - **"You may also like"** — up to three other available products
   below the detail block, rendered with the shared `ProductCard` and
   a scroll reveal. Same category first, then other categories to fill,
@@ -524,12 +526,12 @@ Page copy and the closing CTA reflect that — visitors are guided to
 - **Covers both product types** — folding screens and cushion covers.
   Screen-specific details (frame, hinges, the 3–4-week replacement
   production window) are scoped to screens explicitly. The made-to-order
-  cooling-off exemption is claimed for **folding screens only**: until
-  Meryl confirms whether cushion covers are made to order (and counsel
-  confirms the legal position), the page states that nothing in it
-  limits the ECT Act s44 cancellation right for cushion covers. Unknown
-  cushion facts (made-to-order status) are marked `TODO(Meryl/legal)` in
-  the page source. Damaged cushion covers are replaced within 3 weeks of
+  cooling-off exemption is claimed for **folding screens only**. Meryl
+  confirmed (2026-09-27) that cushion covers are made to order too, but
+  until counsel confirms whether ECT s42(2)(f) covers made-to-order
+  catalogue designs, the page states that nothing in it limits the ECT
+  Act s44 cancellation right for cushion covers (`TODO(legal)` in the
+  page source). Damaged cushion covers are replaced within 3 weeks of
   the original arriving back. `/terms` follows the same scoping: both
   product types have a 3-week dispatch bound, but the cooling-off
   exemption is claimed for screens only.
