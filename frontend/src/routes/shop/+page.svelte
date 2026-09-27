@@ -141,8 +141,8 @@
 		<p class="eyebrow">Secure checkout</p>
 		<p class="payment-lede">
 			Checkout is handled by <strong>PayFast</strong> — we never see your
-			card details. Folding screens are made to order once payment clears,
-			and every piece is typically dispatched within 3 weeks.
+			card details. Every piece is made to order once payment clears and
+			typically dispatched within 3 weeks.
 		</p>
 		<ul class="payment-methods" aria-label="Accepted payment methods">
 			<li>Credit &amp; debit cards</li>
