@@ -14,7 +14,7 @@ and GitHub Actions workflows for CI/CD:
 - `backend/` — Hono app, written once and deployed two ways: as a local Node HTTP
   server for development and as an AWS Lambda handler for production. Bundled
   with esbuild.
-- `studio/` — Sanity Studio v5 (React 19), a dashboard where the shop owner manages products
+- `studio/` — Sanity Studio v6 (React 19), a dashboard where the shop owner manages products
   (name, price, photos, availability). Runs locally or as a free hosted app at
   `*.sanity.studio`.
 - `infra/` — Terraform module that provisions all AWS resources (S3, CloudFront,
@@ -353,7 +353,7 @@ bundle.
 
 ## Studio
 
-Sanity Studio v5 (React 19), configured in `studio/sanity.config.ts`. It is a standalone React
+Sanity Studio v6 (React 19), configured in `studio/sanity.config.ts`. It is a standalone React
 application, not part of the SvelteKit app. It runs in one of three places:
 
 - **Locally** via `pnpm studio dev` on `http://localhost:3333`. Used during

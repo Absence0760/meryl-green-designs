@@ -27,7 +27,7 @@
 		"studio": "pnpm --filter @meryl-green-designs/studio"
 	},
 	"engines": {
-		"node": ">=22"
+		"node": ">=22.12"
 	},
 	"pnpm": {
 		"overrides": {

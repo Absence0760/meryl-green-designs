@@ -12,7 +12,7 @@ to manage products herself.
   + CloudFront
 - **Backend**: Hono on AWS Lambda fronted by API Gateway (HTTP API), sends
   order emails via Resend
-- **CMS**: Sanity Studio v5 (React 19), hosted at `*.sanity.studio`
+- **CMS**: Sanity Studio v6 (React 19), hosted at `*.sanity.studio`
 - **Infrastructure**: Terraform (`infra/`) — S3, CloudFront, Lambda, API
   Gateway, IAM, Route 53, ACM, GitHub OIDC
 - **CI/CD**: GitHub Actions (`.github/workflows/`) deploying via OIDC

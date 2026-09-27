@@ -1,6 +1,6 @@
 # studio/
 
-Sanity Studio v5 (React 19) — the dashboard Meryl uses to manage products, gallery photos, testimonials, and orders. Dev port `3333`.
+Sanity Studio v6 (React 19) — the dashboard Meryl uses to manage products, gallery photos, testimonials, and orders. Dev port `3333`.
 
 ## Commands (run from repo root)
 
@@ -42,6 +42,8 @@ When adding a new schema:
 - `<CustomerDetailsPanel>` — read-only display of name/email/phone/address/items/notes
 - `<TrackingFields>` — three editable inputs (carrier, number, URL), save-on-blur
 - `<InternalNotesField>` — editable textarea, save-on-blur
+
+They use `@sanity/ui` v4 layout primitives — spacing on `<Stack>` / `<Inline>` is the `gap` prop (v4 removed `space`; passing it is a type error).
 
 They fetch data from the backend's `/admin/orders/:ref` endpoint and write to `/admin/orders/:ref/tracking` and `/admin/orders/:ref/internal-notes` — bypassing Sanity entirely. The backend reads/writes a private DynamoDB table; the Sanity document only carries the join key (`orderRef`) and non-PII fields (status, amount, payment metadata).
 

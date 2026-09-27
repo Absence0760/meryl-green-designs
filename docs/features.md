@@ -357,7 +357,7 @@ Page copy and the closing CTA reflect that — visitors are guided to
 
 ## Content management (Sanity Studio)
 
-- **Studio package** (`studio/`) — a standalone Sanity Studio v5 (React 19) app that the
+- **Studio package** (`studio/`) — a standalone Sanity Studio v6 (React 19) app that the
   shop owner logs into to manage products and orders. Runs locally during
   development and is deployed to a free `*.sanity.studio` URL for production
   use.
