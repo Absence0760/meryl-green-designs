@@ -59,6 +59,18 @@ anything in the repo) — see [`roadmap.md`](./roadmap.md).
     photos push in slightly on hover.
   - All motion is removed (reveal becomes a plain fade) under
     `prefers-reduced-motion: reduce`.
+- **Branded error page** (`src/routes/+error.svelte`) — any unknown URL
+  (the 404.html SPA fallback boots and client-side routing finds no
+  match) or error thrown while loading a route renders the logo emblem,
+  a short message and Button links. 404: "This path leads off into the
+  bush…" with **Browse the shop** / **Back to home**. Any other status:
+  "Something went wrong" (status code in the eyebrow) with **Try again**
+  (reloads) / **Back to home**. The raw error message is never shown.
+  Always `<meta name="robots" content="noindex">` — CloudFront serves
+  the fallback with HTTP 200, so the meta is what keeps dead URLs out of
+  search results. Copy lives in `src/lib/errorPage.ts` (tested); the
+  layout block is `src/lib/ErrorState.svelte`, which the product page's
+  "Product not found" state reuses.
 - **Favicon** — the logo scene on a rounded square (no ring, so it stays
   legible at 16px) in `static/favicon.svg`, plus a 180px
   `static/apple-touch-icon.png` for iOS home screens (iOS ignores SVG
@@ -243,8 +255,9 @@ Page copy and the closing CTA reflect that — visitors are guided to
   (`TODO(Meryl)` in the page source).
 - **Slug-routed** — fetches `GET /products/:slug` on mount and
   renders the first matching available product. Unknown or
-  unpublished slugs render a "Product not found" state linking back
-  to the shop.
+  unpublished slugs render a "Product not found" state in the same
+  branded `ErrorState` block as the site error page (logo emblem,
+  **Browse the shop** / **Back to home** buttons, `noindex`).
 - **Not prerendered** — static adapter can't enumerate Sanity-driven
   slugs at build time. The page ships a minimal shell with a skeleton
   that swaps for real content after hydration.

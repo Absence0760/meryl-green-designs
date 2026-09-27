@@ -191,6 +191,9 @@ SPA shell that boots, reads the URL, and renders the matching product
 page. CloudFront's `custom_error_response` in `infra/s3_cloudfront.tf`
 rewrites 404 and 403 responses to `/404.html` with HTTP 200, so direct
 visits to dynamic routes resolve correctly without leaking a 4xx status.
+A URL that matches no route boots the same shell and renders the root
+`src/routes/+error.svelte` (branded 404, `noindex`) client-side; because
+the HTTP status is 200, the robots meta is what keeps it out of indexes.
 
 The shop page includes client-side JavaScript that submits the order form to the
 backend via `fetch`. The backend URL is baked into the bundle at build time from

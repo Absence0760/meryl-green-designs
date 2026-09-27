@@ -6,6 +6,7 @@
 	import { isScreen } from '$lib/productGroups';
 	import { cart } from '$lib/cartStore.svelte';
 	import Button from '$lib/Button.svelte';
+	import ErrorState from '$lib/ErrorState.svelte';
 
 	const apiUrl = PUBLIC_API_URL;
 
@@ -55,6 +56,11 @@
 	{#if product}
 		<title>{product.name} — Meryl Green Designs</title>
 		<meta name="description" content={product.blurb ?? fallbackDescription} />
+	{:else if notFound}
+		<title>Product not found — Meryl Green Designs</title>
+		<!-- CloudFront serves this SPA shell with HTTP 200, so keep dead
+		     slugs out of search results the same way +error.svelte does. -->
+		<meta name="robots" content="noindex" />
 	{:else}
 		<title>Shop — Meryl Green Designs</title>
 	{/if}
@@ -82,12 +88,18 @@
 				</div>
 			</div>
 		{:else if notFound}
-			<div class="alert">
-				<h1>Product not found</h1>
-				<p>
-					This product isn't available — it may have been removed or renamed.
-					<a href="/shop">Browse the shop</a> for what's currently available.
-				</p>
+			<!-- Same branded dead-end block as the root +error.svelte page. -->
+			<div class="not-found">
+				<ErrorState eyebrow="Shop" heading="Product not found">
+					<p>
+						This product isn't available — it may have been removed or renamed.
+						Have a look at what's currently in the shop.
+					</p>
+					{#snippet actions()}
+						<Button href="/shop">Browse the shop</Button>
+						<Button href="/" variant="outlined">Back to home</Button>
+					{/snippet}
+				</ErrorState>
 			</div>
 		{:else if error}
 			<div class="alert alert--error">{error}</div>
@@ -440,6 +452,10 @@
 		100% {
 			background-position: -200% 0;
 		}
+	}
+
+	.not-found {
+		padding: var(--space-3) 0 var(--space-2);
 	}
 
 	.alert {

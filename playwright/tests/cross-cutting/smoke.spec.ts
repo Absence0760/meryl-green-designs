@@ -80,6 +80,33 @@ test.describe('public pages render', () => {
 		await expect(page.getByText(/made to order/i)).toHaveCount(0);
 	});
 
+	// Unknown URLs render the branded root +error.svelte (in prod via the
+	// 404.html SPA fallback, which CloudFront serves with HTTP 200 — hence
+	// the noindex pin). No console-error check: the dev server answers
+	// the document request with a 404, which the browser logs.
+	test('unknown URL renders the branded 404 page', async ({ page }) => {
+		await page.goto('/this-path-does-not-exist');
+		await expect(
+			page.getByRole('heading', { level: 1, name: /this path leads off into the bush/i }),
+		).toBeVisible();
+		await expect(page.getByRole('link', { name: 'Browse the shop' })).toHaveAttribute(
+			'href',
+			'/shop',
+		);
+		await expect(page.getByRole('link', { name: 'Back to home' })).toHaveAttribute('href', '/');
+		await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex');
+	});
+
+	test('unknown product slug renders the branded not-found state', async ({ page }) => {
+		await page.goto('/shop/no-such-product');
+		await expect(page.getByRole('heading', { level: 1, name: 'Product not found' })).toBeVisible();
+		await expect(page.getByRole('link', { name: 'Browse the shop' })).toHaveAttribute(
+			'href',
+			'/shop',
+		);
+		await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex');
+	});
+
 	test('contact page', async ({ page }) => {
 		await page.goto('/contact');
 		await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
