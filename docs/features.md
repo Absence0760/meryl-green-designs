@@ -361,9 +361,13 @@ Page copy and the closing CTA reflect that — visitors are guided to
   shop owner logs into to manage products and orders. Runs locally during
   development and is deployed to a free `*.sanity.studio` URL for production
   use.
-- **Product schema** with fields: name, slug (auto-generated), blurb,
-  description, price (ZAR), photos (with alt text and hotspot cropping),
-  availability toggle, and display order.
+- **Product schema** with fields: name, slug (auto-generated), category
+  (radio: "Folding screen" / "Cushion cover", defaults to folding screen,
+  required), blurb, description, price (ZAR), dimensions, photos (with alt
+  text and hotspot cropping), availability toggle, and display order.
+  Products created before the category field existed have no stored
+  value; the backend's GROQ projection coalesces a missing category to
+  `screen`, so they keep showing as folding screens without a migration.
 - **Order schema** (Phase 1 skeleton, post-PII-split — live since 2026-05-13):
   order reference (read-only), status (radio: pending payment → payment
   received → shipped → delivered → cancelled / payment failed), payment

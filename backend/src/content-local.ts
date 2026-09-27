@@ -12,8 +12,11 @@ import type { SanityGalleryPhoto, SanityProduct, SanityTestimonial } from './san
 // dev-only — the env var stays unset on the deployed Lambda, so the
 // image route isn't even registered there.
 
+// `category` is optional in content.json, matching Sanity docs created
+// before the field existed; getLocalProducts() defaults it to 'screen'
+// the same way the GROQ projection's coalesce() does.
 export type LocalContent = {
-	products?: SanityProduct[];
+	products?: Array<Omit<SanityProduct, 'category'> & { category?: SanityProduct['category'] }>;
 	galleryPhotos?: SanityGalleryPhoto[];
 	testimonials?: SanityTestimonial[];
 };
@@ -64,7 +67,10 @@ function byOrder<T extends { order: number }>(a: T, b: T): number {
 
 export async function getLocalProducts(): Promise<SanityProduct[]> {
 	const { products = [] } = await loadContent();
-	return products.filter((p) => p.available).sort(byOrderThenName);
+	return products
+		.filter((p) => p.available)
+		.map((p) => ({ ...p, category: p.category ?? 'screen' }))
+		.sort(byOrderThenName);
 }
 
 export async function getLocalProductBySlug(slug: string): Promise<SanityProduct | null> {

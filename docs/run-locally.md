@@ -304,8 +304,11 @@ instead, switched via `CONTENT_BACKEND`:
 
 `content.json` holds the same shapes the backend returns from Sanity
 (`SanityProduct`, `SanityGalleryPhoto`, `SanityTestimonial` in
-`backend/src/sanity.ts`). Any section can be omitted. Point a photo at a
-local file by giving it the asset ref `local:<file name>`:
+`backend/src/sanity.ts`). Any section can be omitted. A product's
+`category` is `"screen"` or `"cushion-cover"`; leave it out and it
+defaults to `"screen"`, the same as Sanity documents created before the
+field existed. Point a photo at a local file by giving it the asset ref
+`local:<file name>`:
 
 ```json
 {
@@ -314,11 +317,24 @@ local file by giving it the asset ref `local:<file name>`:
       "_id": "local-lion-pride-screen",
       "name": "Lion Pride Screen",
       "slug": "lion-pride-screen",
+      "category": "screen",
       "blurb": null, "description": null, "priceZar": null, "dimensions": null,
       "available": true,
       "order": 10,
       "photos": [
         { "_key": "p1", "alt": "…", "asset": { "_ref": "local:lion-screen-front.jpg" } }
+      ]
+    },
+    {
+      "_id": "local-wild-amaryllis-cushion-cover",
+      "name": "Wild Amaryllis Cushion Cover",
+      "slug": "wild-amaryllis-cushion-cover",
+      "category": "cushion-cover",
+      "blurb": null, "description": null, "priceZar": 450, "dimensions": "60 × 60 cm",
+      "available": true,
+      "order": 100,
+      "photos": [
+        { "_key": "p1", "alt": "…", "asset": { "_ref": "local:wild-amaryllis-cushion.jpg" } }
       ]
     }
   ],

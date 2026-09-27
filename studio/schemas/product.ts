@@ -20,6 +20,22 @@ export const product = defineType({
 			validation: (rule) => rule.required()
 		}),
 		defineField({
+			name: 'category',
+			title: 'Category',
+			description:
+				'Which shop section the product appears in. Folding screens also show the frame/canvas specs on their page.',
+			type: 'string',
+			options: {
+				list: [
+					{ title: 'Folding screen', value: 'screen' },
+					{ title: 'Cushion cover', value: 'cushion-cover' }
+				],
+				layout: 'radio'
+			},
+			initialValue: 'screen',
+			validation: (rule) => rule.required()
+		}),
+		defineField({
 			name: 'blurb',
 			title: 'Blurb',
 			description: 'A short one-line tagline shown on the product card.',

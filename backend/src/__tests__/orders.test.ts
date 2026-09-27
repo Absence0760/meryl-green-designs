@@ -62,6 +62,7 @@ const testProduct = {
 	_id: 'prod-1',
 	name: 'Small Screen',
 	slug: 'small-screen',
+	category: 'screen' as const,
 	blurb: null,
 	description: null,
 	priceZar: 450,

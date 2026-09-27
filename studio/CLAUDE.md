@@ -30,6 +30,8 @@ When adding a new schema:
 
 `docs/deployment.md § Adding a new content type` has a worked example.
 
+**Adding a field to an existing schema:** `initialValue` only applies to new documents — published docs keep no value until someone re-saves them. Give the backend projection a default instead of migrating. Example: `product.category` (`screen` | `cushion-cover`) is projected as `"category": coalesce(category, "screen")` in `backend/src/sanity.ts` (`PRODUCT_PROJECTION`, shared by every product query), and `content-local.ts` applies the same default.
+
 ## Sanity client gotchas
 
 - Studio reads `SANITY_STUDIO_PROJECT_ID` and `SANITY_STUDIO_DATASET` from `studio/.env`. These must point at the same Sanity project as the backend's `SANITY_PROJECT_ID`.

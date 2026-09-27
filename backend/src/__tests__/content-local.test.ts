@@ -44,7 +44,7 @@ beforeEach(() => {
 			products: [
 				product({ _id: 'b', name: 'Bravo', slug: 'bravo', order: 10 }),
 				product({ _id: 'a', name: 'Alpha', slug: 'alpha', order: 10 }),
-				product({ _id: 'z', name: 'Zulu', slug: 'zulu', order: 0 }),
+				product({ _id: 'z', name: 'Zulu', slug: 'zulu', order: 0, category: 'cushion-cover' }),
 				product({ _id: 'h', name: 'Hidden', slug: 'hidden', available: false })
 			],
 			galleryPhotos: [
@@ -88,6 +88,25 @@ describe('local content getters', () => {
 	it('returns available products ordered by order, then name', async () => {
 		const list = await getLocalProducts();
 		expect(list.map((p) => p._id)).toEqual(['z', 'a', 'b']);
+	});
+
+	it("defaults a missing category to 'screen' and keeps an explicit one", async () => {
+		const list = await getLocalProducts();
+		expect(Object.fromEntries(list.map((p) => [p._id, p.category]))).toEqual({
+			z: 'cushion-cover',
+			a: 'screen',
+			b: 'screen'
+		});
+		expect((await getLocalProductBySlug('bravo'))?.category).toBe('screen');
+		expect((await getLocalProductsByIds(['z']))[0]?.category).toBe('cushion-cover');
+	});
+
+	it("treats a null category as 'screen'", async () => {
+		writeFileSync(
+			join(dir, 'content.json'),
+			JSON.stringify({ products: [product({ _id: 'n', category: null })] })
+		);
+		expect((await getLocalProducts())[0]?.category).toBe('screen');
 	});
 
 	it('finds a product by slug but not a hidden one', async () => {

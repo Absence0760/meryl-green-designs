@@ -23,6 +23,7 @@ const testProduct: SanityProduct = {
 	_id: 'prod-1',
 	name: 'Test Screen',
 	slug: 'test-screen',
+	category: 'screen',
 	blurb: 'A screen',
 	description: 'A longer description',
 	priceZar: 1500,

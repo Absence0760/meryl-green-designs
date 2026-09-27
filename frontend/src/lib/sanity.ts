@@ -8,10 +8,15 @@ import {
 type SanityHotspot = { x: number; y: number; height: number; width: number };
 type SanityCrop = { top: number; bottom: number; left: number; right: number };
 
+// The backend coalesces a missing category to 'screen', so every product
+// the frontend receives carries one.
+export type ProductCategory = 'screen' | 'cushion-cover';
+
 export type Product = {
 	_id: string;
 	name: string;
 	slug: string;
+	category: ProductCategory;
 	blurb: string | null;
 	description: string | null;
 	priceZar: number | null;

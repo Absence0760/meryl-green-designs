@@ -39,10 +39,17 @@ export type NewSanityOrderInput = {
 	amountZar?: number;
 };
 
+// Product category. Drives the shop sections and which spec rows the
+// product page shows. Documents created before the field existed carry
+// no value — every projection below coalesces a missing one to
+// 'screen' (the only thing the studio sold before cushion covers).
+export type ProductCategory = 'screen' | 'cushion-cover';
+
 export type SanityProduct = {
 	_id: string;
 	name: string;
 	slug: string;
+	category: ProductCategory;
 	blurb: string | null;
 	description: string | null;
 	priceZar: number | null;
@@ -85,10 +92,13 @@ export type SanityGalleryPhoto = {
 	order: number;
 };
 
-const PRODUCTS_QUERY = `*[_type == "product" && available == true] | order(order asc, name asc) {
+// Shared by every product query so the shape (and the category default)
+// can't drift between the list, by-slug, and by-ids reads.
+export const PRODUCT_PROJECTION = `{
 	_id,
 	name,
 	"slug": slug.current,
+	"category": coalesce(category, "screen"),
 	blurb,
 	description,
 	priceZar,
@@ -103,6 +113,8 @@ const PRODUCTS_QUERY = `*[_type == "product" && available == true] | order(order
 		crop
 	}
 }`;
+
+const PRODUCTS_QUERY = `*[_type == "product" && available == true] | order(order asc, name asc) ${PRODUCT_PROJECTION}`;
 
 const GALLERY_QUERY = `*[_type == "galleryPhoto" && visible == true] | order(order asc, _createdAt desc) {
 	_id,
@@ -210,24 +222,7 @@ export async function updateOrderPayment(
 export async function getProductsByIds(ids: string[]): Promise<SanityProduct[]> {
 	if (isLocalContent()) return getLocalProductsByIds(ids);
 	const client = getClient();
-	const query = `*[_type == "product" && _id in $ids && available == true] {
-		_id,
-		name,
-		"slug": slug.current,
-		blurb,
-		description,
-		priceZar,
-		dimensions,
-		available,
-		order,
-		photos[] {
-			_key,
-			alt,
-			asset,
-			hotspot,
-			crop
-		}
-	}`;
+	const query = `*[_type == "product" && _id in $ids && available == true] ${PRODUCT_PROJECTION}`;
 	return client.fetch<SanityProduct[]>(query, { ids });
 }
 
@@ -250,24 +245,7 @@ export async function getProductBySlug(slug: string): Promise<SanityProduct | nu
 	// Same projection as PRODUCTS_QUERY — a single product filtered by slug.
 	// Limited to available products so unpublished/hidden items don't leak
 	// through a direct URL.
-	const query = `*[_type == "product" && slug.current == $slug && available == true][0] {
-		_id,
-		name,
-		"slug": slug.current,
-		blurb,
-		description,
-		priceZar,
-		dimensions,
-		available,
-		order,
-		photos[] {
-			_key,
-			alt,
-			asset,
-			hotspot,
-			crop
-		}
-	}`;
+	const query = `*[_type == "product" && slug.current == $slug && available == true][0] ${PRODUCT_PROJECTION}`;
 	const result = await client.fetch<SanityProduct | null>(query, { slug });
 	return result ?? null;
 }

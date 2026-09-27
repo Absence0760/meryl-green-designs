@@ -15,6 +15,7 @@ function makeProduct(overrides: Partial<Product> = {}): Product {
 		_id: 'prod-1',
 		name: 'Acacia Screen',
 		slug: 'acacia-screen',
+		category: 'screen',
 		blurb: null,
 		description: null,
 		priceZar: 1500,
