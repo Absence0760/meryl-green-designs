@@ -353,9 +353,12 @@ ends up encrypted with the wrong key.
   defence-in-depth only — `main` is sealed by GitHub branch protection,
   which is the real gate,
   hard resets, `terraform apply/destroy`, `gh secret set`,
-  `gh release create`, `gh workflow run`, and the studio deploy
+  `gh release delete`, `gh workflow run`, and the studio deploy
   variants. Operators using Claude Code in the project inherit the
-  deny-list automatically.
+  deny-list automatically. `gh release create` is allowed: publishing a
+  release only starts the deploy workflows, and every deploy job still
+  waits on the `production` environment's required-reviewer approval,
+  which is the real gate for shipping.
 
 **Residual risk:**
 - **An AWS credential with `kms:Decrypt` on the project key is a

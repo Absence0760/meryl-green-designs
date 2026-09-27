@@ -86,7 +86,6 @@
 			"Bash(gh secret set:*)",
 			"Bash(gh secret delete:*)",
 			"Bash(gh release delete:*)",
-			"Bash(gh release create:*)",
 			"Bash(gh repo delete:*)",
 			"Bash(gh workflow run:*)"
 		]
