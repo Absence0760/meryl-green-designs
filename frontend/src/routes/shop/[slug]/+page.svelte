@@ -112,7 +112,7 @@
 		<nav class="breadcrumbs" aria-label="Breadcrumb">
 			<a href="/shop">Shop</a>
 			<span aria-hidden="true">/</span>
-			<span class="breadcrumbs__current">
+			<span class="breadcrumbs__current" aria-current="page">
 				{#if product}{product.name}{:else}&hellip;{/if}
 			</span>
 		</nav>
@@ -153,7 +153,9 @@
 							<img class="gallery__main" src={main} alt={product.photos[activePhotoIndex].alt ?? product.name} />
 						{/if}
 						{#if product.photos.length > 1}
-							<div class="gallery__thumbs" role="tablist" aria-label="Product photos">
+							<!-- Toggle buttons (aria-pressed), not tabs: there is no
+							     tabpanel and no arrow-key roving, which role="tab" promises. -->
+							<div class="gallery__thumbs" role="group" aria-label="Product photos">
 								{#each product.photos as p, i (p._key)}
 									{@const thumb = imageUrl(p, 200)}
 									{#if thumb}
@@ -162,9 +164,8 @@
 											class="gallery__thumb"
 											class:is-active={i === activePhotoIndex}
 											on:click={() => (activePhotoIndex = i)}
-											role="tab"
-											aria-selected={i === activePhotoIndex}
-											aria-label={`View photo ${i + 1}`}
+											aria-pressed={i === activePhotoIndex}
+											aria-label={`View photo ${i + 1} of ${product.photos.length}`}
 										>
 											<img src={thumb} alt="" loading="lazy" />
 										</button>

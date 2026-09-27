@@ -81,6 +81,8 @@ anything in the repo) — see [`roadmap.md`](./roadmap.md).
     order" (`cartButtonLabel` / `cartStatusText` in `cartLogic.ts`).
   - Gallery lightbox uses the same `focusTrap`: focus goes to Close on
     open and back to the photo tile on close.
+  - Product page photo thumbnails are toggle buttons (`aria-pressed`,
+    "View photo N of M"); the breadcrumb's last item is `aria-current`.
   - Hero scrim is weighted so the cream headline and tagline keep AA
     contrast over the pale sky of the photo.
 - **Branded error page** (`src/routes/+error.svelte`) — any unknown URL
