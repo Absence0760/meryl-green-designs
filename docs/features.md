@@ -212,7 +212,8 @@ Page copy and the closing CTA reflect that — visitors are guided to
   Product name) at the top, a two-column layout with the photo
   gallery on the left and product info on the right that stacks on
   narrow viewports.
-- **Photo gallery** — main photo at the top with click-to-switch
+- **Photo gallery** — main photo at the top (4:5, matching the shop
+  cards, so tall screens aren't cropped) with click-to-switch
   thumbnails below. Gracefully handles 1, 2, or many photos.
 - **Product info block** — name, blurb, price (bark accent), optional
   dimensions in a labelled key/value block, "Add to order" button +

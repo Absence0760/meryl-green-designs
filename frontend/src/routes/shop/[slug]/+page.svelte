@@ -225,7 +225,9 @@
 
 	.gallery__main {
 		width: 100%;
-		aspect-ratio: 1 / 1;
+		/* 4:5 matches the shop cards and fits tall three-panel screens
+		   (a square crop cut off their legs). */
+		aspect-ratio: 4 / 5;
 		object-fit: cover;
 		background: var(--color-surface);
 		display: block;
@@ -233,7 +235,7 @@
 
 	.gallery__placeholder {
 		width: 100%;
-		aspect-ratio: 1 / 1;
+		aspect-ratio: 4 / 5;
 		background: repeating-linear-gradient(
 			45deg,
 			#e3e6da 0 16px,
