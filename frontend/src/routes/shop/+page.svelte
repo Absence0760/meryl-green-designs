@@ -105,7 +105,16 @@
 								</div>
 							</dl>
 						{:else if section.category === 'cushion-cover'}
-							<!-- TODO(Meryl): cushion cover specs -->
+							<!-- TODO(Meryl): cushion cover fabric / insert specs. Lead
+							     time matches screens (3 weeks) but is stated without the
+							     "made to order" claim until Meryl confirms covers are
+							     made to order (it affects the ECT Act s44 exemption). -->
+							<dl class="specs">
+								<div class="specs__row">
+									<dt>Lead time</dt>
+									<dd>Typically 3 weeks from payment to dispatch</dd>
+								</div>
+							</dl>
 						{/if}
 					</header>
 					<div class="product-grid">
@@ -136,8 +145,8 @@
 		<p class="eyebrow">Secure checkout</p>
 		<p class="payment-lede">
 			Checkout is handled by <strong>PayFast</strong> — we never see your
-			card details. Folding screens are made to order once payment clears
-			and typically dispatched within 3 weeks.
+			card details. Folding screens are made to order once payment clears,
+			and every piece is typically dispatched within 3 weeks.
 		</p>
 		<ul class="payment-methods" aria-label="Accepted payment methods">
 			<li>Credit &amp; debit cards</li>

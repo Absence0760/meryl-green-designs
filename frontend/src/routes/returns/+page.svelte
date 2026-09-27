@@ -183,11 +183,10 @@
 			to you and send you a replacement. A replacement folding
 			screen will be put into production and shipped within
 			3&ndash;4 weeks of the original item arriving back at our
-			workshop; for a cushion cover, we will confirm the
-			replacement's dispatch date with you when we acknowledge
-			your claim.
+			workshop; for a cushion cover, a replacement will be
+			dispatched within 3 weeks of the original arriving back at
+			our workshop.
 		</p>
-		<!-- TODO(Meryl/legal): replacement lead time for a damaged cushion cover is not yet known (depends on whether covers are held in stock or made to order). Replace the "we will confirm the dispatch date" wording with a concrete window once known. -->
 
 		<h2>If your item is defective or arrives broken inside intact packaging</h2>
 		<p>

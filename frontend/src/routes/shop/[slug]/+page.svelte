@@ -151,8 +151,11 @@
 							Made to order — typically 3 weeks from payment to dispatch.
 						</p>
 					{:else}
-						<!-- TODO(Meryl): cushion cover specs -->
-						<div class="info__cta-spacer"></div>
+						<!-- No "made to order" claim for cushion covers until Meryl
+						     confirms it (it affects the ECT Act s44 exemption). -->
+						<p class="info__lead-time">
+							Typically 3 weeks from payment to dispatch.
+						</p>
 					{/if}
 
 					{#if product.description?.trim()}
@@ -332,11 +335,6 @@
 		gap: var(--space-2);
 		margin-bottom: var(--space-1);
 		flex-wrap: wrap;
-	}
-
-	/* Keeps the CTA-to-description gap the lead-time line normally provides. */
-	.info__cta-spacer {
-		height: var(--space-2);
 	}
 
 	.info__lead-time {

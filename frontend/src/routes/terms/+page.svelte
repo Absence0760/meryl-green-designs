@@ -239,12 +239,12 @@
 			Meranti frame, printing the canvas, and assembling the finished
 			screen.
 		</p>
-		<!-- TODO(Meryl/legal): cushion cover lead time (and whether covers are made to order or dispatched from stock) is not yet known. Replace the "reasonable time" wording below with a concrete upper bound once confirmed; counsel to confirm it satisfies ECT s43(1)(k) disclosure. -->
+		<!-- TODO(Meryl/legal): confirm whether cushion covers are made to order or dispatched from stock — the lead time below is stated without a "made to order" claim until then. Counsel to confirm the 3-week bound satisfies ECT s43(1)(k) disclosure. -->
 		<p>
-			The 3-week window above applies to folding screens only.
-			Cushion covers are dispatched within a reasonable time after
-			full payment has been received and the order confirmation has
-			been sent. For every order, we'll keep you updated by email at
+			<strong>Cushion covers are dispatched within 3 weeks of
+			payment</strong> unless we contact you to agree a longer time,
+			after full payment has been received and the order
+			confirmation has been sent. For every order, we'll keep you updated by email at
 			the major status changes (payment received, in production,
 			shipped).
 		</p>

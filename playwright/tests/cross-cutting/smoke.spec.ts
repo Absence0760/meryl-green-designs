@@ -75,7 +75,9 @@ test.describe('public pages render', () => {
 		await page.goto('/shop/test-cushion-cover');
 		await expect(page.getByRole('heading', { name: 'Test Cushion Cover' })).toBeVisible();
 		await expect(page.getByText('Frame', { exact: true })).toHaveCount(0);
-		await expect(page.getByText(/typically 3 weeks/i)).toHaveCount(0);
+		// Same 3-week lead time as screens, but no "made to order" claim.
+		await expect(page.getByText(/typically 3 weeks/i)).toBeVisible();
+		await expect(page.getByText(/made to order/i)).toHaveCount(0);
 	});
 
 	test('contact page', async ({ page }) => {

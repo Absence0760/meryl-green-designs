@@ -189,8 +189,10 @@ Page copy and the closing CTA reflect that — visitors are guided to
   describing the shared construction of every screen. Sits beside the
   section heading on desktop; on narrow viewports it stays one row per
   fact in smaller type so the first product remains above the fold. The
-  "Cushion covers" section shows no spec list yet (fabric, insert and
-  lead time are unconfirmed — marked `TODO(Meryl)` in the page source).
+  "Cushion covers" section shows a single `Lead time` row ("Typically 3
+  weeks from payment to dispatch") — deliberately without the "made to
+  order" claim until Meryl confirms it, since that affects the ECT Act
+  s44 exemption. Fabric and insert are still `TODO(Meryl)`.
 - **Minimal tile layout** (`src/lib/ProductCard.svelte`, shared with the
   home page "Featured pieces" strip) — each tile is a 4:5 portrait
   photograph (portrait rather than square so tall screens keep their
@@ -234,10 +236,11 @@ Page copy and the closing CTA reflect that — visitors are guided to
 - **Product info block** — name, blurb, price (bark accent), optional
   dimensions in a labelled key/value block, "Add to order" button +
   "← Back to shop" link, full description (respects newlines). For
-  folding screens only, a "Made to order — typically 3 weeks" line under
-  the button and a compact materials spec (Frame, Canvas) mirroring the
-  shop page block. Cushion covers show neither until their specs are
-  confirmed (`TODO(Meryl)` in the page source).
+  folding screens, a "Made to order — typically 3 weeks" line under the
+  button and a compact materials spec (Frame, Canvas) mirroring the shop
+  page block. Cushion covers show "Typically 3 weeks from payment to
+  dispatch" (no made-to-order claim) and no materials spec yet
+  (`TODO(Meryl)` in the page source).
 - **Slug-routed** — fetches `GET /products/:slug` on mount and
   renders the first matching available product. Unknown or
   unpublished slugs render a "Product not found" state linking back
@@ -365,11 +368,11 @@ Page copy and the closing CTA reflect that — visitors are guided to
   Meryl confirms whether cushion covers are made to order (and counsel
   confirms the legal position), the page states that nothing in it
   limits the ECT Act s44 cancellation right for cushion covers. Unknown
-  cushion facts (made-to-order status, replacement lead time) are marked
-  `TODO(Meryl/legal)` in the page source. `/terms` follows the same
-  scoping: the 3-week lead time and the cooling-off exemption apply to
-  screens; cushion covers are dispatched "within a reasonable time"
-  pending a confirmed lead time.
+  cushion facts (made-to-order status) are marked `TODO(Meryl/legal)` in
+  the page source. Damaged cushion covers are replaced within 3 weeks of
+  the original arriving back. `/terms` follows the same scoping: both
+  product types have a 3-week dispatch bound, but the cooling-off
+  exemption is claimed for screens only.
 - **CPA framing throughout** — explicitly references section 19
   (unreasonable delay), section 20 (cooling-off exemption for
   specially-produced goods), and section 56 (six-month implied warranty
