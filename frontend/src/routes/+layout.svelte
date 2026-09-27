@@ -5,6 +5,7 @@
 	import { PUBLIC_SITE_URL } from '$env/static/public';
 	import Cart from '$lib/Cart.svelte';
 	import { cart } from '$lib/cartStore.svelte';
+	import { jsonLdScript } from '$lib/jsonLd';
 
 	const nav = [
 		{ href: '/', label: 'Home' },
@@ -21,9 +22,9 @@
 	// classifiers (Google Safe Browsing, Cloudflare Gateway, AV reputation
 	// feeds) weigh structured-data presence as a "real business" signal
 	// when deciding whether to flag a new low-traffic domain.
-	// Replacing `<` prevents a payload accidentally terminating the
-	// surrounding <script> tag.
-	const orgJsonLd = JSON.stringify({
+	// `jsonLdScript` escapes `<` (and friends) so a payload can never
+	// terminate the surrounding <script> tag.
+	const orgJsonLd = jsonLdScript({
 		'@context': 'https://schema.org',
 		'@type': 'Organization',
 		name: 'Meryl Green Designs',
@@ -34,7 +35,7 @@
 		email: 'zagreenwoman@gmail.com',
 		telephone: '+27823264555',
 		areaServed: { '@type': 'Country', name: 'South Africa' }
-	}).replace(/</g, '\\u003c');
+	});
 
 	let cartOpen = false;
 	let menuOpen = false;
@@ -67,7 +68,7 @@
 	<meta name="twitter:card" content="summary_large_image" />
 	<meta name="twitter:image" content={ogImage} />
 
-	{@html `<script type="application/ld+json">${orgJsonLd}</script>`}
+	{@html orgJsonLd}
 </svelte:head>
 
 <header class="site-header">
