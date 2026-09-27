@@ -79,6 +79,8 @@ anything in the repo) — see [`roadmap.md`](./roadmap.md).
     button on close. The cart button's name includes the item count, and
     a polite live region announces "N items in your order" after "Add to
     order" (`cartButtonLabel` / `cartStatusText` in `cartLogic.ts`).
+  - Gallery lightbox uses the same `focusTrap`: focus goes to Close on
+    open and back to the photo tile on close.
   - Hero scrim is weighted so the cream headline and tagline keep AA
     contrast over the pale sky of the photo.
 - **Branded error page** (`src/routes/+error.svelte`) — any unknown URL

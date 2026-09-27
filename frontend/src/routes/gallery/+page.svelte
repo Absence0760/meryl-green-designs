@@ -3,6 +3,7 @@
 	import { PUBLIC_API_URL } from '$env/static/public';
 	import { imageUrl, type GalleryPhoto } from '$lib/sanity';
 	import Button from '$lib/Button.svelte';
+	import { focusTrap } from '$lib/focusTrap';
 
 	const apiUrl = PUBLIC_API_URL;
 
@@ -172,10 +173,13 @@
 		aria-modal="true"
 		aria-label={current.caption ?? current.image.alt ?? 'Photograph'}
 		tabindex="-1"
+		use:focusTrap
 		on:click|self={closeLightbox}
 		on:keydown|self={(e) => e.key === 'Escape' && closeLightbox()}
 	>
-		<button class="lightbox-close" on:click={closeLightbox} aria-label="Close">×</button>
+		<!-- focusTrap: focus lands here on open, Tab stays inside, and the
+		     tile that opened the lightbox gets focus back on close. -->
+		<button class="lightbox-close" on:click={closeLightbox} aria-label="Close" data-autofocus>×</button>
 		{#if photos.length > 1}
 			<button class="lightbox-nav lightbox-nav--prev" on:click={showPrev} aria-label="Previous photograph">‹</button>
 			<button class="lightbox-nav lightbox-nav--next" on:click={showNext} aria-label="Next photograph">›</button>
