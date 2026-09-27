@@ -83,6 +83,9 @@ anything in the repo) — see [`roadmap.md`](./roadmap.md).
     open and back to the photo tile on close.
   - Product page photo thumbnails are toggle buttons (`aria-pressed`,
     "View photo N of M"); the breadcrumb's last item is `aria-current`.
+  - Load/lookup error boxes on shop, product, gallery and /track are
+    `role="alert"` so they are announced; the /track progress list marks
+    the current step with `aria-current="step"`.
   - Hero scrim is weighted so the cream headline and tagline keep AA
     contrast over the pale sky of the photo.
 - **Branded error page** (`src/routes/+error.svelte`) — any unknown URL

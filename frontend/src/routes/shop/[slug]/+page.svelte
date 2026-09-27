@@ -143,7 +143,7 @@
 				</ErrorState>
 			</div>
 		{:else if error}
-			<div class="alert alert--error">{error}</div>
+			<div class="alert alert--error" role="alert">{error}</div>
 		{:else if product}
 			<div class="product-detail">
 				<div class="gallery">

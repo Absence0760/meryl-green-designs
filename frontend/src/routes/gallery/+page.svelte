@@ -112,7 +112,7 @@
 				{/each}
 			</div>
 		{:else if photosError}
-			<div class="alert alert--error">{photosError}</div>
+			<div class="alert alert--error" role="alert">{photosError}</div>
 		{:else if photos.length === 0}
 			<div class="empty">
 				<p>No photographs yet.</p>

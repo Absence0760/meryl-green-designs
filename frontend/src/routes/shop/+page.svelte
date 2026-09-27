@@ -74,7 +74,7 @@
 				{/each}
 			</div>
 		{:else if productsError}
-			<div class="alert alert--error">{productsError}</div>
+			<div class="alert alert--error" role="alert">{productsError}</div>
 		{:else if products.length === 0}
 			<div class="empty">
 				<p>
