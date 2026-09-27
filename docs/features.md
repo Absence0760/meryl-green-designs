@@ -358,6 +358,18 @@ Page copy and the closing CTA reflect that — visitors are guided to
   allocation. Originally a two-paragraph client-supplied draft; expanded
   to address customer scenarios that will realistically occur and
   South African consumer-law obligations.
+- **Covers both product types** — folding screens and cushion covers.
+  Screen-specific details (frame, hinges, the 3–4-week replacement
+  production window) are scoped to screens explicitly. The made-to-order
+  cooling-off exemption is claimed for **folding screens only**: until
+  Meryl confirms whether cushion covers are made to order (and counsel
+  confirms the legal position), the page states that nothing in it
+  limits the ECT Act s44 cancellation right for cushion covers. Unknown
+  cushion facts (made-to-order status, replacement lead time) are marked
+  `TODO(Meryl/legal)` in the page source. `/terms` follows the same
+  scoping: the 3-week lead time and the cooling-off exemption apply to
+  screens; cushion covers are dispatched "within a reasonable time"
+  pending a confirmed lead time.
 - **CPA framing throughout** — explicitly references section 19
   (unreasonable delay), section 20 (cooling-off exemption for
   specially-produced goods), and section 56 (six-month implied warranty

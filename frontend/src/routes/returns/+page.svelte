@@ -94,10 +94,21 @@
 	    only requires accessibility. Reviewer to confirm the
 	    distributed approach is acceptable in practice.
 
+	Product scope (26 September 2026 edit): the shop now sells two
+	product types — three-panel folding screens (made to order, ~3
+	weeks) and cushion covers. Every clause is worded to cover both.
+	Screen-specific details (frame, hinges, 3–4-week replacement
+	production) are explicitly scoped to screens. The made-to-order
+	cooling-off exemption is claimed for screens ONLY: we have not
+	confirmed that cushion covers are made to order (vs. sold from
+	stock), so the page must not claim the exemption for them until
+	Meryl confirms the facts and counsel confirms the legal position.
+	See the TODO(Meryl/legal) comments inline.
+
 	Update the "Last updated" date whenever the policy text changes.
 -->
 <script lang="ts">
-	const lastUpdated = '15 May 2026';
+	const lastUpdated = '26 September 2026';
 </script>
 
 <svelte:head>
@@ -119,8 +130,10 @@
 		<h1>Refund &amp; Returns Policy</h1>
 		<p class="muted">Last updated: {lastUpdated}</p>
 
+		<!-- TODO(Meryl/legal): confirm whether cushion covers are made to order or sold from stock. The lede and the cancellations section below only claim "made to order" for folding screens until this is known. -->
 		<p class="lede">
-			Every screen we make is handcrafted to order. This page
+			Every piece we sell is handcrafted, and our folding screens
+			are made to order. This page
 			explains how cancellations, refunds, replacements, damaged
 			goods, defective goods, wrong items, lost deliveries, and
 			late deliveries are handled &mdash; and what to do if any of
@@ -129,18 +142,28 @@
 
 		<h2>Made-to-order &mdash; cancellations and change-of-mind</h2>
 		<p>
-			Each screen is <strong>specially produced for the buyer</strong>
-			&mdash; production begins once full payment has been received.
-			Because of this we cannot accept change-of-mind cancellations
-			or refunds after payment.
+			Each folding screen is <strong>specially produced for the
+			buyer</strong> &mdash; production begins once full payment
+			has been received. Because of this we cannot accept
+			change-of-mind cancellations or refunds on folding screens
+			after payment.
 		</p>
 		<p>
 			The 7-day cooling-off right under section 44 of the
 			Electronic Communications and Transactions Act, 2002 (ECT
 			Act) does not apply to goods made to the consumer's
-			specifications (section 44(3)(c)). Because each piece is
-			specially produced for you after you order, that exemption
-			covers orders placed through this site.
+			specifications (section 44(3)(c)). Because each folding
+			screen is specially produced for you after you order, that
+			exemption covers folding screens ordered through this site.
+		</p>
+		<!-- TODO(Meryl/legal): the ECT Act cooling-off exemption above is claimed for folding screens only. We do not yet know whether cushion covers are made to order; until Meryl confirms that and a South African attorney confirms whether the exemption applies to them, this page must not refuse change-of-mind cancellations on cushion covers. Attorney to confirm the cushion-cover cancellation terms (window, who pays return costs, refund timing) before this paragraph is replaced. -->
+		<p>
+			The paragraphs above apply to folding screens only.
+			Nothing in this policy limits any right you have under
+			section 44 of the ECT Act to cancel an order for a
+			cushion cover within 7 days of receiving it. If you would
+			like to cancel a cushion cover order, please contact us
+			using the details under &ldquo;How to claim&rdquo;.
 		</p>
 		<p>
 			This does not affect your statutory rights below if something
@@ -157,17 +180,21 @@
 			rights under section 56 of the Consumer Protection Act if
 			you notice the damage later. Once we have your photo we
 			will arrange courier collection of the package at no cost
-			to you, and a replacement will be put into production and
-			shipped within 3&ndash;4 weeks of the original item arriving
-			back at our workshop.
+			to you and send you a replacement. A replacement folding
+			screen will be put into production and shipped within
+			3&ndash;4 weeks of the original item arriving back at our
+			workshop; for a cushion cover, we will confirm the
+			replacement's dispatch date with you when we acknowledge
+			your claim.
 		</p>
+		<!-- TODO(Meryl/legal): replacement lead time for a damaged cushion cover is not yet known (depends on whether covers are held in stock or made to order). Replace the "we will confirm the dispatch date" wording with a concrete window once known. -->
 
 		<h2>If your item is defective or arrives broken inside intact packaging</h2>
 		<p>
-			If the package looks fine but the screen itself has a
-			manufacturing flaw, a broken hinge, the wrong colour or
-			finish, or any defect that prevents it from being used as
-			intended, please tell us as soon as you can &mdash;
+			If the package looks fine but the item itself has a
+			manufacturing flaw (on a folding screen, for example, a
+			broken hinge), the wrong colour or finish, or any defect
+			that prevents it from being used as intended, please tell us as soon as you can &mdash;
 			ideally within 7 days of delivery so we can inspect it
 			promptly with the issue fresh in mind. Your statutory right
 			under section 56 of the Consumer Protection Act to ask for a
@@ -201,9 +228,9 @@
 			If 4 weeks have passed since your shipping notification and
 			your order has still not been delivered, please contact us.
 			We will work with the courier to trace the parcel. If it
-			cannot be recovered we will, at your choice, either produce
-			and ship a replacement at no cost to you or issue a full
-			refund.
+			cannot be recovered we will, at your choice, either send
+			you a replacement at no cost to you (producing a new piece
+			where needed) or issue a full refund.
 		</p>
 
 		<h2>If your delivery is significantly late</h2>
@@ -299,7 +326,8 @@
 		<h2>About Meryl Green Designs</h2>
 		<p>
 			Meryl Green Designs is a South African studio handcrafting
-			screens and nature-inspired designs. The details below are
+			folding screens, cushion covers, and other nature-inspired
+			designs. The details below are
 			published in compliance with section 43 of the Electronic
 			Communications and Transactions Act, 2002.
 		</p>

@@ -60,7 +60,7 @@
 	    templates must use exactly those two subject lines; verify in
 	    backend/src/email-templates.ts before launch.
 	  - The IP clause carves out the first-sale doctrine (Copyright
-	    Act s23) so buyers can resell the physical screen they bought.
+	    Act s23) so buyers can resell the physical piece they bought.
 	    Social-media sharing is framed as a limited non-commercial
 	    licence with credit requested. Reviewer to confirm scope.
 	  - Acceptance of terms is framed as clickwrap at checkout (NOT
@@ -89,10 +89,18 @@
 	    (Returns has the explicit consumer-chooses framing; this
 	    page should not contradict it).
 
+	Product scope (26 September 2026 edit): the shop now sells two
+	product types — three-panel folding screens (Meranti frame, cotton
+	canvas print; made to order, ~3 weeks) and cushion covers. The
+	3-week lead time, the frame/canvas description and the ECT Act
+	cooling-off exemption are scoped to folding screens ONLY; cushion
+	cover lead time and made-to-order status are not yet confirmed.
+	See the TODO(Meryl/legal) comments inline.
+
 	Update the "Last updated" date whenever the terms text changes.
 -->
 <script lang="ts">
-	const lastUpdated = '15 May 2026';
+	const lastUpdated = '26 September 2026';
 </script>
 
 <svelte:head>
@@ -128,7 +136,8 @@
 		<h2>Who you are contracting with</h2>
 		<p>
 			Meryl Green Designs (&ldquo;we&rdquo;, &ldquo;us&rdquo;, &ldquo;our&rdquo;) is a South African studio that
-			designs and hand-makes screens to order. Full business
+			designs and hand-makes folding screens to order, as well as
+			cushion covers. Full business
 			identification details (registered name, legal status, physical
 			address, registration number) required under section 43 of the
 			Electronic Communications and Transactions Act, 2002 (ECT Act)
@@ -166,10 +175,11 @@
 			This site is operated as an online catalogue and order channel
 			for Meryl Green Designs. Product photographs, descriptions, and
 			dimensions are provided in good faith and are accurate to the
-			best of our knowledge. Because each screen is handcrafted, there
+			best of our knowledge. Because each piece is handcrafted, there
 			will be small natural variations between the photo and the piece
-			you receive (grain, finish, hand-printing) &mdash; this is part
-			of the made-to-order character and is not a defect.
+			you receive (on a folding screen, for example, in the wood grain,
+			finish, and hand-printing) &mdash; this is part of the
+			handcrafted character and is not a defect.
 		</p>
 
 		<h2>Pricing</h2>
@@ -221,23 +231,40 @@
 
 		<h2>Made-to-order &mdash; lead times</h2>
 		<p>
-			Production on each screen begins after full payment has been
-			received and the order confirmation has been sent. <strong>Each
-			piece is produced within 3 weeks of payment</strong> unless
-			we contact you to agree a longer time. The 3-week window covers
-			making the Meranti frame, printing the canvas, and assembling the
-			finished screen; we'll keep you updated by email at the major
-			status changes (payment received, in production, shipped).
+			Folding screens are made to order. Production on each screen
+			begins after full payment has been received and the order
+			confirmation has been sent. <strong>Each folding screen is
+			produced within 3 weeks of payment</strong> unless we contact
+			you to agree a longer time. The 3-week window covers making the
+			Meranti frame, printing the canvas, and assembling the finished
+			screen.
+		</p>
+		<!-- TODO(Meryl/legal): cushion cover lead time (and whether covers are made to order or dispatched from stock) is not yet known. Replace the "reasonable time" wording below with a concrete upper bound once confirmed; counsel to confirm it satisfies ECT s43(1)(k) disclosure. -->
+		<p>
+			The 3-week window above applies to folding screens only.
+			Cushion covers are dispatched within a reasonable time after
+			full payment has been received and the order confirmation has
+			been sent. For every order, we'll keep you updated by email at
+			the major status changes (payment received, in production,
+			shipped).
 		</p>
 		<p>
-			Because each piece is specially produced for you after you
-			order, the 7-day cooling-off right under section 44 of the
+			Because each folding screen is specially produced for you after
+			you order, the 7-day cooling-off right under section 44 of the
 			Electronic Communications and Transactions Act, 2002 does
-			not apply &mdash; section 44(3)(c) of that Act exempts goods
-			made to the consumer's specifications. Your statutory rights
-			if something goes wrong with the order are unaffected &mdash;
-			see the <a href="/returns">Refund &amp; Returns Policy</a> for
-			the full set of remedies.
+			not apply to folding screens &mdash; section 44(3)(c) of that
+			Act exempts goods made to the consumer's specifications.
+			Your statutory rights if something goes wrong with the order
+			are unaffected &mdash; see the
+			<a href="/returns">Refund &amp; Returns Policy</a> for the full
+			set of remedies.
+		</p>
+		<!-- TODO(Meryl/legal): the cooling-off exemption is claimed for folding screens only. Until Meryl confirms whether cushion covers are made to order and counsel confirms whether the exemption applies, these terms must not claim it for cushion covers. -->
+		<p>
+			This exemption is not claimed for cushion covers. Nothing in
+			these terms limits any right you have under section 44 of
+			that Act to cancel an order for a cushion cover within 7 days
+			of receiving it.
 		</p>
 
 		<h2>Payment</h2>
@@ -287,8 +314,9 @@
 			These are covered in detail in the
 			<a href="/returns">Refund &amp; Returns Policy</a>, which forms
 			part of these terms. In short: change-of-mind cancellations are
-			not accepted because each piece is specially produced, but
-			defective items, wrong items, damaged-on-arrival packaging,
+			not accepted on folding screens because each screen is specially
+			produced (the Returns Policy explains how cancellation works for
+			cushion covers), but defective items, wrong items, damaged-on-arrival packaging,
 			lost-in-transit deliveries, and unreasonable delivery delays are
 			all covered by SA statutory remedies that the Returns Policy
 			describes.
@@ -310,17 +338,17 @@
 			All designs, illustrations, photographs, product names, and
 			written content on this site are owned by Meryl Green Designs
 			(or licensed to us by the photographers and contributors who
-			created them). When you buy a screen, you buy the physical
+			created them). When you buy a piece, you buy the physical
 			object &mdash; the underlying design remains ours. You may
 			not <strong>reproduce, copy, or manufacture</strong> pieces
 			based on our designs, or sell such reproductions, without
 			our prior written permission. This restriction does not
-			limit your right to resell the physical screen you bought
+			limit your right to resell the physical piece you bought
 			from us &mdash; that right is yours under the first-sale
 			doctrine in section 23 of the Copyright Act, 1978.
 		</p>
 		<p>
-			You may photograph the screen you bought and share those
+			You may photograph the piece you bought and share those
 			photos on social media for personal, non-commercial
 			purposes &mdash; we'd appreciate credit to Meryl Green
 			Designs where you can give it. This permission does not

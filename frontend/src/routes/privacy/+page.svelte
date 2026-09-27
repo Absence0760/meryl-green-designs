@@ -79,7 +79,7 @@
 	text change.
 -->
 <script lang="ts">
-	const lastUpdated = '15 May 2026';
+	const lastUpdated = '26 September 2026';
 </script>
 
 <svelte:head>
@@ -112,7 +112,8 @@
 		<h2>Who we are</h2>
 		<p>
 			Meryl Green Designs (&ldquo;we&rdquo;, &ldquo;us&rdquo;, &ldquo;our&rdquo;) is a South African studio that sells
-			handcrafted screens and designs through this website. For the
+			handcrafted folding screens, cushion covers, and other designs
+			through this website. For the
 			purposes of POPIA, Meryl Green Designs is the
 			<strong>responsible party</strong> for the personal information
 			collected through this site.
