@@ -377,9 +377,9 @@ Page copy and the closing CTA reflect that — visitors are guided to
   full statutory-rights statement so the no-change-of-mind wording
   can't be read as overriding CPA.
 - **ECT Act section 43 disclosure block** ("About Meryl Green
-  Designs") — required for online retailers in SA. Currently holds
-  placeholder fields for legal business name, physical address, and
-  registration number that Meryl must fill in before the page goes live.
+  Designs") — required for online retailers in SA. Holds the business
+  name, legal status (sole proprietor, no CIPC registration), physical
+  address, contact details and dispute-resolution forum.
 - **Consumer Goods and Services Ombud (CGSO) referral** — gives
   customers an explicit external dispute-resolution path.
 - **How-to-claim block** — points customers to
@@ -387,12 +387,12 @@ Page copy and the closing CTA reflect that — visitors are guided to
   the order, a description, and photos.
 - **Window defaults** — 48 hours for damage-on-arrival photos, 7 days
   for defective / wrong-item notifications, 4 weeks before treating
-  an order as lost, 30 days for refund processing back to card. All
+  an order as lost, 14 business days for refund processing back to card. All
   defaults; the source comment flags them for legal review.
 - Linked from the site footer between Privacy policy and Contact.
 - **Maintenance note:** the source file's top comment distinguishes
   what was added beyond the client's original wording from items still
-  open for legal review (window defaults, ECT Act s43 placeholders).
+  open for legal review (window defaults, cushion cover TODOs).
   The "Last updated" date must be bumped whenever the wording changes,
   and the page must be reviewed by a South African legal professional
   under the business name before going live.

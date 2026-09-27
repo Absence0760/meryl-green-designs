@@ -376,7 +376,7 @@
 				<a href="https://www.cgso.org.za" target="_blank" rel="noopener noreferrer"
 					>Consumer Goods and Services Ombud (CGSO)</a>
 				is our applicable dispute-resolution forum. See
-				"Your statutory rights and dispute resolution" below
+				"Your statutory rights and dispute resolution" above
 				for the consumer's right to elect between CGSO, the
 				National Consumer Commission, and the courts.
 			</dd>
