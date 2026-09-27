@@ -96,9 +96,10 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          existing=$(gh issue list --repo "$REPO" --state open \
-            --label dependency-audit --json number --jq '.[0].number // empty')
-          if [ -n "$existing" ]; then
-            gh issue close "$existing" --repo "$REPO" \
+          # Close every open tracking issue, not just the newest — earlier
+          # runs could leave duplicates behind.
+          for n in $(gh issue list --repo "$REPO" --state open \
+            --label dependency-audit --json number --jq '.[].number'); do
+            gh issue close "$n" --repo "$REPO" \
               --comment "Audit clean as of $(date -u +%Y-%m-%d) — closing automatically."
-          fi
+          done
