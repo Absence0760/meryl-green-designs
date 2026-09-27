@@ -10,7 +10,9 @@ anything in the repo) — see [`roadmap.md`](./roadmap.md).
 
 ## Site-wide
 
-- **Sticky header** with brand ("Meryl Green Designs") and navigation. The
+- **Sticky header** with the logo (`static/logo.svg` — a circular emblem of
+  an acacia against a golden-hour sky with the sun half-set) beside a
+  "Meryl Green / Designs" wordmark, and navigation. The
   active route is highlighted. On narrow viewports (< 620px) the inline
   nav is replaced with a hamburger (|||) button that opens a **small
   popup dropdown** anchored below the header on the left — a floating
@@ -41,9 +43,12 @@ anything in the repo) — see [`roadmap.md`](./roadmap.md).
   Garamond) paired with a sans-serif body.
 - **Responsive layout**: grids collapse to single column on narrow viewports.
 - **Footer** with copyright and brand tagline.
-- **Favicon** — brand-colored SVG "M" monogram in `static/favicon.svg`, referenced
-  from `app.html` so it appears on every route, including those with
-  `ssr = false`.
+- **Favicon** — the logo scene on a rounded square (no ring, so it stays
+  legible at 16px) in `static/favicon.svg`, plus a 180px
+  `static/apple-touch-icon.png` for iOS home screens (iOS ignores SVG
+  icons). Both are referenced from `app.html` so they appear on every
+  route, including those with `ssr = false`. The JSON-LD `Organization.logo`
+  points at `logo.svg`.
 - **`theme-color` meta** — mobile browsers tint the address bar with the brand
   dark-green (`#2f4a25`).
 - **`robots.txt`** — allows all indexable routes, disallows `/track` and

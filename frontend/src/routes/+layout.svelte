@@ -1,5 +1,6 @@
 <script lang="ts">
 	import '../app.css';
+	import { base } from '$app/paths';
 	import { page } from '$app/state';
 	import { PUBLIC_SITE_URL } from '$env/static/public';
 	import Cart from '$lib/Cart.svelte';
@@ -27,7 +28,7 @@
 		'@type': 'Organization',
 		name: 'Meryl Green Designs',
 		url: siteUrl,
-		logo: `${siteUrl}/favicon.svg`,
+		logo: `${siteUrl}/logo.svg`,
 		description:
 			'Handcrafted screens and nature-inspired designs from a South African studio.',
 		email: 'zagreenwoman@gmail.com',
@@ -85,7 +86,10 @@
 			</svg>
 		</button>
 
-		<a class="brand" href="/">Meryl Green Designs</a>
+		<a class="brand" href="/" aria-label="Meryl Green Designs — home">
+			<img class="brand-mark" src="{base}/logo.svg" alt="" width="40" height="40" />
+			<span class="brand-word">Meryl Green<span class="brand-sub">Designs</span></span>
+		</a>
 
 		<div class="header-right">
 			<nav class="desktop-nav">
@@ -209,10 +213,35 @@
 	}
 
 	.brand {
+		display: inline-flex;
+		align-items: center;
+		gap: 10px;
 		font-family: var(--font-display);
 		font-size: 1.35rem;
+		line-height: 1;
 		color: var(--color-leaf-dark);
 		border-bottom: none;
+	}
+
+	.brand-mark {
+		width: 40px;
+		height: 40px;
+		flex-shrink: 0;
+	}
+
+	.brand-word {
+		display: flex;
+		flex-direction: column;
+	}
+
+	.brand-sub {
+		margin-top: 4px;
+		font-family: var(--font-body);
+		font-size: 0.56rem;
+		font-weight: 500;
+		letter-spacing: 0.42em;
+		text-transform: uppercase;
+		color: var(--color-bark);
 	}
 
 	.desktop-nav ul {
@@ -249,6 +278,11 @@
 		}
 		.brand {
 			font-size: 1.15rem;
+			gap: 8px;
+		}
+		.brand-mark {
+			width: 32px;
+			height: 32px;
 		}
 	}
 
