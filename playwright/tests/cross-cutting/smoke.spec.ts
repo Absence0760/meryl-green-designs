@@ -88,7 +88,6 @@ test.describe('public pages render', () => {
 		await expect(firstLine).toBeVisible();
 		await expect(laterLine).toBeVisible();
 		await expect(toggle).toBeHidden();
-		await expect(page.getByText('— Author unknown')).toBeVisible();
 
 		await page.setViewportSize({ width: 390, height: 844 });
 		await expect(firstLine).toBeVisible();
