@@ -137,6 +137,7 @@ file_bytes() {
 
 if [ "${PREPARE_PHOTOS_LIB:-0}" = "1" ]; then
 	# Sourced for tests — expose helpers only.
+	# shellcheck disable=SC2317  # exit is the fallback when run, not sourced
 	return 0 2>/dev/null || exit 0
 fi
 
@@ -264,6 +265,7 @@ fi
 if [ "$GENTLE" = 1 ]; then
 	ENHANCE=(-contrast-stretch 0.1%x0.2% -unsharp 0x0.8+0.4+0.03)
 else
+	# shellcheck disable=SC2054  # commas are ImageMagick arg syntax
 	ENHANCE=(-enhance -contrast-stretch 0.2%x0.4% -sigmoidal-contrast 2.5,45%
 		-modulate 102,110,100 -unsharp 0x1.0+0.5+0.03)
 fi
@@ -295,7 +297,7 @@ for idx in "${!INPUTS[@]}"; do
 	b="${OUTPUTS[$idx]}"
 	out="$OUT_ABS/$b.jpg"
 	# [0] = first frame/page only (HEIC bursts, multi-page TIFF).
-	src="$in[0]"
+	src="${in}[0]"
 
 	[ "$DRY_RUN" = 0 ] || printf '%s → %s\n' "$in" "$out"
 	run magick "$src" "${PRE[@]}" "${ENHANCE[@]}" "${JPEG_OUT[@]}" "$out"
