@@ -1,11 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
-	import { PUBLIC_API_URL } from '$env/static/public';
+	import { PUBLIC_API_URL, PUBLIC_SITE_URL } from '$env/static/public';
 	import { formatPrice, imageUrl, type Product } from '$lib/sanity';
 	import { isScreen, pickRelatedProducts } from '$lib/productGroups';
 	import ProductCard from '$lib/ProductCard.svelte';
 	import { reveal } from '$lib/reveal';
+	import { productStructuredData } from '$lib/productJsonLd';
 	import { cart } from '$lib/cartStore.svelte';
 	import Button from '$lib/Button.svelte';
 	import ErrorState from '$lib/ErrorState.svelte';
@@ -25,6 +26,10 @@
 	$: fallbackDescription = product
 		? `${product.name} — ${screen ? 'a handcrafted folding screen' : 'a cushion cover'} by Meryl Green Designs.`
 		: '';
+
+	// Product + BreadcrumbList JSON-LD. productStructuredData escapes `<`
+	// so CMS text can't close the <script> tag rendered via {@html}.
+	$: structuredData = product ? productStructuredData(product, PUBLIC_SITE_URL ?? '') : '';
 
 	function addToCart() {
 		if (!product) return;
@@ -91,6 +96,7 @@
 	{#if product}
 		<title>{product.name} — Meryl Green Designs</title>
 		<meta name="description" content={product.blurb ?? fallbackDescription} />
+		{@html structuredData}
 	{:else if notFound}
 		<title>Product not found — Meryl Green Designs</title>
 		<!-- CloudFront serves this SPA shell with HTTP 200, so keep dead

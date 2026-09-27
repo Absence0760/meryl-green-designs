@@ -79,6 +79,18 @@ anything in the repo) — see [`roadmap.md`](./roadmap.md).
   points at `logo.svg`.
 - **`theme-color` meta** — mobile browsers tint the address bar with the brand
   dark-green (`#2f4a25`).
+- **Structured data (JSON-LD)** — site-wide `Organization` in
+  `+layout.svelte`; product pages add a `Product` (name, description,
+  absolute Sanity image URLs, `sku`/`productID` = slug, brand,
+  category, and a ZAR `Offer` with canonical `url` — omitted when the
+  price is on enquiry) plus a Shop → product `BreadcrumbList`. Builders
+  live in `src/lib/productJsonLd.ts` (tested). Availability is
+  `InStock` when orderable, else `OutOfStock` — `MadeToOrder` exists in
+  schema.org but isn't in Google's supported merchant-listing values.
+  Because product pages render client-side (`ssr = false`), the JSON-LD
+  only exists after hydration; Google renders JS, other crawlers may
+  not see it. All JSON-LD goes through `src/lib/jsonLd.ts`, which
+  escapes `<`, `>`, `&` so CMS text can't close the `<script>` tag.
 - **`robots.txt`** — allows all indexable routes, disallows `/track` and
   `/payment` (both per-order and useless to crawlers without query params).
 - **Per-route SEO + Open Graph + Twitter Card tags** — every page has its own

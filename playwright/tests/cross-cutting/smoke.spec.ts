@@ -71,6 +71,21 @@ test.describe('public pages render', () => {
 		await expect(page.getByText(/typically 3 weeks/i)).toBeVisible();
 	});
 
+	test('product detail page emits Product + BreadcrumbList JSON-LD', async ({ page }) => {
+		await page.goto('/shop/test-screen-small');
+		await expect(page.getByRole('heading', { name: 'Test Screen Small' })).toBeVisible();
+		const payloads = (
+			await page.locator('script[type="application/ld+json"]').allTextContents()
+		).map((t) => JSON.parse(t));
+		const product = payloads.find((p) => p['@type'] === 'Product');
+		expect(product).toMatchObject({
+			name: 'Test Screen Small',
+			sku: 'test-screen-small',
+			offers: { priceCurrency: 'ZAR', price: 1200 },
+		});
+		expect(payloads.map((p) => p['@type'])).toContain('BreadcrumbList');
+	});
+
 	// Same category first (the other screen), then the cushion cover to
 	// fill; never the current product or the sold-out one.
 	test('product detail page shows "You may also like"', async ({ page }) => {
