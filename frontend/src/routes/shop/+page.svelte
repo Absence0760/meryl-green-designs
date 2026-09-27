@@ -3,6 +3,7 @@
 	import { PUBLIC_API_URL } from '$env/static/public';
 	import type { Product } from '$lib/sanity';
 	import { groupProductsByCategory } from '$lib/productGroups';
+	import { CUSHION_MATERIALS, LEAD_TIME, SCREEN_MATERIALS } from '$lib/productSpecs';
 	import { cart } from '$lib/cartStore.svelte';
 	import Button from '$lib/Button.svelte';
 	import ProductCard from '$lib/ProductCard.svelte';
@@ -95,35 +96,20 @@
 				<section class="category" aria-labelledby="category-{section.category}">
 					<header class="category__header">
 						<h2 id="category-{section.category}" class="category__title">{section.heading}</h2>
-						{#if section.category === 'screen'}
-							<!-- Construction shared by every folding screen. Screens only;
-							     cushion covers get no spec list until their details are known. -->
-							<dl class="specs">
+						<!-- Materials shared by every piece in the section, then the
+						     lead time (the same for both product types). -->
+						<dl class="specs">
+							{#each section.category === 'screen' ? SCREEN_MATERIALS : CUSHION_MATERIALS as spec (spec.label)}
 								<div class="specs__row">
-									<dt>Frame</dt>
-									<dd>Meranti hardwood, finished with a traditional teak stain</dd>
+									<dt>{spec.label}</dt>
+									<dd>{spec.value}</dd>
 								</div>
-								<div class="specs__row">
-									<dt>Canvas</dt>
-									<dd>100% cotton, digitally printed with a protective colour-fast coating</dd>
-								</div>
-								<div class="specs__row">
-									<dt>Lead time</dt>
-									<dd>Made to order — typically 3 weeks from payment to dispatch</dd>
-								</div>
-							</dl>
-						{:else if section.category === 'cushion-cover'}
-							<!-- TODO(Meryl): cushion cover fabric / insert specs. Lead
-							     time matches screens (3 weeks) but is stated without the
-							     "made to order" claim until Meryl confirms covers are
-							     made to order (it affects the ECT Act s44 exemption). -->
-							<dl class="specs">
-								<div class="specs__row">
-									<dt>Lead time</dt>
-									<dd>Typically 3 weeks from payment to dispatch</dd>
-								</div>
-							</dl>
-						{/if}
+							{/each}
+							<div class="specs__row">
+								<dt>Lead time</dt>
+								<dd>{LEAD_TIME}</dd>
+							</div>
+						</dl>
 					</header>
 					<div class="product-grid">
 						{#each section.products as product, i (product._id)}

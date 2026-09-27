@@ -1,8 +1,9 @@
 // Copy for the home page "How ordering works" strip. Kept in a plain .ts
 // file so vitest can pin it against the legal wording: every claim here
-// must match the Terms (src/routes/terms/+page.svelte) — in particular,
-// "made to order" is claimed for folding screens only until Meryl and
-// counsel confirm cushion covers (see the TODO(Meryl/legal) there).
+// must match the Terms (src/routes/terms/+page.svelte). Both product types
+// are made to order (Meryl confirmed cushion covers on 2026-09-27), but the
+// ECT Act cooling-off exemption is a legal call for the Terms alone — this
+// strip must never mention cancellation rights.
 
 export type OrderingStep = {
 	title: string;
@@ -17,11 +18,11 @@ export const ORDERING_STEPS: readonly OrderingStep[] = [
 	},
 	{
 		title: 'Made for you',
-		body: 'Folding screens are made to order once your payment clears.'
+		body: 'Every folding screen and cushion cover is made to order once your payment clears.'
 	},
 	{
 		title: 'Dispatched within 3 weeks',
-		body: 'Screens and cushion covers typically leave the studio within 3 weeks of payment.'
+		body: 'Your piece typically leaves the studio within 3 weeks of payment.'
 	},
 	{
 		title: 'Delivered to your door',

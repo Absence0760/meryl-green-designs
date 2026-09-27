@@ -7,6 +7,7 @@
 	import { PUBLIC_API_URL, PUBLIC_SITE_URL } from '$env/static/public';
 	import { formatPrice, imageUrl, type Product } from '$lib/sanity';
 	import { isScreen, pickRelatedProducts } from '$lib/productGroups';
+	import { CUSHION_MATERIALS, LEAD_TIME, SCREEN_MATERIALS } from '$lib/productSpecs';
 	import { productEnquiryHref } from '$lib/enquiryForm';
 	import { createAddedFlash } from '$lib/addedFlash';
 	import AddToOrderLabel from '$lib/AddToOrderLabel.svelte';
@@ -26,9 +27,8 @@
 	let activePhotoIndex = 0;
 
 	$: slug = $page.params.slug ?? '';
-	// Frame/Canvas specs and the 3-week lead time are facts about the
-	// folding screens only.
 	$: screen = product ? isScreen(product) : false;
+	$: materials = screen ? SCREEN_MATERIALS : CUSHION_MATERIALS;
 	$: fallbackDescription = product
 		? `${product.name} — ${screen ? 'a handcrafted folding screen' : 'a cushion cover'} by Meryl Green Designs.`
 		: '';
@@ -222,17 +222,7 @@
 						</Button>
 						<a class="info__back" href="/shop">← Back to shop</a>
 					</div>
-					{#if screen}
-						<p class="info__lead-time">
-							Made to order — typically 3 weeks from payment to dispatch.
-						</p>
-					{:else}
-						<!-- No "made to order" claim for cushion covers until Meryl
-						     confirms it (it affects the ECT Act s44 exemption). -->
-						<p class="info__lead-time">
-							Typically 3 weeks from payment to dispatch.
-						</p>
-					{/if}
+					<p class="info__lead-time">{LEAD_TIME}.</p>
 					<p class="info__ask">
 						Questions, or a different size?
 						<a href={productEnquiryHref(product.slug)}>Ask about this piece</a>
@@ -245,22 +235,16 @@
 						</div>
 					{/if}
 
-					{#if screen}
-						<div class="info__materials">
-							<dl>
+					<div class="info__materials">
+						<dl>
+							{#each materials as spec (spec.label)}
 								<div class="info__materials-row">
-									<dt>Frame</dt>
-									<dd>Meranti hardwood, finished with a traditional teak stain</dd>
+									<dt>{spec.label}</dt>
+									<dd>{spec.value}</dd>
 								</div>
-								<div class="info__materials-row">
-									<dt>Canvas</dt>
-									<dd>100% cotton, digitally printed with a protective colour-fast coating</dd>
-								</div>
-							</dl>
-						</div>
-					{:else}
-						<!-- TODO(Meryl): cushion cover specs -->
-					{/if}
+							{/each}
+						</dl>
+					</div>
 				</div>
 			</div>
 		{/if}
