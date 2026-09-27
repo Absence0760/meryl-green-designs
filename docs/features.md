@@ -57,7 +57,10 @@ anything in the repo) — see [`roadmap.md`](./roadmap.md).
     tiles fade up once as they enter the viewport; shop tiles stagger in
     threes. Progressive enhancement: the hiding class is added by JS, so
     nothing is hidden without JS or IntersectionObserver.
-  - Home hero photo settles from a 6% zoom over ~14s on load; product
+  - Home hero photo settles from a 6% zoom over ~14s on load (a CSS
+    transition started after mount — as a keyframe animation running
+    from first paint it held back Chrome's first-contentful-paint by
+    ~9s in Lighthouse); product
     photos push in slightly on hover.
   - All motion is removed (reveal becomes a plain fade) under
     `prefers-reduced-motion: reduce` — hero settle, card / CTA / photo-

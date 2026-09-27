@@ -26,7 +26,16 @@
 		ctaFallback;
 	$: galleryCtaImage = (featured[0] && imageUrl(featured[0].image, 800)) || ctaFallback;
 
+	// Hero "settle" (6% zoom easing to rest) starts only after the page has
+	// painted. As a CSS animation that ran from first paint, Chrome held
+	// back first-contentful-paint until it was nearly over (Lighthouse
+	// mobile: observed FCP 8.9s, Speed Index 13s). A transition kicked off
+	// after mount looks identical but lets the first frame count.
+	let heroSettled = false;
+
 	onMount(async () => {
+		requestAnimationFrame(() => (heroSettled = true));
+
 		// Fetch gallery + testimonials + products in parallel. All are silent
 		// no-ops on failure — the home page is already complete without them.
 		const [galleryRes, testimonialsRes, productsRes] = await Promise.allSettled([
@@ -117,6 +126,7 @@
 		<source type="image/webp" srcset={heroWebpSrcset} sizes={HERO_SIZES} />
 		<img
 			class="hero-image"
+			class:is-settled={heroSettled}
 			src={heroFallback}
 			alt=""
 			width="1920"
@@ -295,17 +305,14 @@
 		height: 100%;
 		object-fit: cover;
 		object-position: center;
-		/* One slow settle on load — the photo drifts from 6% zoom to rest. */
-		animation: hero-settle 14s cubic-bezier(0.2, 0.6, 0.2, 1) both;
+		/* One slow settle on load — the photo drifts from 6% zoom to rest
+		   once `is-settled` is added after mount (see the script). */
+		transform: scale(1.06);
+		transition: transform 14s cubic-bezier(0.2, 0.6, 0.2, 1);
 	}
 
-	@keyframes hero-settle {
-		from {
-			transform: scale(1.06);
-		}
-		to {
-			transform: scale(1);
-		}
+	.hero-image.is-settled {
+		transform: none;
 	}
 
 	.hero::before {
@@ -610,7 +617,8 @@
 
 	@media (prefers-reduced-motion: reduce) {
 		.hero-image {
-			animation: none;
+			transform: none;
+			transition: none;
 		}
 
 		.cta-card,
