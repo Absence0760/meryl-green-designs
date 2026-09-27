@@ -13,6 +13,9 @@ export type { CartItem };
 
 function createCart() {
 	let items = $state<CartItem[]>([]);
+	// Bumped on every add (not on remove/decrement) so the header badge
+	// can replay its "pop" via {#key cart.adds}.
+	let adds = $state(0);
 
 	return {
 		get items() {
@@ -24,8 +27,12 @@ function createCart() {
 		get total() {
 			return cartTotal(items);
 		},
+		get adds() {
+			return adds;
+		},
 		add(product: Product) {
 			addItem(items, product);
+			adds++;
 		},
 		remove(productId: string) {
 			removeItem(items, productId);

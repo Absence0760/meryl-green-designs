@@ -346,9 +346,14 @@ Page copy and the closing CTA reflect that — visitors are guided to
 - **Empty state** when no products have been published. **Error state**
   when the backend is unreachable.
 - **"Add to order" button** on each product tile and detail page pushes
-  the product into the shared cart store and opens the cart panel.
-  Multiple clicks on the same product increment its quantity in place
-  rather than creating duplicate line items.
+  the product into the shared cart store (it doesn't open the cart
+  panel). Multiple clicks on the same product increment its quantity in
+  place rather than creating duplicate line items. After a click the
+  button reads "✓ Added" for 2 seconds, then resets
+  (`src/lib/addedFlash.ts`, tested; both labels share one grid cell in
+  `AddToOrderLabel.svelte` so the button's width doesn't jump), and the
+  header cart badge gives a short scale "pop" on every add (not on
+  removals; off under `prefers-reduced-motion`).
 - **Order form (inside the cart panel)** with fields for name, email,
   phone (optional), shipping address, and notes. All inputs have proper
   `name`, `id`, and `autocomplete` attributes so mobile autofill works

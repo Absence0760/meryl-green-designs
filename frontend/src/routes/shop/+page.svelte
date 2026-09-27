@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import { PUBLIC_API_URL } from '$env/static/public';
 	import type { Product } from '$lib/sanity';
 	import { groupProductsByCategory } from '$lib/productGroups';
@@ -7,6 +7,8 @@
 	import Button from '$lib/Button.svelte';
 	import ProductCard from '$lib/ProductCard.svelte';
 	import { reveal } from '$lib/reveal';
+	import { createAddedFlash } from '$lib/addedFlash';
+	import AddToOrderLabel from '$lib/AddToOrderLabel.svelte';
 
 	const apiUrl = PUBLIC_API_URL;
 
@@ -17,8 +19,14 @@
 
 	$: sections = groupProductsByCategory(products);
 
+	// Ids whose button reads "✓ Added" for a moment after a click.
+	let addedIds = new Set<string>();
+	const addedFlash = createAddedFlash((ids) => (addedIds = ids));
+	onDestroy(addedFlash.destroy);
+
 	function addToCart(product: Product) {
 		cart.add(product);
+		addedFlash.mark(product._id);
 	}
 
 	onMount(async () => {
@@ -130,7 +138,7 @@
 										on:click={() => addToCart(product)}
 										disabled={!product.priceZar}
 									>
-										Add to order
+										<AddToOrderLabel added={addedIds.has(product._id)} />
 									</Button>
 								</div>
 							</article>

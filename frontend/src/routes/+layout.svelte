@@ -152,7 +152,10 @@
 					<path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
 				</svg>
 				{#if cart.count > 0}
-					<span class="cart-badge" aria-hidden="true">{cart.count}</span>
+					<!-- Re-keyed on every add so the pop replays; removals don't pop. -->
+					{#key cart.adds}
+						<span class="cart-badge" aria-hidden="true">{cart.count}</span>
+					{/key}
 				{/if}
 			</button>
 		</div>
@@ -432,6 +435,25 @@
 		align-items: center;
 		justify-content: center;
 		padding: 0 4px;
+		animation: cart-badge-pop 320ms ease-out;
+	}
+
+	@keyframes cart-badge-pop {
+		0% {
+			transform: scale(1);
+		}
+		40% {
+			transform: scale(1.45);
+		}
+		100% {
+			transform: scale(1);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.cart-badge {
+			animation: none;
+		}
 	}
 
 	main {

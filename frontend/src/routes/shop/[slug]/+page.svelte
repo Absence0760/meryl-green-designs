@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	// The store, not `$app/state`: this is a legacy (non-runes) component,
 	// and `$:` statements don't re-run when a `$app/state` value changes —
 	// product → product navigation left the old product on screen.
@@ -8,6 +8,8 @@
 	import { formatPrice, imageUrl, type Product } from '$lib/sanity';
 	import { isScreen, pickRelatedProducts } from '$lib/productGroups';
 	import { productEnquiryHref } from '$lib/enquiryForm';
+	import { createAddedFlash } from '$lib/addedFlash';
+	import AddToOrderLabel from '$lib/AddToOrderLabel.svelte';
 	import ProductCard from '$lib/ProductCard.svelte';
 	import { reveal } from '$lib/reveal';
 	import { productStructuredData } from '$lib/productJsonLd';
@@ -35,9 +37,16 @@
 	// so CMS text can't close the <script> tag rendered via {@html}.
 	$: structuredData = product ? productStructuredData(product, PUBLIC_SITE_URL ?? '') : '';
 
+	// The button reads "✓ Added" for a moment after a click. Keyed on the
+	// product id, so product → product navigation starts fresh.
+	let addedIds = new Set<string>();
+	const addedFlash = createAddedFlash((ids) => (addedIds = ids));
+	onDestroy(addedFlash.destroy);
+
 	function addToCart() {
 		if (!product) return;
 		cart.add(product);
+		addedFlash.mark(product._id);
 	}
 
 	// Keyed on the slug rather than run once in onMount: SvelteKit reuses
@@ -209,7 +218,7 @@
 
 					<div class="info__cta">
 						<Button variant="primary" on:click={addToCart} disabled={!product.priceZar}>
-							Add to order
+							<AddToOrderLabel added={addedIds.has(product._id)} />
 						</Button>
 						<a class="info__back" href="/shop">← Back to shop</a>
 					</div>
