@@ -2,14 +2,22 @@
 // dataset at the start of every run. Specs assert against these
 // values (slug, price, name) so any drift here breaks the cart spec.
 //
-// Three products by design: one cheap, one mid-price, one unavailable.
+// Three screens by design: one cheap, one mid-price, one unavailable.
 // The unavailable one is filtered out by GET /products and lets the
-// shop spec verify the available-only contract.
+// shop spec verify the available-only contract. Plus one cushion cover,
+// ordered last so it lands in its own shop section after the screens
+// (the cart spec's `Add to order` .nth(0)/.nth(1) still hit the two
+// available screens).
+//
+// The screens deliberately carry NO `category`: they stand in for
+// Sanity documents created before the field existed, exercising the
+// backend's `coalesce(category, "screen")` default.
 
 export type SeedProduct = {
 	_id: string;
 	name: string;
 	slug: string;
+	category?: 'screen' | 'cushion-cover';
 	blurb: string;
 	description: string;
 	// The Sanity schema field is `priceZar`, not `price` — keep the fixture
@@ -50,5 +58,16 @@ export const seedProducts: SeedProduct[] = [
 		priceZar: 5600,
 		available: false,
 		order: 30,
+	},
+	{
+		_id: 'e2e-product-cushion',
+		name: 'Test Cushion Cover',
+		slug: 'test-cushion-cover',
+		category: 'cushion-cover',
+		blurb: 'A cushion cover for the shop category sections.',
+		description: 'Used to verify cushion covers get their own section and no screen specs.',
+		priceZar: 450,
+		available: true,
+		order: 40,
 	},
 ];

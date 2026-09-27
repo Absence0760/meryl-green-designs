@@ -48,11 +48,34 @@ test.describe('public pages render', () => {
 		expect(errs).toEqual([]);
 	});
 
+	// Screens (seeded without a category → backend coalesces to 'screen')
+	// and the cushion cover land in separate sections; the Frame/Canvas/
+	// Lead time spec list belongs to the screens section only.
+	test('shop groups products into category sections', async ({ page }) => {
+		await page.goto('/shop');
+		const screens = page.getByRole('region', { name: 'Folding screens' });
+		const cushions = page.getByRole('region', { name: 'Cushion covers' });
+		await expect(screens.getByText('Test Screen Small')).toBeVisible();
+		await expect(screens.getByText('Test Screen Large')).toBeVisible();
+		await expect(screens.getByText('Frame', { exact: true })).toBeVisible();
+		await expect(cushions.getByText('Test Cushion Cover')).toBeVisible();
+		await expect(cushions.getByText('Frame', { exact: true })).toHaveCount(0);
+	});
+
 	test('product detail page', async ({ page }) => {
 		await page.goto('/shop/test-screen-small');
 		await expect(page.getByRole('heading', { name: 'Test Screen Small' })).toBeVisible();
 		// 'Add to order' is rendered on the detail page (and elsewhere)
 		await expect(page.getByRole('button', { name: /add to order/i }).first()).toBeVisible();
+		await expect(page.getByText('Frame', { exact: true })).toBeVisible();
+		await expect(page.getByText(/typically 3 weeks/i)).toBeVisible();
+	});
+
+	test('cushion cover detail page has no screen specs', async ({ page }) => {
+		await page.goto('/shop/test-cushion-cover');
+		await expect(page.getByRole('heading', { name: 'Test Cushion Cover' })).toBeVisible();
+		await expect(page.getByText('Frame', { exact: true })).toHaveCount(0);
+		await expect(page.getByText(/typically 3 weeks/i)).toHaveCount(0);
 	});
 
 	test('contact page', async ({ page }) => {
