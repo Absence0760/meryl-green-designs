@@ -5,7 +5,7 @@ Hono app deployed two ways: local Node server for dev, AWS Lambda (fronted by AP
 ## Stack
 
 - Hono on Node 22 — same app code runs as `@hono/node-server` locally and `hono/aws-lambda` in prod
-- TypeScript, esbuild bundle (`dist/lambda.mjs`), `tsx watch` for local dev
+- TypeScript, esbuild bundle (`dist/lambda.mjs`; config in `scripts/build.mjs`), `tsx watch` for local dev
 - vitest with mocked Sanity + Resend (no network)
 - `@sanity/client` for reads/writes; **Resend via raw `fetch`** — no SDK
 
@@ -50,6 +50,7 @@ Mounted in `src/app.ts`. Each route file lives under `src/routes/` and exports a
 - **Verify webhook signatures over the raw body**, before JSON parsing. Use `crypto.timingSafeEqual`. Reject mismatches with 401.
 - **CORS: `ALLOWED_ORIGINS` is the only gate.** No CSRF token (no sessions).
 - **Don't send banking details in any automated email.** Regression-guarded by a test in `email.test.ts` — see `docs/security.md § Risk 1` for the impersonation rationale.
+- **The Lambda bundles alias `undici` to `src/shims/undici.ts`** (global `fetch`; drops ~1 MB that `@sanity/client` → `get-it` drags in). No HTTP proxy support in Lambda. `bundle.test.ts` guards contents + a size budget — if a dep bump trips it, investigate with esbuild `--metafile` before raising the budget.
 - **Use raw `fetch` for Resend, not a SDK.** Keeps the Lambda bundle tiny and the dependency surface small.
 - **`email.ts` has two backends** switched by `EMAIL_BACKEND` (`resend` default, `file` for local dev). The file backend writes to `backend/.dev-emails/` and is gitignored. Production must never set `EMAIL_BACKEND=file` — Terraform doesn't pass it through.
 - **Content reads have a local backend** switched by `CONTENT_BACKEND` (`sanity` default, `local` for previewing). `content-local.ts` reads `backend/.dev-content/content.json` + `images/` (gitignored — the repo is public, never commit client photos), falling back to the committed generic sample in `backend/dev-content.sample/` (guarded by `dev-content-sample.test.ts`); `routes/dev-content.ts` serves `local:` photo refs and is only registered when the flag is on. The same flag routes the Sanity order-skeleton functions to `orders-local.ts` (`.dev-content/orders.json`); order PII still goes to DynamoDB/LocalStack. Production must never set it.

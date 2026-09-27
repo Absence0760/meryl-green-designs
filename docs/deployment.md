@@ -1344,9 +1344,17 @@ is separate from AWS).
   a Sanity-specific GROQ function; it's not a typo.
 
 **Lambda cold start is slow on first request after idle**
-: Expected. Node 22 Lambda cold starts are ~300–800 ms for our ~3 MB
-  `dist/lambda.mjs` bundle (unminified; ~1 MB of it is `undici`, which
-  `@sanity/client` v8 pulls in via `get-it` v9's fetch transport) at 512 MB (the `memory_size` set in `infra/lambda.tf`). Subsequent
+: Expected. Node 22 Lambda cold starts are ~300–800 ms for our ~2.1 MB
+  `dist/lambda.mjs` bundle (unminified; ~1.1 MB of it is the bundled AWS
+  SDK v3 + Smithy, ~370 KB `rxjs`, ~200 KB `@sanity/client`;
+  `dist/auto-cancel.mjs` is ~0.65 MB, no AWS SDK) at 512 MB (the `memory_size` set in `infra/lambda.tf`).
+  `@sanity/client` v8 → `get-it` v9 statically imports npm `undici` (~1 MB)
+  for proxy support; `backend/scripts/build.mjs` aliases it to
+  `backend/src/shims/undici.ts`, which forwards to Node 22's built-in
+  `fetch` (itself undici). Consequence: `HTTP(S)_PROXY` env vars and an
+  explicit Sanity `proxy` option are not supported in the Lambda bundles.
+  `backend/src/__tests__/bundle.test.ts` enforces the contents and a size
+  budget (2.5 MB / 0.8 MB). Subsequent
   requests are ~5–20 ms. The memory bump was a deliberate trade: AWS scales
   CPU linearly with memory up to ~1792 MB at the same per-ms price, so 512 MB
   roughly halves cold-start time vs. the 128 MB default without meaningfully

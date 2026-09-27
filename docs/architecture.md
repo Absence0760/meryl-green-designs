@@ -80,7 +80,8 @@ meryl-green-designs/
 │           ├── returns/+page.svelte  Refund / returns policy
 │           └── contact/+page.svelte
 ├── backend/
-│   ├── package.json          Build script runs esbuild → dist/lambda.mjs
+│   ├── package.json          `build` → scripts/build.mjs
+│   ├── scripts/build.mjs     esbuild config → dist/lambda.mjs + dist/auto-cancel.mjs (aliases undici → src/shims/undici.ts)
 │   ├── tsconfig.json
 │   ├── .env.development      Committed local-dev defaults (local content, file email, LocalStack, PayFast sandbox)
 │   ├── dev-content.sample/   Committed generic sample content + images for CONTENT_BACKEND=local
