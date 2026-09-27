@@ -12,6 +12,7 @@ import { sanityWebhookRouter } from './routes/sanity-webhook.js';
 import { adminRouter } from './routes/admin.js';
 import { devContentRouter } from './routes/dev-content.js';
 import { isLocalContent } from './content-local.js';
+import { assertNoDevConfigOnLambda } from './runtime-guard.js';
 
 function parseOrigins(value: string | undefined): string[] {
 	return (value ?? '')
@@ -21,6 +22,9 @@ function parseOrigins(value: string | undefined): string[] {
 }
 
 export function createApp() {
+	// Throws on Lambda if any local-dev-only setting leaked into its env.
+	assertNoDevConfigOnLambda();
+
 	const app = new Hono();
 
 	const publicOrigins = parseOrigins(process.env.ALLOWED_ORIGINS ?? 'http://localhost:7777');
