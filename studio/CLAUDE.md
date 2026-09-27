@@ -11,7 +11,7 @@ pnpm studio check    # tsc --noEmit
 pnpm studio deploy   # publishes to <name>.sanity.studio (interactive first time)
 ```
 
-The studio is excluded from `pnpm dev` because it's heavy. Run it with `pnpm dev:all` or on its own.
+The studio is excluded from `pnpm dev` because it's heavy and needs a real Sanity project (see below). Run it with `pnpm dev:all` or on its own.
 
 ## No tests
 
@@ -34,8 +34,8 @@ When adding a new schema:
 
 ## Sanity client gotchas
 
-- Studio reads `SANITY_STUDIO_PROJECT_ID` and `SANITY_STUDIO_DATASET` from `studio/.env`. These must point at the same Sanity project as the backend's `SANITY_PROJECT_ID`.
-- `studio/.env` only contains non-secret IDs, so it's a normal gitignored file (no SOPS).
+- Studio reads `SANITY_STUDIO_*` via the Sanity CLI's Vite-style env loading: `sanity dev` loads the committed `studio/.env.development` (non-sensitive defaults) plus a gitignored `studio/.env.development.local` (wins); `sanity build`/`deploy` run in production mode and don't read either — CI supplies the env. The project ID must point at the same Sanity project as the backend's `SANITY_PROJECT_ID`.
+- The committed `SANITY_STUDIO_PROJECT_ID` is blank on purpose: the Studio is optional for local dev and needs a real Sanity project. `project-env.ts` (`requireStudioProjectId`, used by both `sanity.cli.ts` and `sanity.config.ts`) fails fast with a friendly "optional; create a free personal project" message pointing to `docs/run-locally.md § Sanity Studio (optional)`. Keep that message helpful if you touch it.
 
 ## Custom field components for order PII
 
@@ -49,10 +49,10 @@ They use `@sanity/ui` v4 layout primitives — spacing on `<Stack>` / `<Inline>`
 
 They fetch data from the backend's `/admin/orders/:ref` endpoint and write to `/admin/orders/:ref/tracking` and `/admin/orders/:ref/internal-notes` — bypassing Sanity entirely. The backend reads/writes a private DynamoDB table; the Sanity document only carries the join key (`orderRef`) and non-PII fields (status, amount, payment metadata).
 
-Required env vars (in `studio/.env`):
+Required env vars (committed dev defaults in `studio/.env.development`):
 
 - `SANITY_STUDIO_API_URL` — backend base URL the components fetch from
-- `SANITY_STUDIO_ADMIN_TOKEN` — bearer token, must match the backend's `ADMIN_API_TOKEN`
+- `SANITY_STUDIO_ADMIN_TOKEN` — bearer token, must match the backend's `ADMIN_API_TOKEN` (locally both are `local-dev-admin-token`)
 
 The token is baked into the Studio JS bundle at build time, so it's visible to anyone who can load the Studio. CORS narrows admin access to the Studio's hosted origin, but the real auth gate is the bearer check on the backend. See `docs/orders-pii-split.md § Admin auth` for the v2 hardening ideas (Sanity JWT verification, Cognito).
 
