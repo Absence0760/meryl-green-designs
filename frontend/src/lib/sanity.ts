@@ -1,5 +1,9 @@
 import { createImageUrlBuilder, type SanityImageSource } from '@sanity/image-url';
-import { PUBLIC_SANITY_PROJECT_ID, PUBLIC_SANITY_DATASET } from '$env/static/public';
+import {
+	PUBLIC_API_URL,
+	PUBLIC_SANITY_PROJECT_ID,
+	PUBLIC_SANITY_DATASET
+} from '$env/static/public';
 
 type SanityHotspot = { x: number; y: number; height: number; width: number };
 type SanityCrop = { top: number; bottom: number; left: number; right: number };
@@ -54,7 +58,19 @@ const builder = createImageUrlBuilder({
 	dataset: PUBLIC_SANITY_DATASET || 'production'
 });
 
+// Local-dev content mode (backend CONTENT_BACKEND=local) references
+// photos as `local:<file>`; the backend serves them from its
+// .dev-content/images folder. Production content never carries this
+// prefix — Sanity asset refs always start with `image-`.
+const LOCAL_ASSET_PREFIX = 'local:';
+
 export function imageUrl(source: SanityImageSource, width?: number): string | null {
+	const localName = localAssetName(source);
+	if (localName !== null) {
+		return localName
+			? `${PUBLIC_API_URL}/dev-content/images/${encodeURIComponent(localName)}`
+			: null;
+	}
 	if (!PUBLIC_SANITY_PROJECT_ID) return null;
 	// Sanity Studio creates array entries with a `_key` as soon as a user
 	// drops a file on an `array of image` field; the asset ref is only filled
@@ -67,6 +83,14 @@ export function imageUrl(source: SanityImageSource, width?: number): string | nu
 	let img = builder.image(source).auto('format').fit('max');
 	if (width) img = img.width(width);
 	return img.url();
+}
+
+function localAssetName(source: SanityImageSource): string | null {
+	if (!source || typeof source !== 'object') return null;
+	const asset = (source as { asset?: { _ref?: unknown } | null }).asset;
+	const ref = asset && typeof asset === 'object' ? asset._ref : null;
+	if (typeof ref !== 'string' || !ref.startsWith(LOCAL_ASSET_PREFIX)) return null;
+	return ref.slice(LOCAL_ASSET_PREFIX.length);
 }
 
 function hasAssetRef(source: SanityImageSource): boolean {

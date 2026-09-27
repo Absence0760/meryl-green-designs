@@ -1,4 +1,12 @@
 import { createClient, type SanityClient } from '@sanity/client';
+import {
+	getLocalGalleryPhotos,
+	getLocalProductBySlug,
+	getLocalProducts,
+	getLocalProductsByIds,
+	getLocalTestimonials,
+	isLocalContent
+} from './content-local.js';
 
 export type OrderStatus =
 	| 'pending_payment'
@@ -200,6 +208,7 @@ export async function updateOrderPayment(
 }
 
 export async function getProductsByIds(ids: string[]): Promise<SanityProduct[]> {
+	if (isLocalContent()) return getLocalProductsByIds(ids);
 	const client = getClient();
 	const query = `*[_type == "product" && _id in $ids && available == true] {
 		_id,
@@ -230,11 +239,13 @@ export async function getOrderByRef(orderRef: string): Promise<SanityOrder | nul
 }
 
 export async function getProducts(): Promise<SanityProduct[]> {
+	if (isLocalContent()) return getLocalProducts();
 	const client = getClient();
 	return client.fetch<SanityProduct[]>(PRODUCTS_QUERY);
 }
 
 export async function getProductBySlug(slug: string): Promise<SanityProduct | null> {
+	if (isLocalContent()) return getLocalProductBySlug(slug);
 	const client = getClient();
 	// Same projection as PRODUCTS_QUERY — a single product filtered by slug.
 	// Limited to available products so unpublished/hidden items don't leak
@@ -262,11 +273,13 @@ export async function getProductBySlug(slug: string): Promise<SanityProduct | nu
 }
 
 export async function getGalleryPhotos(): Promise<SanityGalleryPhoto[]> {
+	if (isLocalContent()) return getLocalGalleryPhotos();
 	const client = getClient();
 	return client.fetch<SanityGalleryPhoto[]>(GALLERY_QUERY);
 }
 
 export async function getTestimonials(): Promise<SanityTestimonial[]> {
+	if (isLocalContent()) return getLocalTestimonials();
 	const client = getClient();
 	return client.fetch<SanityTestimonial[]>(TESTIMONIALS_QUERY);
 }

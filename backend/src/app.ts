@@ -10,6 +10,8 @@ import { testimonials } from './routes/testimonials.js';
 import { payfastItnRouter } from './routes/payfast-itn.js';
 import { sanityWebhookRouter } from './routes/sanity-webhook.js';
 import { adminRouter } from './routes/admin.js';
+import { devContentRouter } from './routes/dev-content.js';
+import { isLocalContent } from './content-local.js';
 
 function parseOrigins(value: string | undefined): string[] {
 	return (value ?? '')
@@ -50,6 +52,13 @@ export function createApp() {
 	app.route('/products', products);
 	app.route('/gallery', gallery);
 	app.route('/testimonials', testimonials);
+
+	// Local-dev only: serves `local:` product/gallery photos from
+	// backend/.dev-content/images. Not registered unless
+	// CONTENT_BACKEND=local, so it never exists on the deployed Lambda.
+	if (isLocalContent()) {
+		app.route('/dev-content', devContentRouter());
+	}
 
 	// Rate-limited routes use factory functions so each createApp() call
 	// produces fresh limiter buckets — important for test isolation and

@@ -53,6 +53,9 @@ studio/dist/
 # ---------------------------------------------------------------------------
 .dev-emails/
 
+# Local content preview (backend/src/content-local.ts, CONTENT_BACKEND=local)
+.dev-content/
+
 # ---------------------------------------------------------------------------
 # Logs
 # ---------------------------------------------------------------------------
@@ -107,3 +110,6 @@ Desktop.ini
 !.claude/settings.json
 !.claude/agents/
 !.claude/commands/
+
+# Raw client photos staged for local editing — never commit
+.tmp-images/

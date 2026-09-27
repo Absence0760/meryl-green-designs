@@ -291,6 +291,56 @@ pnpm dev:emails   # or manually: xdg-open backend/.dev-emails/$(ls -t backend/.d
 `EMAIL_BACKEND=file`** — leave it unset on the Lambda; Terraform
 doesn't pass it through.
 
+### Local content preview (no Sanity)
+
+For previewing new products or photos before they go into Sanity, the
+public content getters in `backend/src/sanity.ts` can read from disk
+instead, switched via `CONTENT_BACKEND`:
+
+| Value | Behaviour |
+|---|---|
+| unset / `sanity` (default) | Products, gallery and testimonials come from Sanity; needs `SANITY_PROJECT_ID` + `SANITY_API_TOKEN`. |
+| `local` | Reads `backend/.dev-content/content.json` (re-read on every request, so edits show on refresh) and serves photos from `backend/.dev-content/images/`. No Sanity, no network, no secrets. |
+
+`content.json` holds the same shapes the backend returns from Sanity
+(`SanityProduct`, `SanityGalleryPhoto`, `SanityTestimonial` in
+`backend/src/sanity.ts`). Any section can be omitted. Point a photo at a
+local file by giving it the asset ref `local:<file name>`:
+
+```json
+{
+  "products": [
+    {
+      "_id": "local-lion-pride-screen",
+      "name": "Lion Pride Screen",
+      "slug": "lion-pride-screen",
+      "blurb": null, "description": null, "priceZar": null, "dimensions": null,
+      "available": true,
+      "order": 10,
+      "photos": [
+        { "_key": "p1", "alt": "…", "asset": { "_ref": "local:lion-screen-front.jpg" } }
+      ]
+    }
+  ],
+  "galleryPhotos": [],
+  "testimonials": []
+}
+```
+
+The frontend's `imageUrl()` maps `local:` refs to
+`${PUBLIC_API_URL}/dev-content/images/<file>`, and the backend only
+registers that route when `CONTENT_BACKEND=local`. Width, crop and
+hotspot are ignored for local photos (they're served as-is), so
+pre-size them to about 1600–2400px. Set `CONTENT_DEV_DIR` to use a
+folder other than `.dev-content` (it must be under the backend's working
+directory or the OS tmp dir).
+
+Only content reads are local. Checkout and order lookup still write
+to Sanity, so they fail in this mode. `backend/.dev-content/` is
+gitignored; this repo is public, so client photos must never be
+committed. **Production must never set `CONTENT_BACKEND`**, and
+Terraform doesn't pass it through.
+
 ## Running the site
 
 From the repository root:

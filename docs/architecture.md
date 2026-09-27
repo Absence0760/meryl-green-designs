@@ -89,6 +89,7 @@ meryl-green-designs/
 │       ├── lambda.ts         AWS Lambda entry (wraps app with hono/aws-lambda)
 │       ├── auto-cancel-lambda.ts  Daily EventBridge-invoked Lambda: cancels stale pending_payment orders
 │       ├── email.ts          Resend API wrapper + HTML escaping
+│       ├── content-local.ts  Local-dev content backend (CONTENT_BACKEND=local) — reads .dev-content/
 │       ├── email-templates.ts Status-keyed customer email templates
 │       ├── email-match.ts    Constant-time email-equality for track-page lookups
 │       ├── payfast.ts        PayFast signature generation, ITN validation, form-data builder
@@ -107,6 +108,7 @@ meryl-green-designs/
 │           ├── payment-retry.ts    POST /orders/:ref/retry-payment?email= — self-service retry
 │           ├── enquiries.ts        POST /enquiries — commission enquiry form → owner email
 │           ├── admin.ts            GET/PATCH /admin/orders/:ref/* — Studio-only PII routes (bearer token)
+│           ├── dev-content.ts      GET /dev-content/images/:name — local-dev photo server (CONTENT_BACKEND=local only)
 │           ├── payfast-itn.ts      POST /webhooks/payfast-itn — PayFast payment confirmation
 │           └── sanity-webhook.ts   POST /webhooks/sanity-order — verify sig + dispatch email
 ├── studio/
