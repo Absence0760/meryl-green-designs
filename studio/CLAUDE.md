@@ -32,6 +32,12 @@ When adding a new schema:
 
 **Adding a field to an existing schema:** `initialValue` only applies to new documents — published docs keep no value until someone re-saves them. Give the backend projection a default instead of migrating. Example: `product.category` (`screen` | `cushion-cover`) is projected as `"category": coalesce(category, "screen")` in `backend/src/sanity.ts` (`PRODUCT_PROJECTION`, shared by every product query), and `content-local.ts` applies the same default.
 
+## Desk structure + templates
+
+`structure.ts` defines the desk (passed to `structureTool({ structure })`) and the product initial value templates (added via `schema.templates: (prev) => [...prev, ...productTemplates]` in `sanity.config.ts`). Products are a folder (All / Folding screens / Cushion covers, ordered by `order`); every other type comes from `S.documentTypeListItems()` minus `product`, so a new schema shows up automatically. The Folding screens filter includes `!defined(category)` to match the backend's `coalesce(category, "screen")`. Templates set every field explicitly rather than relying on field `initialValue` merging.
+
+Product validation uses `.warning()` for the soft checks (no photos, no price, `dimensionsMismatch()` in `schemas/product.ts`) — keep them warnings; Meryl must always be able to publish.
+
 ## Sanity client gotchas
 
 - Studio reads `SANITY_STUDIO_*` via the Sanity CLI's Vite-style env loading: `sanity dev` loads the committed `studio/.env.development` (non-sensitive defaults) plus a gitignored `studio/.env.development.local` (wins); `sanity build`/`deploy` run in production mode and don't read either — CI supplies the env. The project ID must point at the same Sanity project as the backend's `SANITY_PROJECT_ID`.

@@ -482,6 +482,23 @@ Page copy and the closing CTA reflect that — visitors are guided to
   Products created before the category field existed have no stored
   value; the backend's GROQ projection coalesces a missing category to
   `screen`, so they keep showing as folding screens without a migration.
+- **Product desk layout** (`studio/structure.ts`) — the Products entry
+  opens a folder with **All products**, **Folding screens** (includes
+  legacy products with no category) and **Cushion covers**, each ordered
+  by display order. Gallery photos, Orders and Testimonials keep their
+  default lists. Each list's subtitle reads e.g. "Cushion cover · R 450",
+  "No price set" when unpriced, and is prefixed "Hidden · " when the
+  product's availability toggle is off.
+- **New-product presets** — "New folding screen" and "New cushion cover"
+  (pre-fills 60cm x 60cm and R450) initial value templates, offered in
+  the matching list's + button and the global Create menu (the plain
+  "Product" template is still there).
+- **Field help and soft warnings** — each product field explains what it
+  changes on the site (category → shop section and which spec/lead-time
+  lines show; dimensions examples per category; photo tips). Missing
+  photos, a missing price, or dimensions that look like the other
+  category's format ("per panel" on a cushion cover, "60cm x 60cm" on a
+  screen) raise **warnings only** — publishing is never blocked.
 - **Order schema** (Phase 1 skeleton, post-PII-split — live since 2026-05-13):
   order reference (read-only), status (radio: pending payment → payment
   received → shipped → delivered → cancelled / payment failed), payment
