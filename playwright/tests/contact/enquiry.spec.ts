@@ -61,6 +61,37 @@ test.describe('POST /enquiries', () => {
 		expect(email.bodyHtml).toContain('commission a screen');
 	});
 
+	test('interest: a cushion-cover enquiry is labelled in the owner email subject + body', async ({
+		request,
+	}) => {
+		const res = await postEnquiry(request, {
+			interest: 'cushion-cover',
+			photoReference: 'Wild Amaryllis in bloom',
+			size: '60cm x 60cm',
+			finish: '',
+		});
+		expect(res.status()).toBe(200);
+
+		const emails = await waitForEmail(
+			(e) => e.to === process.env.OWNER_EMAIL && /commission enquiry/i.test(e.subject),
+		);
+		expect(emails).toHaveLength(1);
+		expect(emails[0].subject).toContain('(cushion cover)');
+		expect(emails[0].bodyHtml).toContain('Cushion cover');
+		expect(emails[0].bodyHtml).toContain('Wild Amaryllis in bloom');
+	});
+
+	test('interest: a value outside the allowed list is rejected with 400', async ({ request }) => {
+		const res = await postEnquiry(request, { interest: 'sofa' });
+		expect(res.status()).toBe(400);
+		const body = (await res.json()) as { error: string };
+		expect(body.error).toMatch(/interested in/i);
+
+		await new Promise((r) => setTimeout(r, 200));
+		const all = await listCapturedEmails();
+		expect(all).toHaveLength(0);
+	});
+
 	test('honeypot: filled `website` field returns success but sends no email', async ({
 		request,
 	}) => {

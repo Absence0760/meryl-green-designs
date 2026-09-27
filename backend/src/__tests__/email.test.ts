@@ -444,6 +444,37 @@ describe('commissionEnquiry', () => {
 		expect(mail.html.toLowerCase()).toContain('authenticity');
 	});
 
+	it('renders the interest label in the subject and body when chosen', () => {
+		const mail = commissionEnquiry({
+			interest: 'cushion-cover',
+			name: 'Alice',
+			email: 'alice@example.com',
+			phone: '',
+			photoReference: '',
+			size: '',
+			finish: '',
+			location: '',
+			message: 'm'
+		});
+		expect(mail.subject).toBe('Commission enquiry (cushion cover) — Alice');
+		expect(mail.html).toContain('<strong>Interested in:</strong> Cushion cover');
+	});
+
+	it('omits the interest row and keeps the plain subject when none is chosen', () => {
+		const mail = commissionEnquiry({
+			name: 'Alice',
+			email: 'alice@example.com',
+			phone: '',
+			photoReference: '',
+			size: '',
+			finish: '',
+			location: '',
+			message: 'm'
+		});
+		expect(mail.subject).toBe('Commission enquiry — Alice');
+		expect(mail.html).not.toContain('Interested in');
+	});
+
 	it('hides optional rows when the field is empty or whitespace-only', () => {
 		const mail = commissionEnquiry({
 			name: 'Alice',

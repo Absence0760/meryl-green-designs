@@ -553,8 +553,9 @@ Page copy and the closing CTA reflect that — visitors are guided to
   - `GET /testimonials` — list of visible testimonials from Sanity
     (called by the home page on hydration; section silently no-ops when
     empty)
-  - `POST /enquiries` — commission enquiry form (`/contact`), validates,
-    sends notification email to the owner, rate-limited per IP
+  - `POST /enquiries` — commission enquiry form (`/contact`), validates
+    (incl. the optional `interest` enum `screen` | `cushion-cover` |
+    `other`), sends notification email to the owner, rate-limited per IP
   - `POST /orders` — create a new order (validates, looks up product
     prices in Sanity, writes the PII row to DynamoDB, creates the Sanity
     skeleton doc, sends owner notification, and returns signed PayFast

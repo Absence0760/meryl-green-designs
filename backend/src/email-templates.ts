@@ -247,7 +247,19 @@ export function customerEmailForStatus(order: Order): { subject: string; html: s
 // sensitive details (see docs/security.md § replyTo).
 // ---------------------------------------------------------------------------
 
+// What the visitor says they're enquiring about. Optional on the form;
+// the route rejects anything outside this list with a 400.
+export const ENQUIRY_INTERESTS = ['screen', 'cushion-cover', 'other'] as const;
+export type EnquiryInterest = (typeof ENQUIRY_INTERESTS)[number];
+
+export const ENQUIRY_INTEREST_LABELS: Record<EnquiryInterest, string> = {
+	screen: 'Folding screen',
+	'cushion-cover': 'Cushion cover',
+	other: 'Something else'
+};
+
 export type CommissionEnquiryInput = {
+	interest?: EnquiryInterest;
 	name: string;
 	email: string;
 	phone: string;
@@ -264,8 +276,13 @@ export function commissionEnquiry(input: CommissionEnquiryInput): { subject: str
 			? `<p><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value).replace(/\n/g, '<br>')}</p>`
 			: '';
 
+	const interestLabel = input.interest ? ENQUIRY_INTEREST_LABELS[input.interest] : '';
+	const subjectPrefix = interestLabel
+		? `Commission enquiry (${interestLabel.toLowerCase()})`
+		: 'Commission enquiry';
+
 	return {
-		subject: safeHeader(`Commission enquiry — ${input.name}`),
+		subject: safeHeader(`${subjectPrefix} — ${input.name}`),
 		html: `
 			<div style="background:#fff7d6;border:1px solid #e2c769;padding:0.6rem 0.9rem;border-radius:4px;margin-bottom:1rem;">
 				<strong>Heads up:</strong> the name and email below were entered into
@@ -275,6 +292,7 @@ export function commissionEnquiry(input: CommissionEnquiryInput): { subject: str
 			<h2>Commission enquiry</h2>
 			<p><strong>Name:</strong> ${escapeHtml(input.name)}</p>
 			<p><strong>Email:</strong> ${escapeHtml(input.email)}</p>
+			${optionalRow('Interested in', interestLabel)}
 			${optionalRow('Phone', input.phone)}
 			${optionalRow('Photo reference', input.photoReference)}
 			${optionalRow('Size', input.size)}

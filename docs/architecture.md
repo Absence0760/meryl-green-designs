@@ -291,9 +291,12 @@ difference is how requests reach the app.
   custom field components in `studio/components/orderPii.tsx`.
 - `POST /enquiries` — commission enquiry form on `/contact`. Validates
   the body (required name/email/message + length limits, honeypot, valid
-  email regex), then sends a single notification email to `OWNER_EMAIL`
+  email regex, and an optional `interest` enum — `screen` |
+  `cushion-cover` | `other`, anything else is a 400), then sends a single notification email to `OWNER_EMAIL`
   via Resend with `replyTo` set to the visitor's claimed email and a
-  prominent unverified-sender warning rendered in the email body. No
+  prominent unverified-sender warning rendered in the email body. A chosen
+  `interest` appears as an "Interested in" row and in the subject
+  (`Commission enquiry (cushion cover) — <name>`). No
   Sanity document is created — at the current scale, treating enquiries
   as a transient email is simpler than another data store.
 - `POST /webhooks/sanity-order` — receives webhook POSTs from Sanity when an
