@@ -27,7 +27,15 @@
 			"Bash(git commit:*)"
 		],
 		"deny": [
-			"Bash(git push:*)",
+			"Bash(git push --force:*)",
+			"Bash(git push -f:*)",
+			"Bash(git push --force-with-lease:*)",
+			"Bash(git push --mirror:*)",
+			"Bash(git push --delete:*)",
+			"Bash(git push -d:*)",
+			"Bash(git push origin main:*)",
+			"Bash(git push origin HEAD:main:*)",
+			"Bash(git push origin +*)",
 			"Bash(git reset --hard:*)",
 			"Bash(git clean -f:*)",
 			"Bash(git branch -D:*)",
