@@ -15,7 +15,7 @@ The repo has four workspaces with their own `package.json`:
 
 Plus:
 
-- **Root `package.json`** — workspace orchestration + pnpm overrides (currently `js-yaml`, `cookie`, `devalue`, `@smithy/types`, `adm-zip`, `esbuild` 0.27.x, `vite` 7.x and `uuid` — `git log -p package.json` shows the advisory behind each)
+- **Root `pnpm-workspace.yaml`** — pnpm overrides (currently `js-yaml` 3.x, `cookie`, `devalue`, `@smithy/types`, `adm-zip`, `esbuild` 0.27.x, `vite` 7.x, `uuid` and `smol-toml` — `git log -p pnpm-workspace.yaml package.json` shows the advisory behind each) + `auditConfig`. Never in package.json's `pnpm` field: newer pnpm ignores it
 - **GitHub Actions** — `.github/workflows/*.yml` — action SHA pinning vs `@v6` floating tags
 - **Dependabot config** — `.github/dependabot.yml` — must cover every workspace + GitHub Actions
 
@@ -29,7 +29,7 @@ There's already a scheduled `audit.yml` workflow that runs `pnpm audit` weekly a
    pnpm -r --filter @meryl-green-designs/backend  audit --audit-level=moderate
    pnpm -r --filter @meryl-green-designs/studio   audit --audit-level=moderate
    ```
-   Collect moderate+ findings. For each: package, version, CVE, fix version, manifest path. The canonical resolution shape in this repo is the cookie override added in commit `79befae` — a transitive that upstream hasn't fixed gets pinned via the root `package.json`'s `pnpm.overrides` block.
+   Collect moderate+ findings. For each: package, version, CVE, fix version, manifest path. The canonical resolution shape in this repo is the cookie override added in commit `79befae` — a transitive that upstream hasn't fixed gets pinned via the root `pnpm-workspace.yaml`'s `overrides` block.
 
 2. **Open audit issue.**
    ```
@@ -55,7 +55,7 @@ There's already a scheduled `audit.yml` workflow that runs `pnpm audit` weekly a
    - SHA pins (`@<sha>`) are the safer default for workflows that touch `${{ secrets.* }}` or deploy.
    - Flag floating refs on `deploy-frontend.yml`, `deploy-backend.yml`, `deploy-studio.yml`, and `claude.yml` (which has access to project tokens). `ci.yml`, `codeql.yml`, `audit.yml` are lower-stakes but worth surfacing too.
 
-6. **Override hygiene.** Read the root `package.json` `pnpm.overrides` block. For each override:
+6. **Override hygiene.** Read the root `pnpm-workspace.yaml` `overrides` block, and confirm `pnpm-lock.yaml` carries an identical `overrides:` block (if not, the lockfile was regenerated without them). For each override:
    - Confirm it's still needed — has upstream shipped a fix that lets us drop the override? Pull the latest version of the package from npm and check.
    - Confirm the override range is tight (e.g. `^0.7.0` not `>=0.7.0` — see the cookie override discussion).
    - Confirm there's a comment or commit message explaining *why* (the original CVE).
@@ -77,7 +77,8 @@ For each finding: package + version + advisory link + the file to change + the u
 
 ## Useful starting points
 
-- `package.json` (root) — workspace orchestration + overrides
+- `package.json` (root) — workspace orchestration
+- `pnpm-workspace.yaml` (root) — overrides + auditConfig
 - `frontend/package.json`, `backend/package.json`, `studio/package.json`
 - `.github/workflows/*.yml`
 - `.github/dependabot.yml`

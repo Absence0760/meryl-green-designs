@@ -2,13 +2,34 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-// Guards the root package.json `pnpm.auditConfig.ignoreGhsas` list. Every
-// ignored advisory must be a known false positive with a check proving the
-// real package is patched, so an ignore can never hide a genuine finding.
+// Guards the pnpm settings in the root pnpm-workspace.yaml:
+// - every `auditConfig.ignoreGhsas` entry is a known false positive with a
+//   check proving the real package is patched, so an ignore can never hide a
+//   genuine finding;
+// - the lockfile's `overrides:` block matches the workspace's. Dependabot's
+//   lockfile regenerations once dropped the overrides (they lived in
+//   package.json's `pnpm` field, which newer pnpm ignores), silently
+//   reopening every advisory they patched.
 
 const repoRoot = resolve(__dirname, '../../..');
 const rootPkg = JSON.parse(readFileSync(resolve(repoRoot, 'package.json'), 'utf8'));
+const workspace = readFileSync(resolve(repoRoot, 'pnpm-workspace.yaml'), 'utf8');
 const lockfile = readFileSync(resolve(repoRoot, 'pnpm-lock.yaml'), 'utf8');
+
+// Lines of a top-level YAML block (`key:` then indented lines), comments and
+// blanks dropped. Enough for the flat maps / lists these files use.
+function yamlBlock(text: string, key: string): string[] {
+	const lines = text.split('\n');
+	const start = lines.indexOf(`${key}:`);
+	if (start === -1) return [];
+	const out: string[] = [];
+	for (const line of lines.slice(start + 1)) {
+		if (/^\S/.test(line)) break;
+		const trimmed = line.trim();
+		if (trimmed && !trimmed.startsWith('#')) out.push(trimmed);
+	}
+	return out;
+}
 
 function lockedVersions(name: string): string[] {
 	const re = new RegExp(`^  '?${name.replace('/', '\\/')}@([0-9][^':(]*)'?:`, 'gm');
@@ -33,8 +54,27 @@ const KNOWN_FALSE_POSITIVES: Record<string, { pkg: string; patched: string }> = 
 	'GHSA-7mvr-c777-76hp': { pkg: 'playwright', patched: '1.55.1' }
 };
 
+describe('pnpm overrides', () => {
+	const overrides = yamlBlock(workspace, 'overrides');
+
+	it('are declared in pnpm-workspace.yaml, not package.json', () => {
+		expect(overrides.length).toBeGreaterThan(0);
+		expect(rootPkg.pnpm, 'package.json `pnpm` field is ignored by newer pnpm').toBeUndefined();
+	});
+
+	it('are applied in pnpm-lock.yaml', () => {
+		expect(yamlBlock(lockfile, 'overrides')).toEqual(overrides);
+	});
+});
+
 describe('pnpm audit ignore list', () => {
-	const ignored: string[] = rootPkg.pnpm?.auditConfig?.ignoreGhsas ?? [];
+	const ignored = yamlBlock(workspace, 'auditConfig')
+		.filter((line) => line.startsWith('- '))
+		.map((line) => line.slice(2).trim());
+
+	it('is read from pnpm-workspace.yaml', () => {
+		expect(ignored).toContain('GHSA-7mvr-c777-76hp');
+	});
 
 	it('only ignores documented false positives', () => {
 		for (const ghsa of ignored) {

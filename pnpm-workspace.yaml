@@ -3,3 +3,29 @@ packages:
   - backend
   - studio
   - playwright
+
+# pnpm settings live here, not in package.json's `pnpm` field: newer pnpm
+# (which Dependabot runs) ignores that field, so its lockfile regenerations
+# silently dropped the overrides and reopened the advisories they patch.
+# backend/src/__tests__/audit-config.test.ts fails if the lockfile's
+# `overrides:` block ever drifts from this one again.
+
+# Security overrides for vulnerable transitives that a parent's range pins
+# below the fix. `git log -p` on this file / package.json shows the advisory
+# behind each.
+overrides:
+  js-yaml@>=3.0.0 <3.15.2: ^3.15.2
+  cookie@<0.7.0: ^0.7.0
+  devalue@<5.8.1: ^5.8.1
+  '@smithy/types': ^4.14.2
+  adm-zip@<0.6.1: ^0.6.1
+  esbuild@>=0.27.3 <0.28.1: ^0.28.2
+  vite@>=7.0.0 <7.3.5: ^7.3.6
+  uuid@<11.1.1: ^11.1.1
+  smol-toml@<1.7.1: ^1.7.1
+
+# Known false positives only — each needs a reason in audit-config.test.ts.
+auditConfig:
+  ignoreGhsas:
+    - GHSA-7mvr-c777-76hp
+
