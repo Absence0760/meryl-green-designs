@@ -176,7 +176,7 @@ End with:
 > git push origin main      # if you have commits ahead
 > gh release create v<x.y.z> --title "..." --notes "..."
 > ```
-> I won't run those — `git push` and `gh release create` are both on the deny list by default. That's your call.
+> I won't run those — this check is read-only, and tagging a release is your call. (Each deploy still waits for your approval on the `production` environment.)
 
 **Do not tag, do not push, do not create a release, do not auto-fix any of the red gates.** This command is read-only.
 
