@@ -603,7 +603,10 @@ CI/CD lives in `.github/workflows/`:
   `pnpm-workspace.yaml`, not package.json's `pnpm` field — Dependabot's
   newer pnpm ignores that field and its lockfile regenerations dropped the
   overrides; `backend/src/__tests__/audit-config.test.ts` now fails any PR
-  whose lockfile drifts from them.
+  whose lockfile drifts from them. When a PR is already mergeable by the
+  time the job runs (GitHub refuses to queue auto-merge in the `clean` /
+  `unstable` states, e.g. a Terraform-only bump), the job squash-merges it
+  directly.
 - `labeler.yml` — applies path-based labels to PRs on open/sync/reopen so
   reviewers see at a glance which workspaces a PR touches. Configuration in
   `.github/labeler.yml`; advisory only (doesn't block merging).
