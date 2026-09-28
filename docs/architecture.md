@@ -571,7 +571,8 @@ CI/CD lives in `.github/workflows/`:
   push to main, and weekly. Findings surface in the Security tab.
 - `audit.yml` — `pnpm audit` weekly; auto-files a `dependency-audit`
   issue on findings and auto-closes it on the next clean run. Known false
-  positives are ignored via `pnpm.auditConfig.ignoreGhsas` (see
+  positives are ignored via `auditConfig.ignoreGhsas` in
+  `pnpm-workspace.yaml` (see
   `docs/security.md`).
 - `gitleaks.yml` — secret-scan on every PR + push + weekly full-history
   sweep. Catches accidentally-committed tokens.
@@ -597,7 +598,15 @@ CI/CD lives in `.github/workflows/`:
   in `.github/dependabot.yml` points at the workspace root (`/`), so
   Dependabot rewrites the root `pnpm-lock.yaml` in the same commit as the
   workspace `package.json`. Per-workspace directories (`/frontend`, …)
-  have no lockfile and produce PRs that fail `--frozen-lockfile`.
+  have no lockfile and produce PRs that fail `--frozen-lockfile`. pnpm
+  settings (security `overrides`, `auditConfig`) live in
+  `pnpm-workspace.yaml`, not package.json's `pnpm` field — Dependabot's
+  newer pnpm ignores that field and its lockfile regenerations dropped the
+  overrides; `backend/src/__tests__/audit-config.test.ts` now fails any PR
+  whose lockfile drifts from them. When a PR is already mergeable by the
+  time the job runs (GitHub refuses to queue auto-merge in the `clean` /
+  `unstable` states, e.g. a Terraform-only bump), the job squash-merges it
+  directly.
 - `labeler.yml` — applies path-based labels to PRs on open/sync/reopen so
   reviewers see at a glance which workspaces a PR touches. Configuration in
   `.github/labeler.yml`; advisory only (doesn't block merging).

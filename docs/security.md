@@ -424,8 +424,15 @@ client, Resend SDK, esbuild, vitest, etc.) ships a CVE. We pick it up via
   Monday at 06:00 UTC and on manual dispatch, scanning all workspaces at
   `--audit-level=moderate`. Findings open a `dependency-audit`-labelled
   GitHub issue; the next clean run auto-closes every open one.
-- **Audit ignore list** (`pnpm.auditConfig.ignoreGhsas` in the root
-  `package.json`) holds known false positives only. Currently
+- **Security overrides** (`overrides` in the root `pnpm-workspace.yaml`)
+  force patched versions of transitives a parent pins below the fix.
+  They must stay in `pnpm-workspace.yaml`: newer pnpm (which Dependabot
+  runs) ignores package.json's `pnpm` field, and Dependabot's lockfile
+  regenerations once silently dropped them, reopening the advisories.
+  `backend/src/__tests__/audit-config.test.ts` fails if the lockfile's
+  `overrides:` block drifts from the workspace's.
+- **Audit ignore list** (`auditConfig.ignoreGhsas` in the root
+  `pnpm-workspace.yaml`) holds known false positives only. Currently
   `GHSA-7mvr-c777-76hp`: pnpm mistakes the `playwright/` workspace
   (version 0.0.1) for the npm `playwright` package; the real dependency is
   patched. `backend/src/__tests__/audit-config.test.ts` fails if an ignore

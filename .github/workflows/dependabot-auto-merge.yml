@@ -75,4 +75,18 @@ jobs:
           # check turns green. If branch protection blocks the merge,
           # `--auto` queues it — a human can land it manually after
           # the protection is satisfied.
-          gh pr merge --auto --squash "$PR_URL"
+          #
+          # GitHub refuses to *queue* auto-merge on a PR that is already
+          # mergeable ("Pull request is in clean/unstable status") — e.g.
+          # a Terraform-only bump whose required `CI gate` finished before
+          # this job ran. Required checks have passed in that state
+          # (`unstable` only means a non-required check is pending or
+          # red), so merge it now instead of failing the job.
+          if ! out=$(gh pr merge --auto --squash "$PR_URL" 2>&1); then
+            echo "$out"
+            if grep -qE 'is in (clean|unstable) status' <<<"$out"; then
+              gh pr merge --squash "$PR_URL"
+            else
+              exit 1
+            fi
+          fi
