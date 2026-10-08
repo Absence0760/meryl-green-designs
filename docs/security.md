@@ -457,6 +457,15 @@ client, Resend SDK, esbuild, vitest, etc.) ships a CVE. We pick it up via
   PRs for new advisories are opened as soon as GitHub picks them up —
   outside the weekly Dependabot cadence configured in
   `.github/dependabot.yml`.
+- **Open advisories with no upstream fix** (as of 2026-10-08):
+  `braces` GHSA-vfj7-8cjw-p6xm (high, stack exhaustion on deeply nested
+  patterns) and `sprintf-js` GHSA-hp3w-g68c-fv3c (moderate). Both have no
+  patched release, so they can't be overridden, and they aren't false
+  positives, so they stay off the ignore list. Both reach us only through
+  `studio > sanity > @sanity/cli` dev/build tooling (chokidar watch globs,
+  js-yaml's argparse), never the deployed Lambda or static site, and the
+  inputs are developer-controlled. The weekly audit issue stays open until
+  upstream ships a fix or Sanity drops the dependency.
 
 ---
 
