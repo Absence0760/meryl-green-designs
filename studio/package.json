@@ -10,11 +10,11 @@
 		"deploy": "sanity deploy"
 	},
 	"dependencies": {
-		"@sanity/ui": "^4.2.7",
-		"@sanity/vision": "^6.16.0",
+		"@sanity/ui": "^4.4.0",
+		"@sanity/vision": "^6.18.0",
 		"react": "^19.3.0",
 		"react-dom": "^19.3.0",
-		"sanity": "^6.17.0",
+		"sanity": "^6.18.0",
 		"styled-components": "^6.5.3"
 	},
 	"devDependencies": {
