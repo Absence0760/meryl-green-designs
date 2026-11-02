@@ -66,7 +66,7 @@ Zero secrets, zero copying — each workspace's committed `.env.development` (no
 
 Personal overrides and real secrets go in gitignored `<workspace>/.env.development.local` (wins key by key). `backend/.env` is no longer read. The Studio is optional and needs a real (free, personal) Sanity project ID in `studio/.env.development.local` — without it `pnpm studio dev` / `dev:all` stop with a pointer to `docs/run-locally.md § Sanity Studio (optional)`.
 
-**Maintainers (production parity / deploying):** clone the sibling private repo `Absence0760/infra-secrets` to `../infra-secrets` (KMS key `alias/meryl-green-designs-sops`, `af-south-1`; needs `kms:Decrypt` via `aws sso login --profile mgd-jaredhoward`), then `sops -d ../infra-secrets/meryl-green-designs/.env.sops > backend/.env.development.local` and add `CONTENT_BACKEND=sanity` if it isn't in there. Details: `docs/run-locally.md § Maintainers`.
+**Maintainers (production parity / deploying):** clone the sibling private repo `Absence0760/infra-secrets` to `../infra-secrets` (KMS key `alias/meryl-green-designs-sops`, `af-south-1`; needs `kms:Decrypt` via `aws sso login --profile meryl-green-designs`), then `sops -d ../infra-secrets/meryl-green-designs/.env.sops > backend/.env.development.local` and add `CONTENT_BACKEND=sanity` if it isn't in there. Details: `docs/run-locally.md § Maintainers`.
 
 `bin/setup.sh` is the **production bootstrap** (Terraform state backend, apply, GitHub Actions vars, Sanity webhook). Decrypts tfvars to a scratch file at start and shreds it on exit. Don't run it for local dev.
 

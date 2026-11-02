@@ -137,7 +137,7 @@ so credentials don't bleed across projects):
 
 ```bash
 git clone git@github.com:Absence0760/infra-secrets.git ../infra-secrets   # one-time
-aws sso login --profile mgd-jaredhoward
+aws sso login --profile meryl-green-designs
 sops ../infra-secrets/meryl-green-designs/.env.sops      # edit secrets in $EDITOR; re-encrypts on save
 sops -d ../infra-secrets/meryl-green-designs/.env.sops > backend/.env.development.local
 ```
