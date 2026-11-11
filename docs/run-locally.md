@@ -847,7 +847,7 @@ test setup files provide. The full suite runs in well under a second.
 ## Common issues
 
 **`PUBLIC_API_URL` is not defined at build time**
-: The frontend inlines `PUBLIC_API_URL` at build time via `$env/static/public`.
+: The frontend inlines `PUBLIC_API_URL` at build time (declared in `frontend/src/env.ts`, read via `$app/env/public`).
   `pnpm frontend dev` / `check` read it from the committed
   `frontend/.env.development`. A production `vite build` doesn't read that
   file and fails fast when `PUBLIC_*` isn't in the environment — use

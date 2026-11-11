@@ -664,11 +664,12 @@ with a known advisory sits in a lockfile unnoticed.
   `@sveltejs/vite-plugin-svelte` whose inputs the repo authors.
 
 **Residual risk:**
-- **Open osv findings with a fix that needs a major upgrade**, tracked in
-  `docs/roadmap.md`: `@sveltejs/kit` 2.70.3 (GHSA-27mw-82g8-phjj,
-  GHSA-pfhg-q3qv-9q6r, fixed only in 3.0.0) and `minimatch` 10.2.5
-  (GHSA-g3hv-75wg-m249, fixed in 11.0.1; reached only through the Sanity
-  CLI's `@oclif/core` 4).
+- **Open osv finding with a fix that needs a major upgrade**, tracked in
+  `docs/roadmap.md`: `minimatch` 10.2.5 (GHSA-g3hv-75wg-m249, fixed in
+  11.0.1; reached only through the Sanity CLI's `@oclif/core` 4, which the
+  latest `@sanity/cli` still uses). The two `@sveltejs/kit` 2.x advisories
+  (GHSA-27mw-82g8-phjj, GHSA-pfhg-q3qv-9q6r) closed with the SvelteKit 3
+  upgrade.
 - **Coverage gaps:** `infra/.terraform.lock.hcl` is not scanned (OSV has no
   Terraform provider data); Trivy IaC and Dependabot cover the providers.
 - Both scanners are advisory. Making zizmor block a merge means adding it,
