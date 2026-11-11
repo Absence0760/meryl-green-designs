@@ -105,7 +105,7 @@ There is **no** `relativeDate()` helper in this repo today. Pages that show date
 Two patterns exist; pick the one that matches the data:
 
 - **Static shell + client hydration** — `export const prerender = true; export const ssr = false;` Used by `/track` (the form is the shell; the lookup response hydrates client-side). New routes whose layout is the same for every visitor and just need client-side data follow this pattern.
-- **SPA dynamic route** — `export const prerender = false; export const ssr = false;` Used by `/shop/[slug]` (slugs come from Sanity and can't be enumerated at build time). Relies on the SPA-fallback (`fallback: '404.html'`) wired in `svelte.config.js` plus the CloudFront 404→200 rewrite in `infra/s3_cloudfront.tf` to resolve direct deep-link visits without leaking a 4xx status.
+- **SPA dynamic route** — `export const prerender = false; export const ssr = false;` Used by `/shop/[slug]` (slugs come from Sanity and can't be enumerated at build time). Relies on the SPA-fallback (`fallback: '404.html'`) wired in `frontend/vite.config.ts` plus the CloudFront 404→200 rewrite in `infra/s3_cloudfront.tf` to resolve direct deep-link visits without leaking a 4xx status.
 
 ### Backend interaction pattern
 
@@ -114,7 +114,7 @@ Pages that need backend data use this shape consistently:
 ```svelte
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { PUBLIC_API_URL } from '$env/static/public';
+  import { PUBLIC_API_URL } from '$app/env/public';
   const apiUrl = PUBLIC_API_URL;
   let data: Foo[] = [];
   let loading = true;

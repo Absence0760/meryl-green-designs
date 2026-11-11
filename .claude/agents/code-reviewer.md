@@ -40,7 +40,7 @@ Walk these in order. Stop when you have ~5 findings — quality over quantity.
 - **No talking to Resend or other secret-bearing services.** Backend only.
 - **`PUBLIC_*` vars only** in `frontend/.env`. They're build-time inlined; changing one requires a rebuild.
 - **`.svelte` and `.svelte.ts` rune modules can't be imported in tests.** Pure logic must live in plain `.ts` files (e.g. `cartLogic.ts` next to `cartStore.svelte.ts`) so vitest can exercise it.
-- **SPA fallback for `/shop/[slug]`.** Its `+page.ts` sets `prerender = false; ssr = false;`, `svelte.config.js` configures `fallback: '404.html'`, and CloudFront's `custom_error_response` rewrites 404/403 → `/404.html` with HTTP 200. Don't change the CloudFront mapping to a non-200 status.
+- **SPA fallback for `/shop/[slug]`.** Its `+page.ts` sets `prerender = false; ssr = false;`, adapter-static in `frontend/vite.config.ts` sets `fallback: '404.html'`, and CloudFront's `custom_error_response` rewrites 404/403 → `/404.html` with HTTP 200. Don't change the CloudFront mapping to a non-200 status.
 
 **Studio (`studio/CLAUDE.md`):**
 - **Don't add a test framework.** Schema correctness is checked by `tsc`; behaviour is checked by Meryl using the studio.

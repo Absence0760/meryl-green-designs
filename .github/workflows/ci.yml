@@ -41,7 +41,7 @@ jobs:
 
       # No env seeding needed: `svelte-kit sync` runs in development mode
       # and reads the committed frontend/.env.development, which defines
-      # every PUBLIC_* key $env/static/public exports.
+      # every PUBLIC_* key frontend/src/env.ts declares.
       - name: Typecheck all workspaces
         run: pnpm check
 
