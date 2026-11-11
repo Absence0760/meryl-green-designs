@@ -1,7 +1,13 @@
 name: Claude Code
 
+# `issue_comment` (and the other comment/review triggers) run in the
+# default-branch context with this workflow's write scopes. That is the
+# point of the workflow, and there is no safer trigger that sees an
+# @claude mention. The job runs only for the one operator named in
+# `vars.CLAUDE_AUTHORIZED_USER`, checked twice (the job `if:` and the
+# "Verify authorised actor" step), so an outside commenter starts nothing.
 on:
-  issue_comment:
+  issue_comment: # zizmor: ignore[dangerous-triggers] gated to CLAUDE_AUTHORIZED_USER; see above
     types: [created]
   pull_request_review_comment:
     types: [created]
@@ -59,6 +65,9 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          # claude-code-action configures git auth with its own token, so
+          # the credential checkout would persist is never used.
+          persist-credentials: false
 
       # Bash allowlist is deliberately tight. Broad patterns like
       # `Bash(pnpm *)` would allow `pnpm exec <arbitrary-binary>`;
@@ -67,7 +76,7 @@ jobs:
       # would allow `git push --force`. Each command below is read-only or
       # scoped to repo-local development tasks.
       - name: Run Claude Code
-        uses: anthropics/claude-code-action@61a9c274fa7110a66dfafc1bbbced03833eb25fe # v1
+        uses: anthropics/claude-code-action@61a9c274fa7110a66dfafc1bbbced03833eb25fe # v1.0.269
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
