@@ -157,6 +157,7 @@ meryl-green-designs/
         ├── audit.yml                    Weekly pnpm audit (auto-files issue)
         ├── gitleaks.yml                 Secret-scan on PR + push + weekly full-history sweep
         ├── scorecard.yml                Weekly OpenSSF Scorecard
+        ├── supply-chain-scan.yml        Advisory zizmor + osv-scanner, SARIF to code scanning
         ├── terraform.yml                fmt -check + validate + Trivy IaC on infra/** changes
         ├── dependabot-auto-merge.yml    Auto-merges minor/patch Dependabot PRs
         ├── labeler.yml                  Path-based PR labels (config in .github/labeler.yml)
@@ -578,6 +579,11 @@ CI/CD lives in `.github/workflows/`:
   sweep. Catches accidentally-committed tokens.
 - `scorecard.yml` — weekly OpenSSF Scorecard supply-chain posture
   analysis (advisory only).
+- `supply-chain-scan.yml` — zizmor (workflow + `dependabot.yml` security
+  audit) and osv-scanner (every tracked lockfile, offline database) on every
+  PR, push to `main` and weekly. Advisory only: SARIF to code scanning under
+  `zizmor` and `osv-scanner`, not part of `CI gate`. See
+  `docs/security.md` § 13.
 - `terraform.yml` — `terraform fmt -check` + `terraform validate`
   (`-backend=false`, no AWS creds) + Trivy IaC scan on every PR + push
   that touches `infra/**`.

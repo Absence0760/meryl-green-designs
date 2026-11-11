@@ -22,8 +22,17 @@ name: Dependabot auto-merge
 # so for these PRs the gate rests on typecheck + vitest. A red CI run keeps the PR queued
 # indefinitely until either a human intervenes or the PR is closed.
 
+#
+# Trigger: `pull_request`, not `pull_request_target`. GitHub runs a
+# Dependabot PR's `pull_request` workflow with the `permissions:` the job
+# declares, so the base-branch context bought nothing, while
+# `pull_request_target` is the trigger zizmor (dangerous-triggers) and
+# CodeQL flag for running with write scopes on PR-controlled refs. The
+# cost: a PR with merge conflicts gets no `pull_request` run, and such a
+# PR cannot auto-merge anyway; Dependabot rebases it and the run follows.
+
 on:
-  pull_request_target:
+  pull_request:
     branches: [main]
 
 permissions: read-all
@@ -33,16 +42,20 @@ jobs:
     name: Auto-merge minor + patch
     runs-on: ubuntu-latest
     # Pull-request author check guards against any non-dependabot
-    # PR accidentally tripping this. The fetch-metadata action below
-    # is hardened against forged commit messages from compromised
-    # branches, but a belt-and-braces author gate costs nothing.
-    if: github.actor == 'dependabot[bot]'
+    # PR accidentally tripping this. It reads the PR's author, not
+    # `github.actor`: the actor is whoever triggered this run (a human
+    # pushing to a Dependabot branch, or re-running the job), so it can
+    # claim to be Dependabot on a PR whose latest commit is not. The
+    # fetch-metadata action below is hardened against forged commit
+    # messages from compromised branches, but a belt-and-braces author
+    # gate costs nothing.
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
     timeout-minutes: 5
     permissions:
-      # `pull_request_target` runs in the base-branch context — needs
-      # explicit write grants for `gh pr review --approve` and
-      # `gh pr merge --auto`. Scoped to this job only so a future
-      # job in this workflow doesn't silently inherit them.
+      # Explicit write grants for `gh pr review --approve` and
+      # `gh pr merge --auto`; a Dependabot `pull_request` run gets
+      # exactly these. Scoped to this job only so a future job in this
+      # workflow doesn't silently inherit them.
       contents: write
       pull-requests: write
     steps:

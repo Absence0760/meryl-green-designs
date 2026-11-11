@@ -16,8 +16,9 @@ concurrency:
   group: deploy-frontend
   cancel-in-progress: false
 
+# Read-only by default. Only the deploy job, which assumes the AWS role,
+# gets `id-token: write`; the check job never needs an OIDC token.
 permissions:
-  id-token: write
   contents: read
 
 jobs:
@@ -29,6 +30,7 @@ jobs:
       - name: Checkout (full history + tags)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           fetch-depth: 0
           fetch-tags: true
 
@@ -63,6 +65,7 @@ jobs:
           fi
 
           echo "Previous release tag: $PREV_TAG"
+          # Anonymous: checkout persists no credential, and this repo is public.
           git fetch --tags --quiet
 
           CHANGED=$(git diff --name-only "$PREV_TAG..$CURRENT_TAG" -- \
@@ -85,10 +88,15 @@ jobs:
     if: needs.check.outputs.should_deploy == 'true'
     runs-on: ubuntu-latest
     environment: production
+    permissions:
+      contents: read
+      id-token: write # OIDC: assume vars.AWS_ROLE_TO_ASSUME
 
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Set up pnpm
         uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
@@ -99,7 +107,11 @@ jobs:
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
-          cache: pnpm
+          # No dependency cache in a production build: any default-branch
+          # run can write the cache, and this job ships what it restores.
+          # `pnpm install --frozen-lockfile` fetches from the registry
+          # against the lockfile's integrity hashes instead.
+          package-manager-cache: false
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -120,8 +132,10 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
 
       - name: Sync build output to S3
+        env:
+          FRONTEND_BUCKET: ${{ vars.FRONTEND_BUCKET }}
         run: |
-          aws s3 sync frontend/build/ "s3://${{ vars.FRONTEND_BUCKET }}/" \
+          aws s3 sync frontend/build/ "s3://$FRONTEND_BUCKET/" \
             --delete \
             --cache-control "public, max-age=31536000, immutable" \
             --exclude "*.html" \
@@ -129,8 +143,10 @@ jobs:
             --exclude "*.txt"
 
       - name: Sync HTML with shorter cache
+        env:
+          FRONTEND_BUCKET: ${{ vars.FRONTEND_BUCKET }}
         run: |
-          aws s3 sync frontend/build/ "s3://${{ vars.FRONTEND_BUCKET }}/" \
+          aws s3 sync frontend/build/ "s3://$FRONTEND_BUCKET/" \
             --delete \
             --cache-control "public, max-age=60, must-revalidate" \
             --exclude "*" \
@@ -139,7 +155,9 @@ jobs:
             --include "*.txt"
 
       - name: Invalidate CloudFront cache
+        env:
+          CLOUDFRONT_DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
         run: |
           aws cloudfront create-invalidation \
-            --distribution-id "${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}" \
+            --distribution-id "$CLOUDFRONT_DISTRIBUTION_ID" \
             --paths "/*"

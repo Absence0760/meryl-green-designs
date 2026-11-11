@@ -51,7 +51,9 @@ automated status emails, and the Sanity Studio with four schemas
   [`deployment.md § Secrets management`](./deployment.md#secrets-management).
 - **Supply-chain hygiene** — Dependabot grouped weekly updates,
   pnpm-lock auto-sync, conservative auto-merge for minor/patch bumps,
-  CodeQL + gitleaks + OpenSSF Scorecard on schedule.
+  CodeQL + gitleaks + OpenSSF Scorecard on schedule, and advisory
+  zizmor + osv-scanner on every PR (`supply-chain-scan.yml`,
+  [`security.md` § 13](./security.md)).
 
 ## Remaining before launch
 
@@ -242,6 +244,17 @@ traffic. Most are external, and each is documented with exact steps in
 Nice-to-haves worth doing once the site is live and Meryl has real feedback.
 None are blocking; pick the ones that match observed pain.
 
+- [ ] **SvelteKit 3.** `@sveltejs/kit` 2.70.3 carries GHSA-27mw-82g8-phjj
+      (XSS via an untrusted cache-control header in a prerendered page)
+      and GHSA-pfhg-q3qv-9q6r (open redirect via enhanced form
+      submission), both fixed only in 3.0.0; 2.x has no backport. A
+      major upgrade with `adapter-static` and `vite-plugin-svelte`;
+      osv-scanner reports both until it lands.
+- [ ] **minimatch 11 via the Sanity CLI.** `minimatch` 10.2.5
+      (GHSA-g3hv-75wg-m249, glob DoS, fixed in 11.0.1) arrives only
+      through `@oclif/core` 4 under `@sanity/cli`. Clears when Sanity
+      moves to `@oclif/core` 5 (which declares `^11.0.1`); a pnpm
+      override across the major is not worth the CLI risk.
 - [ ] Compress the hero further with a dedicated tool (mozjpeg / squoosh)
       — currently 643 KB, could realistically hit ~200 KB
 - [ ] Responsive `srcset` on shop and gallery images for better mobile
