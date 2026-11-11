@@ -45,6 +45,10 @@ This repository ships with the following defensive scaffolding (full list in
   GitHub Actions YAML on every PR + push + a weekly cron.
 - **Supply-chain posture** — `.github/workflows/scorecard.yml` runs the OpenSSF
   Scorecard weekly.
+- **Supply-chain scan** — `.github/workflows/supply-chain-scan.yml` runs zizmor
+  over the workflows and `dependabot.yml`, and osv-scanner over every lockfile,
+  on every PR + push + weekly. Advisory: findings go to code scanning, nothing
+  blocks a merge. Reviewed, expiring osv ignores live in `osv-scanner.toml`.
 - **Infra checks** — `.github/workflows/terraform.yml` runs `terraform fmt
   -check`, `terraform validate`, and Trivy IaC scanning on `infra/**` changes.
 

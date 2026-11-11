@@ -442,8 +442,10 @@ client, Resend SDK, esbuild, vitest, etc.) ships a CVE. We pick it up via
   has no documented reason or the real package drops below the patched
   version — add both there when ignoring anything new.
 - Dependabot is configured (grouped weekly updates across the pnpm
-  workspace, the GitHub Actions workflows and the Terraform providers) —
-  see the roadmap.
+  workspace, the GitHub Actions workflows and the Terraform providers,
+  each with a 7-day cooldown) — see the roadmap.
+- **osv-scanner** (`supply-chain-scan.yml`, risk 13) reads the same
+  lockfile against the OSV database on every PR and push.
 
 **Residual risk:**
 - `pnpm audit`'s vulnerability database lags GHSA/NVD by hours-to-days for
@@ -608,6 +610,71 @@ the backend's `/admin/orders/:ref` / `PATCH .../tracking` / `PATCH
   are PATCH-only on known fields, so the worst-case is operator-level
   tampering by someone who already has Studio access. Future
   hardening: validate a Sanity-issued JWT instead of a static bearer.
+
+---
+
+### 13. CI workflow and supply-chain compromise
+
+| | |
+|---|---|
+| **Likelihood** | low |
+| **Impact** | high (the deploy jobs hold the AWS OIDC role and the Sanity token) |
+
+**What could happen:** A workflow is tricked into running attacker input
+with a write token (template injection, a `pull_request_target` checkout of
+PR code, a spoofed bot check), a poisoned cache is restored into a
+production build, a persisted checkout credential leaks, or a dependency
+with a known advisory sits in a lockfile unnoticed.
+
+**Current mitigations:**
+- **`supply-chain-scan.yml`**, advisory, on every PR + push to `main` +
+  Mondays 06:17 UTC. **zizmor** 1.31.1 audits `.github/workflows` and
+  `dependabot.yml`; **osv-scanner** 2.7.0 scans every tracked lockfile.
+  Both upload SARIF to code scanning (tools `zizmor`, `osv-scanner`) and
+  write a job summary; neither fails on a finding and neither is in
+  `CI gate`. zizmor-action is pinned by SHA and installs zizmor by hash;
+  osv-scanner is the release binary checked against a pinned sha256.
+  **Data flow:** osv-scanner runs `--offline-vulnerabilities`, downloading
+  the public OSV database and sending no package list anywhere; zizmor's
+  online audits call only the GitHub API with the run's token.
+- **The baseline was fixed at the root (2026-11-11).** zizmor 1.31.1
+  `--offline`, default persona: 30 findings (9 high, 17 medium, 4
+  informational) became 0, with 2 inline waivers. What changed:
+  - The deploy workflows grant `id-token: write` to the deploy job only,
+    and their builds restore no dependency cache
+    (`package-manager-cache: false`).
+  - `audit.yml`'s `pnpm install` job is read-only; a separate `report` job
+    that runs no repository code holds `issues: write`.
+  - `dependabot-auto-merge.yml` runs on `pull_request`, not
+    `pull_request_target`, and gates on
+    `github.event.pull_request.user.login`, not the spoofable
+    `github.actor`.
+  - Every checkout sets `persist-credentials: false`; vars reach deploy
+    `run:` scripts through `env:`; pin comments name the exact release.
+  - Every Dependabot ecosystem has a 7-day `cooldown`.
+- **Waived inline, with the reason in the workflow:** `pr-title-lint.yml`
+  keeps `pull_request_target` (a conflicting PR gets no `pull_request` run;
+  the job checks out nothing and holds a read-only token) and `claude.yml`
+  keeps `issue_comment` (no alternative trigger; runs only for
+  `vars.CLAUDE_AUTHORIZED_USER`).
+- **osv-scanner ignores** live in the root `osv-scanner.toml`, one advisory
+  ID per entry, each with a reason and an `ignoreUntil` six months out. Only
+  an advisory with no patched release is ignored. Today that is
+  `deepmerge` 4.3.1 (GHSA-gcqx-w48m-w2h4), a build-time dependency of
+  `@sveltejs/vite-plugin-svelte` whose inputs the repo authors.
+
+**Residual risk:**
+- **Open osv findings with a fix that needs a major upgrade**, tracked in
+  `docs/roadmap.md`: `@sveltejs/kit` 2.70.3 (GHSA-27mw-82g8-phjj,
+  GHSA-pfhg-q3qv-9q6r, fixed only in 3.0.0) and `minimatch` 10.2.5
+  (GHSA-g3hv-75wg-m249, fixed in 11.0.1; reached only through the Sanity
+  CLI's `@oclif/core` 4).
+- **Coverage gaps:** `infra/.terraform.lock.hcl` is not scanned (OSV has no
+  Terraform provider data); Trivy IaC and Dependabot cover the providers.
+- Both scanners are advisory. Making zizmor block a merge means adding it,
+  beside CodeQL, to a code-scanning merge rule; `main` is protected by
+  classic branch protection today and has no ruleset, so that is a new
+  ruleset, and a CISO / Security Analyst sign-off.
 
 ---
 
