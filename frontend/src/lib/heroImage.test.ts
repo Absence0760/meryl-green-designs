@@ -22,9 +22,10 @@ describe('heroSrcset', () => {
 		);
 	});
 
-	it('prefixes the SvelteKit base path', () => {
-		expect(heroSrcset('/preview')).toContain('/preview/two_trees-800.webp 800w');
-		expect(heroFallbackSrc('/preview')).toBe('/preview/two_trees.JPG');
+	it('resolves each file through the given asset() (SvelteKit base path)', () => {
+		const preview = (file: string) => `/preview/${file}`;
+		expect(heroSrcset(preview)).toContain('/preview/two_trees-800.webp 800w');
+		expect(heroFallbackSrc(preview)).toBe('/preview/two_trees.JPG');
 	});
 });
 
@@ -48,7 +49,9 @@ describe('heroPortraitSrcset', () => {
 		expect(heroPortraitSrcset()).toBe(
 			'/two_trees-portrait-480.webp 480w, /two_trees-portrait-720.webp 720w, /two_trees-portrait-936.webp 936w'
 		);
-		expect(heroPortraitSrcset('/preview')).toContain('/preview/two_trees-portrait-480.webp 480w');
+		expect(heroPortraitSrcset((file) => `/preview/${file}`)).toContain(
+			'/preview/two_trees-portrait-480.webp 480w'
+		);
 	});
 
 	it('pairs the portrait media query with its exact negation for the preloads', () => {

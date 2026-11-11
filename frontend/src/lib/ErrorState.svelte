@@ -5,7 +5,7 @@
 -->
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { base } from '$app/paths';
+	import { asset } from '$app/paths';
 
 	let {
 		eyebrow,
@@ -21,7 +21,7 @@
 </script>
 
 <div class="error-state">
-	<img class="error-state__mark" src="{base}/logo.svg" alt="" width="104" height="104" />
+	<img class="error-state__mark" src={asset('logo.svg')} alt="" width="104" height="104" />
 	{#if eyebrow}
 		<p class="eyebrow">{eyebrow}</p>
 	{/if}

@@ -55,7 +55,7 @@ Terraform creates, workflows update. Resource breakdown:
 ### SPA fallback for dynamic routes
 
 The frontend uses `@sveltejs/adapter-static` with `fallback: '404.html'`
-configured in `frontend/svelte.config.js`. The build produces a `404.html`
+configured in `frontend/vite.config.ts` (the `sveltekit()` options). The build produces a `404.html`
 page that contains the SPA shell — when a user visits a client-only
 dynamic route like `/shop/[slug]` directly, it boots, reads the URL, and
 renders the correct product page.

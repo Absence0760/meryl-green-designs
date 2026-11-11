@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { base } from '$app/paths';
-	import { PUBLIC_API_URL } from '$env/static/public';
-	import PayFastRedirecting from '$lib/PayFastRedirecting.svelte';
-	import Button from '$lib/Button.svelte';
+	import { resolve } from '$app/paths';
+	import { PUBLIC_API_URL } from '$app/env/public';
+	import PayFastRedirecting from '#lib/PayFastRedirecting.svelte';
+	import Button from '#lib/Button.svelte';
 
 	const apiUrl = PUBLIC_API_URL;
 
@@ -150,7 +150,7 @@
 
 		{#if !redirecting}
 			<div class="actions">
-				<Button href="{base}/shop#order" variant="outlined">Return to the shop</Button>
+				<Button href={resolve('/shop#order')} variant="outlined">Return to the shop</Button>
 			</div>
 		{/if}
 	</div>

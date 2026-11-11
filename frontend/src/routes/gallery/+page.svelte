@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { PUBLIC_API_URL } from '$env/static/public';
-	import { imageUrl, type GalleryPhoto } from '$lib/sanity';
-	import Button from '$lib/Button.svelte';
-	import { focusTrap } from '$lib/focusTrap';
+	import { PUBLIC_API_URL } from '$app/env/public';
+	import { imageUrl, type GalleryPhoto } from '#lib/sanity.ts';
+	import Button from '#lib/Button.svelte';
+	import { focusTrap } from '#lib/focusTrap.ts';
 
 	const apiUrl = PUBLIC_API_URL;
 

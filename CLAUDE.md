@@ -6,11 +6,11 @@ Repo-wide guidance. Loads into every Claude Code session — keep short. Per-wor
 
 Meryl Green Designs — website for a small South African studio selling handcrafted screens. Static brochure + gallery + shop, payments via PayFast (cards, Apple Pay, SnapScan — redirect model, no card data on our servers), Sanity CMS for content.
 
-## Workspaces (pnpm monorepo, Node ≥22.12 — Sanity Studio v6 requires it)
+## Workspaces (pnpm monorepo, Node ≥22.17 — SvelteKit 3 requires it, Sanity Studio v6 ≥22.12)
 
 | Path | What | Dev port | Per-workspace guide |
 |---|---|---|---|
-| `frontend/` | SvelteKit 2 (Svelte 5) static site | 7777 | `frontend/CLAUDE.md` |
+| `frontend/` | SvelteKit 3 (Svelte 5) static site | 7777 | `frontend/CLAUDE.md` |
 | `backend/` | Hono on Lambda + local Node | 3001 | `backend/CLAUDE.md` |
 | `studio/` | Sanity Studio (React 19) | 3333 | `studio/CLAUDE.md` |
 | `infra/` | Terraform (AWS + GitHub OIDC) | — | `infra/CLAUDE.md` |

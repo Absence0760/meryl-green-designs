@@ -1,15 +1,15 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
-	import { PUBLIC_API_URL } from '$env/static/public';
-	import type { Product } from '$lib/sanity';
-	import { groupProductsByCategory } from '$lib/productGroups';
-	import { CUSHION_MATERIALS, LEAD_TIME, SCREEN_MATERIALS } from '$lib/productSpecs';
-	import { cart } from '$lib/cartStore.svelte';
-	import Button from '$lib/Button.svelte';
-	import ProductCard from '$lib/ProductCard.svelte';
-	import { reveal } from '$lib/reveal';
-	import { createAddedFlash } from '$lib/addedFlash';
-	import AddToOrderLabel from '$lib/AddToOrderLabel.svelte';
+	import { PUBLIC_API_URL } from '$app/env/public';
+	import type { Product } from '#lib/sanity.ts';
+	import { groupProductsByCategory } from '#lib/productGroups.ts';
+	import { CUSHION_MATERIALS, LEAD_TIME, SCREEN_MATERIALS } from '#lib/productSpecs.ts';
+	import { cart } from '#lib/cartStore.svelte.ts';
+	import Button from '#lib/Button.svelte';
+	import ProductCard from '#lib/ProductCard.svelte';
+	import { reveal } from '#lib/reveal.ts';
+	import { createAddedFlash } from '#lib/addedFlash.ts';
+	import AddToOrderLabel from '#lib/AddToOrderLabel.svelte';
 
 	const apiUrl = PUBLIC_API_URL;
 

@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { PUBLIC_API_URL } from '$env/static/public';
+	import { PUBLIC_API_URL } from '$app/env/public';
 	import { page } from '$app/state';
-	import { base } from '$app/paths';
-	import Button from '$lib/Button.svelte';
-	import { imageUrl, type Product } from '$lib/sanity';
-	import { heroSrc } from '$lib/heroImage';
+	import { asset } from '$app/paths';
+	import Button from '#lib/Button.svelte';
+	import { imageUrl, type Product } from '#lib/sanity.ts';
+	import { heroSrc } from '#lib/heroImage.ts';
 	import {
 		INTEREST_OPTIONS,
 		enquiryChoiceFields,
@@ -13,7 +13,7 @@
 		pickContactPhoto,
 		productEnquiryPrefill,
 		type EnquiryInterest
-	} from '$lib/enquiryForm';
+	} from '#lib/enquiryForm.ts';
 
 	const apiUrl = PUBLIC_API_URL;
 
@@ -30,7 +30,7 @@
 	// photograph until then (or if the fetch fails / returns nothing usable).
 	$: picked = pickContactPhoto(products, asked?.product ?? null);
 	$: pickedSrc = picked ? imageUrl(picked.photo, 900) : null;
-	$: asideSrc = pickedSrc || heroSrc(1280, base);
+	$: asideSrc = pickedSrc || heroSrc(1280, asset);
 	$: asideAlt =
 		picked && pickedSrc
 			? (picked.photo.alt ?? picked.product.name)

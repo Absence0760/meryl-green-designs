@@ -4,11 +4,11 @@
 	only — hidden from assistive tech.
 -->
 <script lang="ts">
-	import { base } from '$app/paths';
+	import { asset } from '$app/paths';
 </script>
 
 <div class="divider" aria-hidden="true">
-	<img src="{base}/graphics/acacia-divider.svg" alt="" width="220" height="37" />
+	<img src={asset('graphics/acacia-divider.svg')} alt="" width="220" height="37" />
 </div>
 
 <style>

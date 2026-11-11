@@ -45,12 +45,12 @@ meryl-green-designs/
 ├── docs/                     Architecture, features, roadmap, run-locally, deployment
 ├── frontend/
 │   ├── package.json
-│   ├── svelte.config.js
-│   ├── vite.config.ts
+│   ├── vite.config.ts        Kit + adapter config (`sveltekit({...})`; Kit 3 has no svelte.config.js)
 │   ├── .env.development      Committed local-dev defaults (PUBLIC_API_URL, PUBLIC_SANITY_*)
 │   └── src/
 │       ├── app.css           Base styles + theme tokens
 │       ├── app.html
+│       ├── env.ts            Declares the PUBLIC_* vars (Kit 3 `defineEnvVars`; read via `$app/env/public`)
 │       ├── lib/
 │       │   ├── sanity.ts            Product / GalleryPhoto / Testimonial types, image URL builder, price formatter
 │       │   ├── Button.svelte        Shared button (4 variants × 2 sizes), renders <button> or <a>
@@ -167,7 +167,7 @@ meryl-green-designs/
 
 ## Frontend
 
-SvelteKit with `adapter-static`. Most routes have `prerender = true` (set in
+SvelteKit 3 with `adapter-static`. Most routes have `prerender = true` (set in
 `+layout.ts`), so the build emits one real `.html` file per route:
 
 ```
@@ -185,7 +185,7 @@ build/
 This is the directory that uploads to S3. CloudFront sits in front for caching and
 TLS termination. No server-side rendering, no runtime, no Node process.
 
-`kit.inlineStyleThreshold: 16384` in `svelte.config.js` inlines each route's
+`inlineStyleThreshold: 16384` in the `sveltekit()` options (`vite.config.ts`) inlines each route's
 stylesheets (all under 16 KB) into its prerendered HTML as `<style>`, so first
 paint waits on no CSS requests. SvelteKit rewrites the `url()`s (fonts, linen
 texture) relative to each page, and client-side navigation still loads the
@@ -206,7 +206,7 @@ the HTTP status is 200, the robots meta is what keeps it out of indexes.
 
 The shop page includes client-side JavaScript that submits the order form to the
 backend via `fetch`. The backend URL is baked into the bundle at build time from
-`PUBLIC_API_URL` via `$env/static/public`. There is no runtime environment resolution
+`PUBLIC_API_URL`, declared `public` + `static` in `src/env.ts` and imported from `$app/env/public`. There is no runtime environment resolution
 on the frontend — rebuilding is required to change the backend URL.
 
 Product and gallery data are fetched at **runtime** by the browser, not at

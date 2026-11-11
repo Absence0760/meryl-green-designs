@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { PUBLIC_API_URL } from '$env/static/public';
+	import { PUBLIC_API_URL } from '$app/env/public';
 	import { onMount } from 'svelte';
-	import Button from '$lib/Button.svelte';
-	import PayFastRedirecting from '$lib/PayFastRedirecting.svelte';
-	import { safeHttpUrl } from '$lib/safeHttpUrl';
+	import Button from '#lib/Button.svelte';
+	import PayFastRedirecting from '#lib/PayFastRedirecting.svelte';
+	import { safeHttpUrl } from '#lib/safeHttpUrl.ts';
 
 	type Shipping = {
 		carrier: string | null;

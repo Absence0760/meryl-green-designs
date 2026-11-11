@@ -27,7 +27,7 @@ This repo uses SOPS-encrypted `*.sops` files for secrets at rest. The trust boun
    - Run `git log --all --full-history -- frontend/.env studio/.env frontend/.env.development.local studio/.env.development.local` to confirm none has ever been committed.
 
 4. **Client-bundle leakage (frontend).**
-   - SvelteKit env vars are split: `$env/static/public` is inlined into the client bundle, `$env/static/private` is server-only. Per `frontend/CLAUDE.md`, the frontend stays static — there's no `$env/dynamic/private` anywhere; if it appears, that's a Critical because it implies an SSR adapter was added.
+   - SvelteKit 3 env vars are declared in `frontend/src/env.ts`: `public: true` ones (imported from `$app/env/public`) reach the client bundle, the rest (`$app/env/private`) are server-only. A secret declared `public` there is a Critical. Per `frontend/CLAUDE.md`, the frontend stays static — there's no `$env/dynamic/private` anywhere; if it appears, that's a Critical because it implies an SSR adapter was added.
    - Grep `frontend/src/` for `$env/static/private`, `$env/dynamic`. Every hit is a finding.
    - Grep `frontend/src/` for raw `process.env` references. SvelteKit's static build doesn't expose `process.env` to the client — any reference is either dead code or a bug.
 

@@ -1,10 +1,14 @@
 # frontend/
 
-SvelteKit 2 (Svelte 5 runes) static site for Meryl Green Designs. Dev port `7777`.
+SvelteKit 3 (Svelte 5 runes) static site for Meryl Green Designs. Dev port `7777`.
 
 ## Stack
 
-- SvelteKit 2 + Svelte 5 (runes), `@sveltejs/adapter-static`, Vite, TypeScript
+- SvelteKit 3 + Svelte 5 (runes), `@sveltejs/adapter-static`, Vite, TypeScript 6
+- Kit config lives in `vite.config.ts` as `sveltekit({...})` options — there is no `svelte.config.js`.
+- `src/lib/` is imported as `#lib/<file>.<ext>` (package.json `imports`); the extension is required and `$lib` no longer exists.
+- Public env vars are declared in `src/env.ts` (`defineEnvVars`, all `public` + `static`) and imported from `$app/env/public`. Kit 3 publishes nothing by `PUBLIC_` prefix alone: a new variable must be added there (`src/env.test.ts` fails otherwise).
+- Static files: `asset('logo.svg')`; internal links: `resolve('/shop')` (both from `$app/paths`; `base` is gone). Page state comes from `$app/state` (`$app/stores` is gone) — legacy `$:` statements don't track it, so copy values in `afterNavigate` or read them in the template.
 - vitest (Node env, no svelte plugin in the test runtime)
 - Sanity image URL builder (`@sanity/image-url`) — image URLs only, never document queries
 
@@ -19,8 +23,8 @@ pnpm frontend test    # vitest run
 
 ## Hard rules
 
-- **Stay static.** No SSR adapter, no server-side load functions, no `$env/dynamic/private`. The S3 + CloudFront deploy depends on this.
-- **No direct Sanity document queries from the frontend.** The dataset is private; the backend brokers all reads. The frontend uses Sanity only to build image URLs from the public asset CDN with the project ID baked in via `$env/static/public`.
+- **Stay static.** No SSR adapter, no server-side load functions, no private (non-`public`) or non-`static` variables in `src/env.ts`. The S3 + CloudFront deploy depends on this.
+- **No direct Sanity document queries from the frontend.** The dataset is private; the backend brokers all reads. The frontend uses Sanity only to build image URLs from the public asset CDN with the project ID baked in via `$app/env/public`.
 - **No talking to Resend or other secret-bearing services.** Backend only.
 - **`PUBLIC_*` vars only** in `frontend/.env.development` (committed, non-sensitive local defaults — loaded by `vite dev` and `svelte-kit sync`/`pnpm check`) and the gitignored `frontend/.env.development.local` (overrides). They're build-time inlined, so changing one requires a rebuild. A production `vite build` doesn't read `.env.development`; `vite.config.ts` fails it early (via `src/lib/build-env.ts`) unless `PUBLIC_API_URL` / `PUBLIC_SITE_URL` / `PUBLIC_SANITY_PROJECT_ID` are in the environment, which deploy-frontend.yml provides.
 
@@ -29,7 +33,7 @@ pnpm frontend test    # vitest run
 `vitest.config.ts` is intentionally separate from `vite.config.ts`: pulling in `@sveltejs/vite-plugin-svelte` conflicts with vitest's bundled Vite, and SvelteKit's own dev-server lifecycle isn't needed at test time. Consequences:
 
 - `.svelte` and `.svelte.ts` rune modules **can't be imported** in tests. Wrap testable logic in plain `.ts` files (e.g. `cartLogic.ts` next to `cartStore.svelte.ts`) and test those.
-- SvelteKit virtual modules like `$env/static/public` need `vi.mock()`.
+- SvelteKit virtual modules like `$app/env/public` need `vi.mock()`.
 
 Tests live alongside source under `src/` matching `**/*.test.ts`.
 
@@ -89,7 +93,7 @@ Full design + threat model: `docs/payment-retry.md`.
 
 ## SPA fallback for dynamic routes
 
-`/shop/[slug]` can't be enumerated at build time (slugs come from Sanity). Its `+page.ts` sets `prerender = false; ssr = false;` and `svelte.config.js` configures `fallback: '404.html'`. CloudFront's custom error response (in `infra/s3_cloudfront.tf`) rewrites 404/403 to `/404.html` with HTTP 200 so direct visits resolve without leaking a 4xx status.
+`/shop/[slug]` can't be enumerated at build time (slugs come from Sanity). Its `+page.ts` sets `prerender = false; ssr = false;` and `vite.config.ts` configures adapter-static with `fallback: '404.html'`. CloudFront's custom error response (in `infra/s3_cloudfront.tf`) rewrites 404/403 to `/404.html` with HTTP 200 so direct visits resolve without leaking a 4xx status.
 
 If you add another dynamic route, follow the same pattern. Don't change the CloudFront error mapping to a non-200 status.
 

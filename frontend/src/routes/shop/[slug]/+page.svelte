@@ -1,22 +1,20 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
-	// The store, not `$app/state`: this is a legacy (non-runes) component,
-	// and `$:` statements don't re-run when a `$app/state` value changes —
-	// product → product navigation left the old product on screen.
-	import { page } from '$app/stores';
-	import { PUBLIC_API_URL, PUBLIC_SITE_URL } from '$env/static/public';
-	import { formatPrice, imageUrl, type Product } from '$lib/sanity';
-	import { isScreen, pickRelatedProducts } from '$lib/productGroups';
-	import { CUSHION_MATERIALS, LEAD_TIME, SCREEN_MATERIALS } from '$lib/productSpecs';
-	import { productEnquiryHref } from '$lib/enquiryForm';
-	import { createAddedFlash } from '$lib/addedFlash';
-	import AddToOrderLabel from '$lib/AddToOrderLabel.svelte';
-	import ProductCard from '$lib/ProductCard.svelte';
-	import { reveal } from '$lib/reveal';
-	import { productStructuredData } from '$lib/productJsonLd';
-	import { cart } from '$lib/cartStore.svelte';
-	import Button from '$lib/Button.svelte';
-	import ErrorState from '$lib/ErrorState.svelte';
+	import { afterNavigate } from '$app/navigation';
+	import { page } from '$app/state';
+	import { PUBLIC_API_URL, PUBLIC_SITE_URL } from '$app/env/public';
+	import { formatPrice, imageUrl, type Product } from '#lib/sanity.ts';
+	import { isScreen, pickRelatedProducts } from '#lib/productGroups.ts';
+	import { CUSHION_MATERIALS, LEAD_TIME, SCREEN_MATERIALS } from '#lib/productSpecs.ts';
+	import { productEnquiryHref } from '#lib/enquiryForm.ts';
+	import { createAddedFlash } from '#lib/addedFlash.ts';
+	import AddToOrderLabel from '#lib/AddToOrderLabel.svelte';
+	import ProductCard from '#lib/ProductCard.svelte';
+	import { reveal } from '#lib/reveal.ts';
+	import { productStructuredData } from '#lib/productJsonLd.ts';
+	import { cart } from '#lib/cartStore.svelte.ts';
+	import Button from '#lib/Button.svelte';
+	import ErrorState from '#lib/ErrorState.svelte';
 
 	const apiUrl = PUBLIC_API_URL;
 
@@ -26,7 +24,15 @@
 	let error: string | null = null;
 	let activePhotoIndex = 0;
 
-	$: slug = $page.params.slug ?? '';
+	// This is a legacy (non-runes) component: `$:` statements don't re-run
+	// when a `$app/state` value changes, and Kit 3 removed `$app/stores`.
+	// So copy the slug into local state after every navigation — product →
+	// product navigation reuses this component, and reading `page` only once
+	// left the old product on screen.
+	let slug = page.params.slug ?? '';
+	afterNavigate(() => {
+		slug = page.params.slug ?? '';
+	});
 	$: screen = product ? isScreen(product) : false;
 	$: materials = screen ? SCREEN_MATERIALS : CUSHION_MATERIALS;
 	$: fallbackDescription = product

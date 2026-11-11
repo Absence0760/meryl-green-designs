@@ -79,8 +79,8 @@
 	text change.
 -->
 <script lang="ts">
-	import LegalToc from '$lib/LegalToc.svelte';
-	import { buildToc } from '$lib/headingSlug';
+	import LegalToc from '#lib/LegalToc.svelte';
+	import { buildToc } from '#lib/headingSlug.ts';
 
 	const lastUpdated = '26 September 2026';
 

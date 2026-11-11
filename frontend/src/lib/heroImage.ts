@@ -11,16 +11,27 @@ export const HERO_WIDTHS = [800, 1280, 1920] as const;
 // 72vh × 1.54 (the photo's aspect ratio) ≈ 111vh.
 export const HERO_SIZES = '(orientation: portrait) 111vh, 100vw';
 
-export function heroFallbackSrc(base = ''): string {
-	return `${base}/two_trees.JPG`;
+// `asset` is `$app/paths`' asset() in components (it adds the base path);
+// the default keeps the helpers usable from plain tests. Typed on the hero
+// file names so Kit's asset(), which only accepts files under static/,
+// is assignable — a renamed or missing hero file fails `pnpm check`.
+export type HeroFile =
+	| 'two_trees.JPG'
+	| `two_trees-${(typeof HERO_WIDTHS)[number]}.webp`
+	| `two_trees-portrait-${(typeof HERO_PORTRAIT_WIDTHS)[number]}.webp`;
+export type AssetResolver = (file: HeroFile) => string;
+const rootAsset: AssetResolver = (file) => `/${file}`;
+
+export function heroFallbackSrc(asset: AssetResolver = rootAsset): string {
+	return asset('two_trees.JPG');
 }
 
-export function heroSrc(width: (typeof HERO_WIDTHS)[number], base = ''): string {
-	return `${base}/two_trees-${width}.webp`;
+export function heroSrc(width: (typeof HERO_WIDTHS)[number], asset: AssetResolver = rootAsset): string {
+	return asset(`two_trees-${width}.webp`);
 }
 
-export function heroSrcset(base = ''): string {
-	return HERO_WIDTHS.map((w) => `${heroSrc(w, base)} ${w}w`).join(', ');
+export function heroSrcset(asset: AssetResolver = rootAsset): string {
+	return HERO_WIDTHS.map((w) => `${heroSrc(w, asset)} ${w}w`).join(', ');
 }
 
 // Phones. On a tall portrait screen `cover` shows only the middle ~45% of
@@ -42,10 +53,13 @@ export const HERO_LANDSCAPE_MEDIA = 'not all and (max-aspect-ratio: 27/50)';
 // Rendered width = hero height (72vh) x 0.75.
 export const HERO_PORTRAIT_SIZES = '54vh';
 
-export function heroPortraitSrc(width: (typeof HERO_PORTRAIT_WIDTHS)[number], base = ''): string {
-	return `${base}/two_trees-portrait-${width}.webp`;
+export function heroPortraitSrc(
+	width: (typeof HERO_PORTRAIT_WIDTHS)[number],
+	asset: AssetResolver = rootAsset
+): string {
+	return asset(`two_trees-portrait-${width}.webp`);
 }
 
-export function heroPortraitSrcset(base = ''): string {
-	return HERO_PORTRAIT_WIDTHS.map((w) => `${heroPortraitSrc(w, base)} ${w}w`).join(', ');
+export function heroPortraitSrcset(asset: AssetResolver = rootAsset): string {
+	return HERO_PORTRAIT_WIDTHS.map((w) => `${heroPortraitSrc(w, asset)} ${w}w`).join(', ');
 }

@@ -11,7 +11,7 @@
 	lose a sliver top and bottom instead, which reads fine.
 -->
 <script lang="ts">
-	import { formatPrice, imageUrl, type Product } from '$lib/sanity';
+	import { formatPrice, imageUrl, type Product } from '#lib/sanity.ts';
 
 	export let product: Product;
 	/** Requested image width in px. Cards render at ~260–360px, so 640 covers 2x DPR. */

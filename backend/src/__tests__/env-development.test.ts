@@ -82,7 +82,7 @@ describe('committed .env.development files', () => {
 		expect(files.studio.SANITY_STUDIO_ADMIN_TOKEN).toBe(files.backend.ADMIN_API_TOKEN);
 	});
 
-	it('frontend: defines every PUBLIC_* key $env/static/public imports', () => {
+	it('frontend: defines every PUBLIC_* key frontend/src/env.ts declares', () => {
 		for (const key of [
 			'PUBLIC_API_URL',
 			'PUBLIC_SITE_URL',

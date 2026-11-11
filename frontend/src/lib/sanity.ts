@@ -3,7 +3,7 @@ import {
 	PUBLIC_API_URL,
 	PUBLIC_SANITY_PROJECT_ID,
 	PUBLIC_SANITY_DATASET
-} from '$env/static/public';
+} from '$app/env/public';
 
 type SanityHotspot = { x: number; y: number; height: number; width: number };
 type SanityCrop = { top: number; bottom: number; left: number; right: number };

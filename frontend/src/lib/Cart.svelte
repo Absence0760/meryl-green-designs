@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { cart } from './cartStore.svelte';
 	import { formatPrice } from './sanity';
-	import { PUBLIC_API_URL } from '$env/static/public';
+	import { PUBLIC_API_URL } from '$app/env/public';
 	import PayFastRedirecting from './PayFastRedirecting.svelte';
 	import Button from './Button.svelte';
 	import { focusTrap } from './focusTrap';
