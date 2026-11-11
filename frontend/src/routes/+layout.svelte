@@ -1,16 +1,13 @@
 <script lang="ts">
 	import '../app.css';
-	import { base } from '$app/paths';
+	import { asset } from '$app/paths';
 	import { page } from '$app/state';
-	// `$:` statements in this legacy component don't track `$app/state`, so
-	// the canonical URL reads the store to stay current on client-side nav.
-	import { page as pageStore } from '$app/stores';
-	import { PUBLIC_SITE_URL } from '$env/static/public';
-	import Cart from '$lib/Cart.svelte';
-	import { cart } from '$lib/cartStore.svelte';
-	import { cartButtonLabel, cartStatusText } from '$lib/cartLogic';
-	import { jsonLdScript } from '$lib/jsonLd';
-	import { isNavActive } from '$lib/navActive';
+	import { PUBLIC_SITE_URL } from '$app/env/public';
+	import Cart from '#lib/Cart.svelte';
+	import { cart } from '#lib/cartStore.svelte.ts';
+	import { cartButtonLabel, cartStatusText } from '#lib/cartLogic.ts';
+	import { jsonLdScript } from '#lib/jsonLd.ts';
+	import { isNavActive } from '#lib/navActive.ts';
 
 	const nav = [
 		{ href: '/', label: 'Home' },
@@ -21,7 +18,6 @@
 
 	const siteUrl = PUBLIC_SITE_URL?.replace(/\/$/, '') ?? '';
 	const ogImage = `${siteUrl}/two_trees.JPG`;
-	$: canonicalUrl = `${siteUrl}${$pageStore.url.pathname}`;
 
 	// Organization JSON-LD. Included site-wide because automated domain
 	// classifiers (Google Safe Browsing, Cloudflare Gateway, AV reputation
@@ -88,7 +84,7 @@
 	<meta property="og:type" content="website" />
 	<meta property="og:site_name" content="Meryl Green Designs" />
 	<meta property="og:image" content={ogImage} />
-	<meta property="og:url" content={canonicalUrl} />
+	<meta property="og:url" content="{siteUrl}{page.url.pathname}" />
 
 	<meta name="twitter:card" content="summary_large_image" />
 	<meta name="twitter:image" content={ogImage} />
@@ -120,7 +116,7 @@
 		     label-in-name). The space before "Designs" is invisible in the
 		     flex column but keeps the words apart for assistive tech. -->
 		<a class="brand" href="/">
-			<img class="brand-mark" src="{base}/logo.svg" alt="" width="40" height="40" />
+			<img class="brand-mark" src={asset('logo.svg')} alt="" width="40" height="40" />
 			<span class="brand-word">Meryl Green<span class="brand-sub"> Designs</span></span>
 		</a>
 
@@ -210,7 +206,7 @@
      the green footer grows out of. Decorative; `slice` keeps the trees
      undistorted and crops the scene's edges on narrow screens. -->
 <div class="footer-skyline" aria-hidden="true">
-	<img src="{base}/graphics/bushveld-skyline.svg" alt="" />
+	<img src={asset('graphics/bushveld-skyline.svg')} alt="" />
 </div>
 <footer class="site-footer">
 	<div class="container">

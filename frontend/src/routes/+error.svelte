@@ -7,9 +7,9 @@
 -->
 <script lang="ts">
 	import { page } from '$app/state';
-	import Button from '$lib/Button.svelte';
-	import ErrorState from '$lib/ErrorState.svelte';
-	import { errorCopy } from '$lib/errorPage';
+	import Button from '#lib/Button.svelte';
+	import ErrorState from '#lib/ErrorState.svelte';
+	import { errorCopy } from '#lib/errorPage.ts';
 
 	const copy = $derived(errorCopy(page.status));
 

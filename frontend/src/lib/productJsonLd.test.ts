@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Product } from './sanity';
 
-vi.mock('$env/static/public', () => ({
+vi.mock('$app/env/public', () => ({
 	PUBLIC_API_URL: 'http://localhost:3001',
 	PUBLIC_SANITY_PROJECT_ID: 'testproj',
 	PUBLIC_SANITY_DATASET: 'production'

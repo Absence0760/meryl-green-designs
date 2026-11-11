@@ -118,8 +118,8 @@
 	Update the "Last updated" date whenever the policy text changes.
 -->
 <script lang="ts">
-	import LegalToc from '$lib/LegalToc.svelte';
-	import { buildToc } from '$lib/headingSlug';
+	import LegalToc from '#lib/LegalToc.svelte';
+	import { buildToc } from '#lib/headingSlug.ts';
 
 	const lastUpdated = '27 September 2026';
 

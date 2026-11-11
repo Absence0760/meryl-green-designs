@@ -1,5 +1,5 @@
-import { PUBLIC_API_URL, PUBLIC_SITE_URL } from '$env/static/public';
-import { STATIC_ROUTES, buildSitemapXml, fetchProductPaths } from '$lib/sitemap';
+import { PUBLIC_API_URL, PUBLIC_SITE_URL } from '$app/env/public';
+import { STATIC_ROUTES, buildSitemapXml, fetchProductPaths } from '#lib/sitemap.ts';
 
 // Prerendered at build time. Product URLs are fetched from the backend
 // then; a failed fetch logs a warning and emits the static pages only

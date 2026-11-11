@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { base } from '$app/paths';
-	import { PUBLIC_API_URL } from '$env/static/public';
-	import { imageUrl, type GalleryPhoto, type Product, type Testimonial } from '$lib/sanity';
-	import { pickFeaturedProducts } from '$lib/productGroups';
+	import { asset } from '$app/paths';
+	import { PUBLIC_API_URL } from '$app/env/public';
+	import { imageUrl, type GalleryPhoto, type Product, type Testimonial } from '#lib/sanity.ts';
+	import { pickFeaturedProducts } from '#lib/productGroups.ts';
 	import {
 		HERO_LANDSCAPE_MEDIA,
 		HERO_PORTRAIT_MEDIA,
@@ -12,16 +12,16 @@
 		heroFallbackSrc,
 		heroPortraitSrcset,
 		heroSrcset
-	} from '$lib/heroImage';
-	import Button from '$lib/Button.svelte';
-	import ProductCard from '$lib/ProductCard.svelte';
-	import SectionDivider from '$lib/SectionDivider.svelte';
-	import { reveal } from '$lib/reveal';
-	import { ORDERING_STEPS } from '$lib/orderingSteps';
+	} from '#lib/heroImage.ts';
+	import Button from '#lib/Button.svelte';
+	import ProductCard from '#lib/ProductCard.svelte';
+	import SectionDivider from '#lib/SectionDivider.svelte';
+	import { reveal } from '#lib/reveal.ts';
+	import { ORDERING_STEPS } from '#lib/orderingSteps.ts';
 
-	const heroFallback = heroFallbackSrc(base);
-	const heroWebpSrcset = heroSrcset(base);
-	const heroPortraitWebpSrcset = heroPortraitSrcset(base);
+	const heroFallback = heroFallbackSrc(asset);
+	const heroWebpSrcset = heroSrcset(asset);
+	const heroPortraitWebpSrcset = heroPortraitSrcset(asset);
 	const apiUrl = PUBLIC_API_URL;
 
 	let featured: GalleryPhoto[] = [];
@@ -214,7 +214,7 @@
 		<!-- Decorative illustration (golden hour); pairs with the poem's moonrise. -->
 		<div class="art-layout__art" aria-hidden="true">
 			<img
-				src="{base}/graphics/story-golden-hour.svg"
+				src={asset('graphics/story-golden-hour.svg')}
 				alt=""
 				width="400"
 				height="500"
@@ -305,7 +305,7 @@
 		<!-- Decorative illustration (moonrise); pairs with the story's golden hour. -->
 		<div class="art-layout__art" aria-hidden="true">
 			<img
-				src="{base}/graphics/poem-moonrise.svg"
+				src={asset('graphics/poem-moonrise.svg')}
 				alt=""
 				width="400"
 				height="500"

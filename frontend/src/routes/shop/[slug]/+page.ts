@@ -7,7 +7,7 @@
 // Trade-off: the HTML doesn't include the product content on first load,
 // so it won't appear in search engines as effectively as a prerendered
 // version. If SEO for product pages becomes important, revisit this by
-// enumerating slugs at build time via a Sanity fetch in svelte.config or
+// enumerating slugs at build time via a Sanity fetch in vite.config.ts or
 // a `+page.server.ts` with prerender entries.
 export const prerender = false;
 export const ssr = false;

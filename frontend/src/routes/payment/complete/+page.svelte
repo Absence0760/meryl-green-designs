@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 
 	let ref = '';
 
@@ -32,7 +32,7 @@
 				PayFast is confirming your payment. You'll receive an email
 				once it's been confirmed and your order is ready to ship. If
 				you don't see it within an hour (check your spam folder
-				first), <a href="{base}/contact">get in touch</a> and we'll
+				first), <a href={resolve('/contact')}>get in touch</a> and we'll
 				re-send it.
 			</p>
 
@@ -40,11 +40,11 @@
 
 			<div class="actions">
 				{#if ref}
-					<a class="btn" href="{base}/track?ref={encodeURIComponent(ref)}">
+					<a class="btn" href="{resolve('/track')}?ref={encodeURIComponent(ref)}">
 						Track your order
 					</a>
 				{/if}
-				<a class="btn btn--secondary" href="{base}/shop">
+				<a class="btn btn--secondary" href={resolve('/shop')}>
 					Back to the shop
 				</a>
 			</div>
