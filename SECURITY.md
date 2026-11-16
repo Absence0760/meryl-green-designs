@@ -34,9 +34,10 @@ Whichever channel you use, please include:
 This repository ships with the following defensive scaffolding (full list in
 `.github/workflows/`):
 
-- **Secret scanning** — `.github/workflows/gitleaks.yml` runs gitleaks on every
-  push and PR plus a weekly full-history sweep.
-  `.pre-commit-config.yaml` runs the same scan locally before commit.
+- **Secret scanning** — `.github/workflows/secret-scan.yml` runs TruffleHog on
+  every push and PR plus a weekly full-history sweep; a verified (live) or
+  unverifiable credential fails it. `.pre-commit-config.yaml` runs gitleaks
+  locally before commit.
 - **Dependency audit** — `.github/workflows/audit.yml` runs `pnpm audit` weekly
   and files an issue for any high-severity finding. Dependabot
   (`.github/dependabot.yml`) opens grouped weekly PRs for npm, pip, terraform,

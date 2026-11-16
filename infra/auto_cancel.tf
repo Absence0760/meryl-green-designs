@@ -93,7 +93,7 @@ resource "aws_lambda_function" "auto_cancel" {
 # ----------------------------------------------------------------------------
 # EventBridge daily schedule (06:00 UTC == 08:00 SAST)
 #
-# Same UTC tide as the security workflow weekly sweeps (gitleaks /
+# Same UTC tide as the security workflow weekly sweeps (secret-scan /
 # scorecard / pnpm audit / CodeQL) so all the background jobs land in
 # one operational window.
 # ----------------------------------------------------------------------------

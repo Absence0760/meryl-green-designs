@@ -529,11 +529,15 @@ injection in JSX `style` rendering): no advisory until someone finds it.
   unpinned action references). Findings surface in the repo's Security
   tab under "Code scanning alerts" with line-level annotations on the
   PR diff.
-- **gitleaks** (`.github/workflows/gitleaks.yml`) regex-scans the
-  working tree on every PR + push to `main`, and the entire git
-  history on a weekly cron (Monday 06:00 UTC). Catches stray pastes of
-  AWS keys, Sanity API tokens, Resend keys, PayFast passphrase, admin
-  tokens — anything matching the gitleaks default ruleset.
+- **TruffleHog** (`.github/workflows/secret-scan.yml`) scans the
+  commits of every PR + push to `main`, and the entire git history on
+  a weekly cron (Monday 06:00 UTC). Catches stray pastes of AWS keys,
+  Sanity API tokens, Resend keys, PayFast passphrase, admin tokens —
+  anything one of its detectors recognises — and checks each candidate
+  against its provider: a verified (live) or unverifiable credential
+  fails the job, an unverified match only warns. The gitleaks
+  pre-commit hook (`.pre-commit-config.yaml`, `.gitleaks.toml`) is the
+  local layer.
 - **OpenSSF Scorecard** (`.github/workflows/scorecard.yml`) measures
   branch-protection, action-pinning, vulnerability-management posture,
   etc. against an OpenSSF-maintained rubric. Weekly cron, advisory
@@ -556,9 +560,9 @@ injection in JSX `style` rendering): no advisory until someone finds it.
   `<script>` blocks of components is scanned; template-only data flows
   may not be. Most of our security-relevant code lives in the backend
   (`backend/src/`), which is plain TypeScript and fully covered.
-- gitleaks catches *patterns* — a high-entropy custom-format token
-  (e.g. an internal HMAC key encoded as base64url) may pass the default
-  ruleset unflagged. Repository-wide push protection at the GitHub
+- TruffleHog and gitleaks catch *known token shapes* — a high-entropy
+  custom-format token (e.g. an internal HMAC key encoded as base64url)
+  may pass their detectors unflagged. Repository-wide push protection at the GitHub
   level catches the providers we care about most.
 - Trivy IaC scans known-bad patterns — a logically-insecure but
   syntactically-clean construct (overly broad bucket policy that
