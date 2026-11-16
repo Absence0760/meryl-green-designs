@@ -11,12 +11,13 @@ domain_name = "merylgreendesigns.com"
 # Find it with: aws route53 list-hosted-zones-by-name --dns-name merylgreendesigns.com
 route53_zone_id = "Z0000000000000000000"
 
-# GitHub repo in 'owner/name' form — used to scope the CI role's trust policy.
+# GitHub repo in 'owner/name' form — bin/setup.sh sets the repo's environment
+# and variables with it.
 github_repo = "owner/meryl-green-designs"
 
-# Optional, org move only (Absence0760/project-mgmt#14): extra OIDC subject
-# prefixes the CI role also trusts, e.g. the post-transfer
-# "repo:<org>@<org_id>/meryl-green-designs@<repo_id>". Read with:
+# The CI role's OIDC trust is github_subject_prefix, which is committed in
+# github-oidc.auto.tfvars (not secret). Optional, transfers only: extra
+# prefixes the role also trusts during a move. Read with:
 #   gh api repos/<owner>/<repo>/actions/oidc/customization/sub --jq .sub_claim_prefix
 # github_extra_subject_prefixes = []
 
