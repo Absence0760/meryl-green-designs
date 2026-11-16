@@ -14,6 +14,12 @@ route53_zone_id = "Z0000000000000000000"
 # GitHub repo in 'owner/name' form — used to scope the CI role's trust policy.
 github_repo = "owner/meryl-green-designs"
 
+# Optional, org move only (Absence0760/project-mgmt#14): extra OIDC subject
+# prefixes the CI role also trusts, e.g. the post-transfer
+# "repo:<org>@<org_id>/meryl-green-designs@<repo_id>". Read with:
+#   gh api repos/<owner>/<repo>/actions/oidc/customization/sub --jq .sub_claim_prefix
+# github_extra_subject_prefixes = []
+
 # Backend secrets. These are passed to the Lambda as env vars on first apply.
 # After that, rotate them by updating this file and re-running `terraform apply`.
 resend_api_key = "re_xxxxxxxxxxxxxxxxxxxx"
