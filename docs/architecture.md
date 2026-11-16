@@ -24,7 +24,7 @@ and GitHub Actions workflows for CI/CD:
 - `.github/workflows/` — fourteen workflows: three release-gated deploy
   workflows (frontend, backend, studio) that authenticate to AWS via OIDC,
   plus CI (typecheck + vitest), E2E (Playwright against LocalStack), CodeQL
-  SAST, weekly dependency audit, Gitleaks secret-scan, OpenSSF Scorecard,
+  SAST, weekly dependency audit, TruffleHog secret-scan, OpenSSF Scorecard,
   Terraform fmt/validate/Trivy, Dependabot auto-merge, the Claude Code
   automation, a PR labeler, and a conventional-commit PR-title linter. The
   deploy workflows run on `release: published` with skip-if-unchanged checks
@@ -155,7 +155,7 @@ meryl-green-designs/
         ├── e2e.yml                      Playwright e2e on PR + push to main (LocalStack + test-e2e Sanity dataset)
         ├── codeql.yml                   CodeQL SAST on JS/TS + GitHub Actions YAML
         ├── audit.yml                    Weekly pnpm audit (auto-files issue)
-        ├── gitleaks.yml                 Secret-scan on PR + push + weekly full-history sweep
+        ├── secret-scan.yml              TruffleHog secret-scan on PR + push + weekly full-history sweep
         ├── scorecard.yml                Weekly OpenSSF Scorecard
         ├── supply-chain-scan.yml        Advisory zizmor + osv-scanner, SARIF to code scanning
         ├── terraform.yml                fmt -check + validate + Trivy IaC on infra/** changes
@@ -575,8 +575,9 @@ CI/CD lives in `.github/workflows/`:
   positives are ignored via `auditConfig.ignoreGhsas` in
   `pnpm-workspace.yaml` (see
   `docs/security.md`).
-- `gitleaks.yml` — secret-scan on every PR + push + weekly full-history
-  sweep. Catches accidentally-committed tokens.
+- `secret-scan.yml` — TruffleHog secret-scan on every PR + push + weekly
+  full-history sweep. Catches accidentally-committed tokens and fails on
+  any that verify as live.
 - `scorecard.yml` — weekly OpenSSF Scorecard supply-chain posture
   analysis (advisory only).
 - `supply-chain-scan.yml` — zizmor (workflow + `dependabot.yml` security

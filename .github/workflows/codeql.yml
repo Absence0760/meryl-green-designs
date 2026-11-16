@@ -12,7 +12,7 @@ name: CodeQL
 #   - push to main: scan post-merge state, refresh the Security-tab baseline
 #   - weekly cron (Sunday 06:00 UTC): catch new CodeQL queries flagging
 #     existing code without waiting for a PR. Offset by ~24h from audit.yml /
-#     gitleaks / scorecard (Monday 06:00 UTC) so the scans don't compete for
+#     secret-scan / scorecard (Monday 06:00 UTC) so the scans don't compete for
 #     hosted-runner scheduler slots.
 #   - workflow_dispatch: ad-hoc manual runs
 

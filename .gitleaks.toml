@@ -1,10 +1,11 @@
 # gitleaks configuration for Meryl Green Designs.
 #
-# The repo's gitleaks workflow (.github/workflows/gitleaks.yml) runs the
-# default ruleset across the working tree and full git history. This
-# file extends the defaults with narrowly-scoped allowlist entries so
-# the weekly cron doesn't fire false positives on values that are
-# documented as public sandbox credentials.
+# The gitleaks pre-commit hook (.pre-commit-config.yaml) runs the
+# default ruleset over staged changes. This file extends the defaults
+# with narrowly-scoped allowlist entries so it doesn't fire false
+# positives on values that are documented as public sandbox
+# credentials. (The CI scan is TruffleHog, .github/workflows/
+# secret-scan.yml, which does not read this file.)
 #
 # Add to this file only when a real false-positive lands. Prefer
 # pattern-narrow regex matches over broad path exclusions, so a real

@@ -51,7 +51,7 @@ automated status emails, and the Sanity Studio with four schemas
   [`deployment.md § Secrets management`](./deployment.md#secrets-management).
 - **Supply-chain hygiene** — Dependabot grouped weekly updates,
   pnpm-lock auto-sync, conservative auto-merge for minor/patch bumps,
-  CodeQL + gitleaks + OpenSSF Scorecard on schedule, and advisory
+  CodeQL + TruffleHog secret scan + OpenSSF Scorecard on schedule, and advisory
   zizmor + osv-scanner on every PR (`supply-chain-scan.yml`,
   [`security.md` § 13](./security.md)).
 
