@@ -141,7 +141,7 @@ to understand what the script is doing under the hood, see
 │  5. Resend account + verified sending domain                         │
 │  6. Install CLI tools: terraform, aws, gh, jq, sops                  │
 │  7. Clone the private secrets repo next to this one:                 │
-│       git clone git@github.com:Absence0760/infra-secrets.git \       │
+│       git clone git@github.com:jaredhoward-dev/infra-secrets.git \   │
 │         ../infra-secrets                                             │
 └──────────────────────────────────────────────────────────────────────┘
                                   │
@@ -603,10 +603,10 @@ GitHub Actions, and the change should be visible on the live site.
 ## Secrets management (SOPS + AWS KMS)
 
 The encrypted secrets live in the **sibling private repo
-`Absence0760/infra-secrets`** (under `meryl-green-designs/`), **not in this
+`jaredhoward-dev/infra-secrets`** (under `meryl-green-designs/`), **not in this
 public repo** — relocated 2026-06-24 so this repo no longer ships ciphertext.
 Clone it next to this one (`git clone
-git@github.com:Absence0760/infra-secrets.git ../infra-secrets`). A
+git@github.com:jaredhoward-dev/infra-secrets.git ../infra-secrets`). A
 project-dedicated AWS KMS key (alias `alias/meryl-green-designs-sops` in
 `af-south-1`) is the encryption root — anyone with `kms:Decrypt` permission on
 that key can read the encrypted files. Access is bound to AWS IAM rather than a
@@ -635,7 +635,7 @@ private repo, so first-time setup here is just cloning that repo and confirming
 you can decrypt:
 
 ```bash
-git clone git@github.com:Absence0760/infra-secrets.git ../infra-secrets
+git clone git@github.com:jaredhoward-dev/infra-secrets.git ../infra-secrets
 sops -d ../infra-secrets/meryl-green-designs/terraform.tfvars.sops >/dev/null && echo "decrypt OK"
 ```
 

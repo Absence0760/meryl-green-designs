@@ -11,7 +11,7 @@ This repo uses SOPS-encrypted `*.sops` files for secrets at rest. The trust boun
 ## What to check
 
 1. **No encrypted secrets are committed in THIS repo; the source files are encrypted in the private repo.**
-   - This public repo must contain **no** `*.sops` blob (relocated 2026-06-24 to the sibling private repo `Absence0760/infra-secrets`). `.gitignore` blocks `*.sops`; any such file tracked here is a High finding.
+   - This public repo must contain **no** `*.sops` blob (relocated 2026-06-24 to the sibling private repo `jaredhoward-dev/infra-secrets`). `.gitignore` blocks `*.sops`; any such file tracked here is a High finding.
    - The real encrypted files live at `../infra-secrets/meryl-green-designs/terraform.tfvars.sops` and `../infra-secrets/meryl-green-designs/.env.sops`. If that repo is cloned alongside, open each and confirm it matches the unstructured-JSON SOPS shape:
      - A single top-level `"data": "ENC[AES256_GCM,data:...,iv:...,tag:...,type:str]"` blob holding the encrypted body.
      - A `"sops"` metadata object with `kms` recipient ARNs, `mac` (`ENC[...]`), `unencrypted_suffix`, `version`.

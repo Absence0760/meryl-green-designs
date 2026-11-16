@@ -7,7 +7,7 @@ Please **do not** open a public GitHub issue or PR for security vulnerabilities.
 There are two private channels — pick whichever is easier:
 
 - **GitHub Security Advisories (preferred)** — file a private report at
-  <https://github.com/Absence0760/meryl-green-designs/security/advisories/new>.
+  <https://github.com/jaredhoward-dev/meryl-green-designs/security/advisories/new>.
   Only the repo maintainers can see it until it's published.
 - **Email** — <zagreenwoman@gmail.com> with subject `[security] <short summary>`.
 

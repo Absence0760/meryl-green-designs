@@ -48,7 +48,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 INFRA_DIR="$REPO_ROOT/infra"
 TFVARS_FILE="$INFRA_DIR/terraform.tfvars"
 # Encrypted prod secrets live in the sibling PRIVATE infra-secrets repo
-# (Absence0760/infra-secrets), relocated there 2026-06-24 so this public repo no
+# (jaredhoward-dev/infra-secrets), relocated there 2026-06-24 so this public repo no
 # longer ships ciphertext. Override INFRA_SECRETS_DIR if your clone lives
 # elsewhere than ~/github/infra-secrets.
 INFRA_SECRETS_DIR="${INFRA_SECRETS_DIR:-$(cd "$REPO_ROOT/.." && pwd)/infra-secrets}"
@@ -207,7 +207,7 @@ ensure_plaintext_tfvars() {
 
 	err "Neither $TFVARS_FILE nor $TFVARS_SOPS_FILE exists."
 	log "Prod secrets live in the sibling private infra-secrets repo. Clone it"
-	log "next to this one (git@github.com:Absence0760/infra-secrets.git), or set"
+	log "next to this one (git@github.com:jaredhoward-dev/infra-secrets.git), or set"
 	log "INFRA_SECRETS_DIR to its path. See its README for the meryl section."
 	exit 1
 }

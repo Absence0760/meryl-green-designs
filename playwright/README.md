@@ -143,7 +143,7 @@ step 1) with a project + Editor API token already created.
 
 ```bash
 # Create the e2e environment (idempotent — succeeds if it already exists)
-gh api -X PUT repos/Absence0760/meryl-green-designs/environments/e2e
+gh api -X PUT repos/jaredhoward-dev/meryl-green-designs/environments/e2e
 
 # Variables (public, visible in workflow logs)
 gh variable set SANITY_E2E_PROJECT_ID --env e2e --body '<paste your test project id>'
@@ -188,7 +188,7 @@ gh run rerun <run-id>
 If something has drifted and you want to start fresh:
 
 ```bash
-gh api -X DELETE repos/Absence0760/meryl-green-designs/environments/e2e
+gh api -X DELETE repos/jaredhoward-dev/meryl-green-designs/environments/e2e
 # then re-run the "Create the environment and populate it" block above
 ```
 

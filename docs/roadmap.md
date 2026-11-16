@@ -45,7 +45,7 @@ automated status emails, and the Sanity Studio with four schemas
   ops walkthrough in [`deployment.md`](./deployment.md).
 - **Secrets** — SOPS + AWS KMS (`alias/meryl-green-designs-sops` in
   `af-south-1`); encrypted files live in the sibling private repo
-  `Absence0760/infra-secrets`. `bin/setup.sh` (here) and
+  `jaredhoward-dev/infra-secrets`. `bin/setup.sh` (here) and
   `infra-secrets/bin/sops-init.sh` (there) are idempotent bootstraps. Workflow
   lives under
   [`deployment.md § Secrets management`](./deployment.md#secrets-management).
@@ -212,7 +212,7 @@ traffic. Most are external, and each is documented with exact steps in
 
 ### Deployment
 - [ ] Clone the private secrets repo next to this one: `git clone
-      git@github.com:Absence0760/infra-secrets.git ../infra-secrets`
+      git@github.com:jaredhoward-dev/infra-secrets.git ../infra-secrets`
       (the project's KMS key + encrypted files already exist there; the
       one-time bootstrap is `infra-secrets/bin/sops-init.sh --project
       meryl-green-designs --region af-south-1`)

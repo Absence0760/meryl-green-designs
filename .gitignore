@@ -36,7 +36,7 @@ studio/dist/
 # backend/src/__tests__/env-development.test.ts.
 #
 # The ENCRYPTED secrets (*.sops) no longer live in this repo: they were
-# relocated to the sibling PRIVATE repo Absence0760/infra-secrets (under
+# relocated to the sibling PRIVATE repo jaredhoward-dev/infra-secrets (under
 # meryl-green-designs/) on 2026-06-24, because this repo is public. Keep it
 # that way — the rules below also block any *.sops blob from being
 # re-committed here by accident.
