@@ -39,7 +39,7 @@ All ten `.tf` files plus the encrypted tfvars + template:
 2. **OIDC trust policy (`github_oidc.tf`).**
    - `aws_iam_role.github_actions` has a trust policy (built by `data "aws_iam_policy_document" "github_actions_trust"`) with TWO `StringEquals` conditions:
      - `token.actions.githubusercontent.com:aud = "sts.amazonaws.com"`
-     - `token.actions.githubusercontent.com:sub = "repo:${var.github_repo}:environment:production"`
+     - `token.actions.githubusercontent.com:sub = "repo:${var.github_repo}:environment:production"`, plus one exact subject per `github_extra_subject_prefixes` entry (empty outside the org move, Absence0760/project-mgmt#14). Still `StringEquals`; an extra that isn't `repo:<owner>[@id]/<repo>[@id]` is refused by the variable's validation.
    - **This is environment-scoped, not branch-scoped.** Release-gated deploys run with `github.ref = refs/tags/<tag>`, so a `ref:refs/heads/main` or `ref:refs/tags/*` subject pattern would reject the actual deploy events. Workflows must declare `environment: production` to assume the role; the environment is created by `bin/setup.sh` and carries the deploy-related repo vars.
    - If the `:sub` condition gets weakened to a wildcard (`StringLike` with `*`) or removed entirely, that's the canonical "fork PR can assume your role" footgun — Critical.
    - `aws_iam_openid_connect_provider.github` has `client_id_list = ["sts.amazonaws.com"]` and a non-empty `thumbprint_list`. The provider is a one-per-account resource; if another project in the same AWS account already created it, this file imports it rather than duplicating (see the header comment in `github_oidc.tf`).
