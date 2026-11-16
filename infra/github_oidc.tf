@@ -21,23 +21,23 @@ resource "aws_iam_openid_connect_provider" "github" {
 # The `production` environment is created by bin/setup.sh and carries the
 # deploy variables; workflows declare `environment: production` explicitly.
 #
-# Org move (Absence0760/project-mgmt#14): transferring the repo into a GitHub
-# organization changes the `sub` prefix (a repo transferred after 2026-07-15
-# issues `repo:<org>@<org_id>/<repo>@<repo_id>`). The role trusts a list of
-# exact subjects, `repo:${var.github_repo}` plus `github_extra_subject_prefixes`,
-# still StringEquals. Before the transfer, add the post-transfer prefix as an
-# extra and apply. After it, set `github_repo` to the new `<org>/<repo>` (which
-# drops the old Absence0760 subject) and keep the ID-shaped new prefix as the
-# one extra: a name-shaped primary cannot express it. With no extras the trust
-# is unchanged. Read a prefix, never build it:
+# Immutable subjects: since the move into the jaredhoward-dev org
+# (project-mgmt#14, 2026-11-16) the repo sends
+# `repo:jaredhoward-dev@357177875/meryl-green-designs@1194646030`, numeric IDs
+# rather than the slug, so the trust no longer builds the subject from
+# `github_repo`. `github_subject_prefix` holds the literal prefix (committed in
+# github-oidc.auto.tfvars). For a future transfer or rename, list the
+# post-move prefix in `github_extra_subject_prefixes` and apply before it;
+# afterwards make it the primary and empty the extras. Still StringEquals,
+# never StringLike. Read a prefix, never build it:
 #   gh api repos/<owner>/<repo>/actions/oidc/customization/sub --jq .sub_claim_prefix
 # ----------------------------------------------------------------------------
 
 locals {
-  # Primary first, then the org-move extras; distinct() so a repeated primary
+  # Primary first, then any transfer extras; distinct() so a repeated primary
   # cannot duplicate a subject.
   github_subject_prefixes = distinct(concat(
-    ["repo:${var.github_repo}"],
+    [var.github_subject_prefix],
     var.github_extra_subject_prefixes,
   ))
 }
