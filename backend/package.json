@@ -21,10 +21,10 @@
 		"scrub:sanity-pii:dry": "tsx src/scripts/scrub-sanity-pii.ts --dry-run"
 	},
 	"dependencies": {
-		"@aws-sdk/client-dynamodb": "^3.1161.0",
-		"@aws-sdk/lib-dynamodb": "^3.1161.0",
-		"@sanity/client": "^8.14.1",
-		"dotenv": "^18.0.9",
+		"@aws-sdk/client-dynamodb": "^3.1164.0",
+		"@aws-sdk/lib-dynamodb": "^3.1164.0",
+		"@sanity/client": "^8.15.0",
+		"dotenv": "^18.0.10",
 		"hono": "4.13.17"
 	},
 	"devDependencies": {
