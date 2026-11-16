@@ -305,7 +305,7 @@ ends up encrypted with the wrong key.
 **Current mitigations:**
 - **SOPS + AWS KMS encryption, in a separate PRIVATE repo.** The encrypted
   `terraform.tfvars.sops` and `.env.sops` live in the sibling private repo
-  `Absence0760/infra-secrets` (under `meryl-green-designs/`), **not in this
+  `jaredhoward-dev/infra-secrets` (under `meryl-green-designs/`), **not in this
   public repo** — relocated 2026-06-24. This adds GitHub access control as a
   second layer on top of KMS (defense-in-depth): a public repo would expose the
   ciphertext as an offline brute-force target forever. The encryption root is a

@@ -123,7 +123,7 @@ bucket/table names, so the next `terraform init` will pick them up.
 
 Variables live in `../../infra-secrets/meryl-green-designs/terraform.tfvars.sops`
 — SOPS-encrypted with the project KMS key (`alias/meryl-green-designs-sops`) in
-the sibling PRIVATE repo `Absence0760/infra-secrets`. The plaintext
+the sibling PRIVATE repo `jaredhoward-dev/infra-secrets`. The plaintext
 `terraform.tfvars` file is gitignored and only exists transiently when
 `bin/setup.sh` decrypts it for `terraform apply`.
 
@@ -131,7 +131,7 @@ The encrypted file (and its `terraform.tfvars.example` template) already live in
 `infra-secrets`; clone that repo next to this one if you haven't:
 
 ```bash
-git clone git@github.com:Absence0760/infra-secrets.git ../../infra-secrets
+git clone git@github.com:jaredhoward-dev/infra-secrets.git ../../infra-secrets
 ```
 
 To edit (needs `kms:Decrypt`/`kms:Encrypt` on the project key):

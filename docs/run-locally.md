@@ -129,14 +129,14 @@ Only needed if you work against the **production** Sanity project or deploy.
 Not needed for everyday local development.
 
 The real secrets live KMS-encrypted in the sibling **private** repo
-`Absence0760/infra-secrets` (under `meryl-green-designs/`) — never in this
+`jaredhoward-dev/infra-secrets` (under `meryl-green-designs/`) — never in this
 public repo. Decrypting needs `kms:Decrypt` on the project key via AWS SSO
 (configure a profile per
 [`deployment.md § AWS profiles`](./deployment.md#aws-profiles-multi-project-setup)
 so credentials don't bleed across projects):
 
 ```bash
-git clone git@github.com:Absence0760/infra-secrets.git ../infra-secrets   # one-time
+git clone git@github.com:jaredhoward-dev/infra-secrets.git ../infra-secrets   # one-time
 aws sso login --profile meryl-green-designs
 sops ../infra-secrets/meryl-green-designs/.env.sops      # edit secrets in $EDITOR; re-encrypts on save
 sops -d ../infra-secrets/meryl-green-designs/.env.sops > backend/.env.development.local
