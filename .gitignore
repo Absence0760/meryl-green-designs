@@ -56,6 +56,8 @@ studio/dist/
 # committed.
 *.tfvars
 !*.tfvars.example
+# Non-secret config Terraform loads automatically (project-mgmt#14).
+!infra/github-oidc.auto.tfvars
 
 # ---------------------------------------------------------------------------
 # Local email capture (backend/src/email.ts file backend, dev-only)
